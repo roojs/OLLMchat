@@ -28,7 +28,9 @@ symbolic/actions/edit-copy-symbolic.svg	Adwaita	symbolic/actions/edit-copy-symbo
 symbolic/actions/edit-undo-symbolic.svg	Adwaita	symbolic/actions/edit-undo-symbolic.svg
 symbolic/actions/edit-redo-symbolic.svg	Adwaita	symbolic/actions/edit-redo-symbolic.svg
 symbolic/actions/go-next-symbolic.svg	Adwaita	symbolic/actions/go-next-symbolic.svg
+symbolic/actions/go-previous-symbolic.svg	Adwaita	symbolic/actions/go-previous-symbolic.svg
 symbolic/actions/go-up-symbolic.svg	Adwaita	symbolic/actions/go-up-symbolic.svg
+symbolic/ui/window-close-symbolic.svg	Adwaita	symbolic/ui/window-close-symbolic.svg
 symbolic/actions/help-about-symbolic.svg	Adwaita	symbolic/actions/help-about-symbolic.svg
 symbolic/actions/document-properties-symbolic.svg	Adwaita	symbolic/actions/document-properties-symbolic.svg
 symbolic/status/weather-fog-symbolic.svg	Adwaita	symbolic/status/weather-fog-symbolic.svg

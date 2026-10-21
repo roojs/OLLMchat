@@ -16,7 +16,7 @@ OUTPUT="${2:-$ROOT/release-notes.md}"
 repo="${GITHUB_REPOSITORY:-roojs/OLLMchat}"
 tmp="$(mktemp)"
 {
-  echo "**Debian, Fedora, and openSUSE:** install from the [roojs package repositories](https://roojs.github.io/repos/) (\`apt\` / \`dnf\` / \`zypper\`). Setup commands are in the [README](https://github.com/${repo}/blob/main/README.md#releases)."
+  echo "**Debian, Fedora, and openSUSE:** install from the [roojs package repositories](https://roojs.github.io/repos/) (\`apt\` / \`dnf\` / \`zypper\`). Repository setup is on that page. Install commands are in the [README](https://github.com/${repo}/blob/main/README.md#releases)."
   echo
   echo "\`.deb\` / \`.rpm\` files for this version are on [${TAG}-packages](https://github.com/${repo}/releases/tag/${TAG}-packages)."
   echo

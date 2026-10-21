@@ -308,6 +308,9 @@ namespace OLLMfilesd
 					"manager", "children", "project-files", "parent",
 					"points-to", "buffer"
 				});
+				if (project.project_files.link_parent.has_key((int) row.id)) {
+					row.parent_id = project.project_files.link_parent.get((int) row.id);
+				}
 				list.add(row);
 			}
 			request.reply(new OLLMrpc.Response() {
@@ -545,6 +548,9 @@ namespace OLLMfilesd
 						"parent",
 						"last-modified"
 					});
+					if (project.project_files.link_parent.has_key((int) row.id)) {
+						row.parent_id = project.project_files.link_parent.get((int) row.id);
+					}
 					list.add(row);
 				}
 				request.reply(new OLLMrpc.Response() {
@@ -559,8 +565,19 @@ namespace OLLMfilesd
 				limit = limit < 1 ? 50 : limit;
 				var matched = project.project_files.cached_search(needle);
 				var list = new Gee.ArrayList<GLib.Object>();
-				if (matched.size > 0) {
-					list.add_all(matched.slice(0, int.min(limit, matched.size)));
+				var take = int.min(limit, matched.size);
+				for (var i = 0; i < take; i++) {
+					var source = matched.get(i);
+					if (!project.project_files.link_parent.has_key((int) source.id)) {
+						list.add(source);
+						continue;
+					}
+					var row = new File(this.manager);
+					row.copy_from(source, {
+						"manager", "buffer", "parent", "points-to"
+					});
+					row.parent_id = project.project_files.link_parent.get((int) row.id);
+					list.add(row);
 				}
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,

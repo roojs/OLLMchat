@@ -34,7 +34,7 @@ CI then:
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
 3. Builds Linux AppImages with sqgipkg (Ubuntu 25.04; FAISS is built from source for those bundles).
 4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**.
-5. Builds the **Android** remote-chat POC APK (`ollmchat-android-v*-debug.apk`). A Pixiewood failure does not block the other packages.
+5. Builds the **Android** APK (`ollmchat-android-v*-debug.apk`). A Pixiewood failure does not block the other packages.
 6. On a tag push, publishes **two** GitHub Releases. Debian and RPM files go on `${tag}-packages` first (same commit, not marked Latest), then AppImage, Windows Setup.exe, and the APK (when Android succeeded) on the version tag so that tag appears above packages on the Releases page.
 
 AppImage packaging is configured in [`sqgipkg.json`](../sqgipkg.json) (Linux only). Debian packaging lives under [`debian/`](../debian/). The RPM spec is [`packaging/rpm/ollmchat.spec`](../packaging/rpm/ollmchat.spec).
@@ -49,7 +49,7 @@ Fedora 44 is the RPM base. openSUSE uses the same spec; CI does **not** share on
 | RPM | x86_64 | same split + remote-only | Fedora 44 and openSUSE Tumbleweed; FAISS on Fedora comes from the roojs repo (nicked from Tumbleweed) |
 | AppImage | x86_64, aarch64 | No | Self-contained; remote backends only |
 | Windows `.exe` | x86_64 | No | Native MSYS2 NSIS: **`OLLMchat-<version>-Setup.exe`** |
-| Android `.apk` | arm64-v8a | No | Remote-chat POC; sideload from GitHub Releases |
+| Android `.apk` | arm64-v8a | No | Android client; sideload from GitHub Releases |
 
 Release `.deb` files use the **split** Debian layout (runtime libraries, `-dev` packages, `ollmchat`, `ollmchat-tools`, `ollmchat-doc`) plus a conflicting **ollmchat-remote-only** all-in-one package. See [`debian/README`](../debian/README). The RPM spec ships the same split (`libocrpc`, `libocrpc-devel`, …) for the GGUF build and a single `ollmchat-remote-only` RPM without libllama.
 
@@ -68,7 +68,7 @@ Regenerate Debian packaging locally with:
 **Tag push (via `scripts/release.sh`):**
 
 1. CI reads the versioned heading, checks it matches the tag (`v1.2.5-alpha` → `1.2.5-alpha` → Debian/RPM `1.2.5~alpha-1`), and copies notes into Debian and RPM packaging **in the CI workspace**.
-2. GitHub Release notes come from that same section (`scripts/release/render-release-notes.sh`), not from git commits. The version-tag notes start with a pointer to the [README Releases](../README.md#releases) install commands (APT / DNF / zypper) and to `${tag}-packages` for the `.deb` / `.rpm` files.
+2. GitHub Release notes come from that same section (`scripts/release/render-release-notes.sh`), not from git commits. The version-tag notes point at the [roojs package repositories](https://roojs.github.io/repos/) for setup, the [README Releases](../README.md#releases) section for `apt` / `dnf`, and `${tag}-packages` for the `.deb` / `.rpm` files.
 3. If the workflow **fails**, `CHANGELOG.md` on `main` is unchanged.
 4. If it **succeeds**, CI runs **`finalize-changelog.sh`**, stamps the date on `[1.2.5-alpha]`, inserts a fresh `[Unreleased]` heading, regenerates `debian/changelog`, and commits to `main`.
 
@@ -109,7 +109,7 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only |
    | `OLLMchat-remote-only-aarch64.AppImage` | Linux 64-bit (ARM); remote backends only |
    | `OLLMchat-<version>-Setup.exe` | Windows installer (MSYS2 / WebView2); remote backends only |
-   | `ollmchat-android-v*-debug.apk` | Android remote-chat POC (arm64; sideload) |
+   | `ollmchat-android-v*-debug.apk` | Android client (arm64; sideload) |
 
    **Packages tag** (`v1.3.0-packages`):
 

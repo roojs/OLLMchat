@@ -339,9 +339,7 @@ namespace OLLMapp
 			yield;
 			if (epoch != this.load_epoch) {
 				this.pending--;
-				if (this.pending == 0) {
-					this.loading = false;
-				}
+				this.loading = this.pending == 0 ? false : this.loading;
 				return;
 			}
 			OLLMrpc.Response response;
@@ -353,16 +351,12 @@ namespace OLLMapp
 			} catch (GLib.Error e) {
 				if (epoch != this.load_epoch) {
 					this.pending--;
-					if (this.pending == 0) {
-						this.loading = false;
-					}
+					this.loading = this.pending == 0 ? false : this.loading;
 					return;
 				}
 				this.loaded.remove(folder.path);
 				this.pending--;
-				if (this.pending == 0) {
-					this.loading = false;
-				}
+				this.loading = this.pending == 0 ? false : this.loading;
 				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
 					folder.manager.rpc.notification(new OLLMrpc.Notification() {
 						method = "client.filesd.unreachable",
@@ -378,54 +372,71 @@ namespace OLLMapp
 			}
 			if (epoch != this.load_epoch) {
 				this.pending--;
-				if (this.pending == 0) {
-					this.loading = false;
-				}
+				this.loading = this.pending == 0 ? false : this.loading;
 				return;
 			}
-			if (response.retval.type() != GLib.Type.INVALID) {
-				var rows = (Gee.ArrayList<OLLMfiles.Folder>) response.retval.get_object();
-				/* Row 0 is the folder this call asked for. The sort
-				 * below can move it, so the loop skips that path.
-				 */
-				var incoming = rows.get(0);
-				if (this.path_map.has_key(folder.path)) {
-					folder.copy_from(incoming, {
-						"manager",
-						"children",
-						"project-files",
-						"parent",
-						"points-to",
-						"buffer"
-					});
-				}
-				if (!this.path_map.has_key(folder.path)) {
-					incoming.manager = folder.manager;
-					this.append(folder.parent, incoming);
-					folder = incoming;
-				}
-				rows.sort((a, b) => {
-					return GLib.strcmp(a.path, b.path);
+			if (response.retval.type() == GLib.Type.INVALID) {
+				this.pending--;
+				this.loading = this.pending == 0 ? false : this.loading;
+				return;
+			}
+			var rows = (Gee.ArrayList<OLLMfiles.Folder>) response.retval.get_object();
+			/* Row 0 is the folder this call asked for. The sort
+			 * below can move it, so the loop skips that path.
+			 */
+			var incoming = rows.get(0);
+			if (this.path_map.has_key(folder.path)) {
+				folder.copy_from(incoming, {
+					"manager",
+					"children",
+					"project-files",
+					"parent",
+					"points-to",
+					"buffer"
 				});
-				for (var i = 0; i < rows.size; i++) {
-					if (epoch != this.load_epoch) {
-						break;
-					}
-					var row = rows.get(i);
-					if (row.path == "" || row.path == folder.path) {
-						continue;
-					}
-					if (!this.id_map.has_key((int) row.parent_id)) {
-						continue;
-					}
-					row.manager = folder.manager;
-					this.append(this.id_map.get((int) row.parent_id), row);
+			}
+			if (!this.path_map.has_key(folder.path)) {
+				incoming.manager = folder.manager;
+				this.append(folder.parent, incoming);
+				folder = incoming;
+			}
+			// sorting might help allocation order here 
+			rows.sort((a, b) => {
+				return GLib.strcmp(a.path, b.path);
+			});
+			var waiting = new Gee.ArrayList<OLLMfiles.Folder>();
+			for (var i = 0; i < rows.size; i++) {
+				var row = rows.get(i);
+				if (row.path == "" || row.path == folder.path) {
+					continue;
 				}
+				if (!this.id_map.has_key((int) row.parent_id)) {
+					waiting.add(row);
+					continue;
+				}
+				row.manager = folder.manager;
+				this.append(this.id_map.get((int) row.parent_id), row);
+			}
+			var offset = 0;
+			var skipped = 0;
+			while (waiting.size > 0) {
+				offset = offset >= waiting.size ? 0 : offset;
+				if (skipped >= waiting.size) {
+					break;
+				}
+				var row = waiting.get(offset);
+				if (!this.id_map.has_key((int) row.parent_id)) {
+					offset++;
+					skipped++;
+					continue;
+				}
+				row.manager = folder.manager;
+				this.append(this.id_map.get((int) row.parent_id), row);
+				waiting.remove_at(offset);
+				skipped = 0;
 			}
 			this.pending--;
-			if (this.pending == 0) {
-				this.loading = false;
-			}
+			this.loading = this.pending == 0 ? false : this.loading;
 		}
 	}
 }

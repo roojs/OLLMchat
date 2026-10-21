@@ -109,8 +109,10 @@ namespace OLLMapp
 
 		/**
 		 * Build the grid over an empty {@link FileListStore}.
+		 *
+		 * @param single_click A tap activates a row. Tablet passes true.
 		 */
-		public FileList()
+		public FileList(bool single_click = false)
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0, hexpand: true, vexpand: true);
 			var name_factory = new Gtk.SignalListItemFactory();
@@ -238,7 +240,7 @@ namespace OLLMapp
 			this.file_view = new Gtk.ColumnView(this.file_selection) {
 				hexpand = true,
 				vexpand = true,
-				single_click_activate = false,
+				single_click_activate = single_click,
 			};
 			this.file_view.append_column(this.name_column);
 			this.file_view.append_column(size_column);

@@ -28,8 +28,11 @@ namespace OLLMapp
 	 * width. A click turns the file button into the search entry.
 	 * Tablet uses the same sheet. The left pane is {@link FolderBrowse}
 	 * with file loading off. The right pane stays the file list.
-	 * Tree and Recent sit above the folder location. Search stays
-	 * at the bottom and does not take focus when the sheet opens.
+	 * Tree and Recent sit above the folder location. On tablet that
+	 * location is each folder name as a plain button, with a slash
+	 * between them. A tap on a name opens that folder. Search stays
+	 * at the bottom. It accepts a tap, and it does not take focus
+	 * when the sheet opens. A tap on a file opens it.
 	 *
 	 * == Example ==
 	 *
@@ -54,7 +57,8 @@ namespace OLLMapp
 		private uint search_wait = 0;
 		private FolderBrowse browse;
 		private Gtk.Button up;
-		private Gtk.Label heading;
+		private Gtk.Box path_box;
+		private int place_gen { get; set; default = 0; }
 
 		/**
 		 * Folder shown in the tablet left pane.
@@ -94,33 +98,10 @@ namespace OLLMapp
 			};
 			this.face_stack.add_named(this.button, "button");
 			if (this.form == Form.TABLET) {
-				this.entry.can_focus = false;
-				this.entry.focus_on_click = false;
 				this.entry.margin_start = 8;
 				this.entry.margin_end = 8;
 				this.entry.margin_top = 8;
 				this.entry.margin_bottom = 8;
-				var search_inner = this.entry.get_first_child();
-				while (search_inner != null) {
-					search_inner.can_focus = false;
-					search_inner.focus_on_click = false;
-					search_inner = search_inner.get_next_sibling();
-				}
-				var search_press = new Gtk.GestureClick() {
-					propagation_phase = Gtk.PropagationPhase.CAPTURE,
-				};
-				search_press.pressed.connect(() => {
-					this.entry.can_focus = true;
-					this.entry.focus_on_click = true;
-					var child = this.entry.get_first_child();
-					while (child != null) {
-						child.can_focus = true;
-						child.focus_on_click = true;
-						child = child.get_next_sibling();
-					}
-					this.entry.grab_focus();
-				});
-				this.entry.add_controller(search_press);
 			}
 			if (this.form != Form.TABLET) {
 				this.face_stack.add_named(this.entry, "entry");
@@ -178,8 +159,8 @@ namespace OLLMapp
 				};
 				this.browse.selected.connect((folder) => {
 					this.level = folder;
-					this.heading.label = folder.context(this.project);
 					this.up.visible = !folder.is_project;
+					this.place_gen++;
 					this.browse.project = this.project;
 					this.browse.refresh_folder(folder);
 					this.file_list.load(folder);
@@ -193,8 +174,8 @@ namespace OLLMapp
 						return;
 					}
 					this.level = parent;
-					this.heading.label = parent.context(this.project);
 					this.up.visible = !parent.is_project;
+					this.place_gen++;
 					this.browse.project = this.project;
 					this.browse.refresh_folder(parent);
 					this.file_list.load(parent);
@@ -261,7 +242,7 @@ namespace OLLMapp
 			if (this.form == Form.TABLET) {
 				this.folder_tree.collapse.visible = false;
 			}
-			var close_files = new Gtk.Button.from_icon_name("process-stop-symbolic") {
+			var close_files = new Gtk.Button.from_icon_name("window-close-symbolic") {
 				tooltip_text = "Close",
 				has_tooltip = true,
 				can_focus = false,
@@ -296,17 +277,59 @@ namespace OLLMapp
 				margin_top = 6,
 			};
 			if (this.form == Form.TABLET) {
-				this.heading = new Gtk.Label("") {
-					hexpand = true,
-					xalign = 0,
-					visible = true,
-					ellipsize = Pango.EllipsizeMode.END,
+				this.path_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+					valign = Gtk.Align.CENTER,
 				};
-				this.heading.add_css_class("title-2");
+				var crumb_click = new Gtk.GestureClick() {
+					propagation_phase = Gtk.PropagationPhase.CAPTURE,
+				};
+				crumb_click.pressed.connect((n, x, y) => {
+					if (n != 1) {
+						return;
+					}
+					var widget = this.path_box.pick(x, y, Gtk.PickFlags.DEFAULT);
+					while (widget != null &&
+						widget != this.path_box &&
+						!(widget is Gtk.Button)) {
+						widget = widget.get_parent();
+					}
+					if (!(widget is Gtk.Button)) {
+						return;
+					}
+					var target = ((Gtk.Button) widget).get_data<OLLMfiles.Folder>("folder");
+					if (target == null) {
+						return;
+					}
+					this.level = target;
+					this.up.visible = target.id != this.project.id;
+					this.browse.project = this.project;
+					this.browse.refresh_folder(target);
+					this.file_list.load(target);
+					if (this.search_open) {
+						this.file_list.query = this.entry.text.strip();
+					}
+					GLib.Idle.add(() => {
+						this.place_gen++;
+						return false;
+					});
+				});
+				this.path_box.add_controller(crumb_click);
+				var path_scroll = new Gtk.ScrolledWindow() {
+					child = this.path_box,
+					hexpand = true,
+					valign = Gtk.Align.CENTER,
+					hscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
+					vscrollbar_policy = Gtk.PolicyType.NEVER,
+					propagate_natural_height = true,
+				};
 				place_row.hexpand = true;
+				place_row.valign = Gtk.Align.CENTER;
 				place_row.append(this.up);
-				place_row.append(this.heading);
+				place_row.append(path_scroll);
 				place_row.append(close_files);
+				this.notify["place-gen"].connect(() => {
+					this.render_crumbs();
+				});
 			}
 			this.pages.notify["visible-child-name"].connect(() => {
 				var on_tree = this.pages.visible_child_name == "tree";
@@ -422,6 +445,68 @@ namespace OLLMapp
 		}
 
 		/**
+		 * Show the tablet location as folder-name buttons with a
+		 * slash between them. Each button stores its folder. A
+		 * click opens that folder. The walk follows parent and
+		 * stops at the open project. Buttons that already match
+		 * stay. A step down adds one. A step up removes one.
+		 */
+		private void render_crumbs()
+		{
+			var above = new Gee.ArrayList<OLLMfiles.Folder>();
+			var walk = this.level;
+			while (true) {
+				above.add(walk);
+				if (walk.parent == null || walk.id == this.project.id) {
+					break;
+				}
+				walk = walk.parent;
+			}
+			var want = above.size - 1;
+			var child = this.path_box.get_first_child();
+			while (child != null && want >= 0) {
+				if (!(child is Gtk.Button)) {
+					child = child.get_next_sibling();
+					continue;
+				}
+				var stored = ((Gtk.Button) child).get_data<OLLMfiles.Folder>("folder");
+				if (stored != above.get(want)) {
+					break;
+				}
+				want--;
+				child = child.get_next_sibling();
+			}
+			var drop = child;
+			if (drop != null) {
+				var prev = drop.get_prev_sibling();
+				if (prev != null && !(prev is Gtk.Button)) {
+					drop = prev;
+				}
+			}
+			while (drop != null) {
+				var next = drop.get_next_sibling();
+				this.path_box.remove(drop);
+				drop = next;
+			}
+			while (want >= 0) {
+				if (this.path_box.get_first_child() != null) {
+					this.path_box.append(new Gtk.Label("/") {
+						valign = Gtk.Align.CENTER,
+					});
+				}
+				var target = above.get(want);
+				var crumb = new Gtk.Button.with_label(target.path_basename) {
+					can_focus = false,
+					valign = Gtk.Align.CENTER,
+					css_classes = { "flat" },
+				};
+				crumb.set_data<OLLMfiles.Folder>("folder", target);
+				this.path_box.append(crumb);
+				want--;
+			}
+		}
+
+		/**
 		 * Open the file sheet on the current project.
 		 *
 		 * Desktop swaps the file button for the search box and
@@ -462,7 +547,7 @@ namespace OLLMapp
 			}
 			if (this.folder_tree.folders.loaded.contains(this.project.path)) {
 				this.level = this.project;
-				this.heading.label = this.project.context(this.project);
+				this.place_gen++;
 				this.up.visible = false;
 				this.browse.project = this.project;
 				this.browse.refresh_folder(this.project);
@@ -477,7 +562,7 @@ namespace OLLMapp
 			this.folder_tree.folders.load.begin(this.project, (obj, res) => {
 				this.folder_tree.folders.load.end(res);
 				this.level = this.project;
-				this.heading.label = this.project.context(this.project);
+				this.place_gen++;
 				this.up.visible = false;
 				this.browse.project = this.project;
 				this.browse.refresh_folder(this.project);
@@ -554,7 +639,7 @@ namespace OLLMapp
 				}
 				this.search_open = false;
 				this.level = this.search_home;
-				this.heading.label = this.search_home.context(this.project);
+				this.place_gen++;
 				this.up.visible = !this.search_home.is_project;
 				this.browse.refresh_folder(this.search_home);
 				this.file_list.load(this.search_home);
@@ -636,7 +721,7 @@ namespace OLLMapp
 					return;
 				}
 				this.level = found;
-				this.heading.label = found.context(this.project);
+				this.place_gen++;
 				this.up.visible = !found.is_project;
 				this.browse.refresh_folder(found);
 				this.file_list.query = query;

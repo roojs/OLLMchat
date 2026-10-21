@@ -72,6 +72,13 @@ namespace OLLMfilesd
 		 */
 		public Gee.HashMap<string, Folder> folder_map { get; private set;
 			default = new Gee.HashMap<string, Folder>(); }
+
+		/**
+		 * Target id to the parent id of the alias that linked it
+		 * into this project.
+		 */
+		public Gee.HashMap<int, int> link_parent { get; private set;
+			default = new Gee.HashMap<int, int>(); }
 		
 		/**
 		 * Hashmap of path => FileBase object for quick lookup of all items.
@@ -328,6 +335,7 @@ namespace OLLMfilesd
 			
 			// Clear maps before rebuilding
 			this.folder_map.clear();
+			this.link_parent.clear();
 			this.all_files.clear();
 			
 			// Recursively process the folder (folder is the project root)
@@ -528,6 +536,7 @@ namespace OLLMfilesd
 			}
 			
 			var target = alias.points_to;
+			this.link_parent.set((int) target.id, (int) alias.parent_id);
 			// GLib.debug("DEBUG handle_file_alias: target.path=%s, target type=%s", target.path, target.get_type().name());
 			
 			// Build the accumulated symlink path using simple rules

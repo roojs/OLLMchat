@@ -83,7 +83,7 @@ namespace OLLMapp
 		/**
 		 * Files for the folder selected in {@link folder_tree}.
 		 */
-		public FileList file_list { get; private set; default = new FileList(); }
+		public FileList file_list { get; private set; }
 
 		/**
 		 * Documents type button. Hidden. Down shows document folders
@@ -153,6 +153,7 @@ namespace OLLMapp
 				form: form,
 				project: new OLLMfiles.Folder(manager)
 			);
+			this.file_list = new FileList(this.form == Form.TABLET);
 			this.search_home = this.project;
 			this.label = new Gtk.Label("Select file") {
 				xalign = 0,
