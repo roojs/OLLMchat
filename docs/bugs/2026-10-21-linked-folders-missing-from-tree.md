@@ -1,28 +1,76 @@
 # Linked folders missing from the project tree
 
-**Status:** ⏳ applied in the daemon and the smoke tree load. Not yet verified against Web Media Outreach.
+**Status:** ⏳ The link can show. Opening one still shows none of the files or folders inside it.
 
 ## Problem
 
 - 🔷 A folder linked into a project does not appear in the tree, so it cannot be opened.
-- 🔷 Prime example: `web.MediaOutreach/Publisher` is a symlink to `web.MediaOutreach.publisher/Publisher`.
-- 🔷 Expected: that link shows under Web Media Outreach, and opening it shows the linked folder.
-- 🔷 Actual: the tree has no row for it.
+- 🔷 Prime example: a project folder is a symlink to a directory outside that project.
+- 🔷 Expected: that link shows under the project, and opening it shows the linked folder.
+- 🔷 Actual: the tree has no row for it. Confirmed again on the Pixel Tablet emulator after the 2026-10-21 21:13 source-diff APK.
 - 🔷 `ProjectFiles` is what places a linked folder inside the project. The tree should use that.
+- 🔷 22 Oct, on the tablet: the link row can show, and opening it lists that folder.
+- 🔷 Two names in the project are the same link. One points at the other. Missing one of that pair is acceptable.
+- 🔷 Opening another linked folder shows the folder and none of the files or folders inside the linked directory.
+- 🚫 Do not name the outside projects, or list what is inside these links.
+- ℹ️ The path of the link is not a folder on the server. The real directory is. A folder listing of that real directory returns the files. The tree reply includes that directory under the folder that holds the link.
+
+## What the server sends for one folder
+
+- ℹ️ This is the project folder that holds the links, from `Folder.fetch_children` (the tree) and `Folder.fetch_dir` (the file list). Skip scan, copy of the file index. The outside project name is not written here.
+- ℹ️ A folder link is not an alias row in the tree. The row is the outside directory. Its `parent-id` is this folder. The name is the outside directory's basename, not the link's name.
+- ℹ️ The file list is files only. A link to a folder is not a file-list row.
+
+```text
+tree, Folder.fetch_children
+Pman                          folder, inside the project
+├── Admin                     folder, outside, row is Pman.Admin, 6 child folders
+├── Ai                        missing, alias to a folder
+├── BAdmin                    folder, outside, row is Pman.BAdmin, 1 child folder
+├── Builder                   missing, alias to a folder
+├── Cash                      folder, outside, row is Pman.Cash, 7 child folders
+├── Clipping                  folder, inside, 11 child folders
+├── Cms                       folder, outside, row is Pman.Cms, 10 child folders
+├── CmsMigrate                folder, inside, no child folders
+├── Core                      folder, outside, row is Pman.Core, 15 child folders
+├── Crm                       folder, outside, row is Pman.Crm, 11 child folders
+├── Documents                 missing, alias to a folder
+├── Ftp                       missing, alias to a folder
+├── Mail                      folder, outside, row is Pman.Mail, 7 child folders
+├── (one other real folder)   folder, inside, 3 child folders
+├── PressRelease              folder, inside, 19 child folders
+└── templates                 folder, outside, 1 child folder
+```
+
+```text
+file list, Folder.fetch_dir
+├── I18n.php                  alias to a file
+├── Images.php                alias to a file
+├── Login.php                 alias to a file
+└── Roo.php                   alias to a file
+```
+
+- ℹ️ `Mail`'s 7 child folders are in the tree reply. Their names are not recorded here.
 
 ## Evidence
 
-- ℹ️ The link on disk is `/home/alan/gitlive/web.MediaOutreach/Publisher` → `../web.MediaOutreach.publisher/Publisher`.
-- ℹ️ `ProjectFiles.handle_file_alias` follows a folder alias. The target goes into `folder_map`. The alias goes into `all_files` at `web.MediaOutreach/Publisher`. That alias's parent is the Web Media Outreach folder.
-- ℹ️ The target's own `parent_id` stays the real parent, `web.MediaOutreach.publisher`. `ProjectFiles` does not rewrite that on the live folder. The other project still owns it.
+- ℹ️ The link on disk points at a directory outside the project.
+- ℹ️ `ProjectFiles.handle_file_alias` follows a folder alias. The target goes into `folder_map`. The alias goes into `all_files` at the path of the link. That alias's parent is the project folder where the link sits.
+- ℹ️ The target's own `parent_id` stays the real parent, outside this project. `ProjectFiles` does not rewrite that on the live folder. The other project still owns it.
 - ℹ️ `Folder.fetch_children` sends the `folder_map` row and copies that outside `parent_id`.
 - ℹ️ `FolderTreeStore.load` skips a row whose `parent_id` is not already in `id_map`. The outside parent is not in the map, so the row `ProjectFiles` included is dropped.
-- ℹ️ Children of `Publisher` have real paths under `web.MediaOutreach.publisher`. The load loop sorts by that path and skips a row it sees before its parent is in the map. It does not come back to them.
+- ℹ️ Children of the linked folder have real paths outside the project. The load loop sorts by that path and skips a row it sees before its parent is in the map. It does not come back to them.
 - 🚫 The real `parent` chain is the wrong one to walk. It leaves the mapped project. The in-project parent is the alias parent `ProjectFiles` already followed.
+- ℹ️ 2026-10-21 tablet run: `adb -s emulator-5554` installed `.pixiewood/oc-test-source-diff-arm64-v8a-debug.apk` and started `org.roojs.ollmchat.sourcediff`. The host process was `/usr/bin/ollmfilesd`. That binary was not rebuilt from this tree.
+- 💩 The tablet still missing the link matches an old daemon on the wire. It does not show that the `link_parent` copy is wrong, and it does not show that the copy is right. No reply from that session was captured.
+- ✔️ 23:35, this tree's `build/ollmfilesd/ollmfilesd` (the binary that contains `link_parent`). `OLLMFILES_IS_TEST=1`, a copy of the file index, skip scan, then `Folder.fetch_children` for the project. Activate replied `ok`. `fetch_children` replied `msg=95`.
+- ✔️ None of those 95 paths is the linked folder. The rows under the project are the project's own folders.
+- ℹ️ The alias row is `base_type` `fa`. Its `points_to_id` is the outside directory. That directory's `parent_id` is 0.
+- ✔️ `FileAlias` extends `File`. `update_from_recursive` checks `child is File` and `continue`s. The `child is FileAlias` branch is the only call to `handle_file_alias`. That branch does not run. `link_parent` stays empty, and the target never enters `folder_map`. `fetch_children` has nothing to reparent.
 
 ## Root cause
 
-- ✔️ `ProjectFiles` already contains the linked folder. `fetch_children` sends the real parent id, and the tree drops the row because that parent is outside the project.
+- ✔️ The linked folder is not in the reply. `handle_file_alias` is unreachable, so `folder_map` never receives the target and `link_parent` is never filled. The parent rewrite only matters after that follow runs. The real parent id on the target is still the wrong parent to send once the row exists.
 
 ## Proposed fix
 
@@ -34,6 +82,76 @@
 - 🚫 `fetch_dir` does not rewrite `parent_id`. Those files already parent to the folder being listed.
 - ℹ️ A name search still returns folder ids, not rows. Nothing on that reply has a parent to replace.
 - ✔️ Applied in `ollmfilesd/ProjectFiles.vala`, `ollmfilesd/Folder.vala`, and `examples/oc-test-source-diff/FolderTreeStore.vala`.
+- 🔷 `update_from_recursive` has to match `FileAlias` before `File`. `FileAlias` is a `File`, so the first check swallows the alias.
+
+### `ollmfilesd/ProjectFiles.vala` — `update_from_recursive` checks the alias first
+
+**Why:** `handle_file_alias` is what puts the target in `folder_map` and what records `link_parent`. It is only called from the `FileAlias` branch. That branch sits after `child is File`, and a `FileAlias` is a `File`, so the follow never happens.
+
+**Where:** The child loop in `update_from_recursive`.
+
+#### Remove
+
+```vala
+				// Handle File objects - add real files to project_files
+				if (child is File) {
+					var file = child as File;
+					// Add all files to all_files (even non-text files)
+					this.all_files.set(file.path, file);
+				 
+					// Only add text files to ProjectFile list (via add_file_if_new)
+					// GLib.debug("DEBUG update_from_recursive: child is File (not FileAlias)");
+					this.add_file_if_new(
+						file,
+						project_folder,
+						found_files,
+						symlink_path);
+					continue;
+				}
+				
+				// Handle FileAlias - follow to the real file
+				if (child is FileAlias) {
+					// GLib.debug("DEBUG update_from_recursive: child is FileAlias");
+					// Add FileAlias to all_files (symlinks are included in all_files)
+					this.all_files.set(child.path, child);
+					this.handle_file_alias(
+						child as FileAlias,
+						project_folder,
+						scanned_folders,
+						found_files,
+						found_folders,
+						symlink_path);
+					continue;
+				}
+```
+
+#### Replace with
+
+```vala
+				// FileAlias is a File. This check has to come first.
+				if (child is FileAlias) {
+					this.all_files.set(child.path, child);
+					this.handle_file_alias(
+						child as FileAlias,
+						project_folder,
+						scanned_folders,
+						found_files,
+						found_folders,
+						symlink_path);
+					continue;
+				}
+
+				if (child is File) {
+					var file = child as File;
+					this.all_files.set(file.path, file);
+					this.add_file_if_new(
+						file,
+						project_folder,
+						found_files,
+						symlink_path);
+					continue;
+				}
+```
 
 ### `ollmfilesd/ProjectFiles.vala` — `link_parent` filled while the project is built
 
@@ -117,7 +235,7 @@
 			}
 ```
 
-`Publisher` then goes out with `path` still `web.MediaOutreach.publisher/Publisher` and `parent_id` the Web Media Outreach folder. That path does not start with the parent path. A folder inside `Publisher` keeps `parent_id` pointing at `Publisher`. Its path does start with that folder's path.
+The linked folder then goes out with its real path and `parent_id` set to the folder where the link sits. That path does not start with the parent path. A folder inside the link keeps `parent_id` pointing at the linked folder. Its path does start with that folder's path.
 
 ### `ollmfilesd/Folder.vala` — `fetch_files_reply`
 
@@ -185,7 +303,7 @@ A file already inside the project is still the live object. A linked file is a c
 
 ### `examples/oc-test-source-diff/FolderTreeStore.vala` — `load`
 
-**Why:** `Publisher` sorts before the project folders because its real path is `web.MediaOutreach.publisher`. Its children sort before `Publisher` itself. One list holds the rows whose parent is not in the map yet. An offset walks that list, and goes back to zero when it passes the end. The walk does not yield. `load_epoch` is already checked when the reply arrives, and it cannot change until this method yields again.
+**Why:** The linked folder sorts before the project folders because its real path is outside the project. Its children sort before the linked folder itself. One list holds the rows whose parent is not in the map yet. An offset walks that list, and goes back to zero when it passes the end. The walk does not yield. `load_epoch` is already checked when the reply arrives, and it cannot change until this method yields again.
 
 **Where:** The loop after `rows.sort` that calls `append`.
 
@@ -246,6 +364,12 @@ A file already inside the project is still the live object. A linked file is a c
 				}
 ```
 
+## Attempts
+
+- ✔️ 22 Oct 08:18 build, then `/usr/bin/ollmfilesd` (copied 08:51, different checksum, same size). Same script as the 95-row run, skip scan, database copy. `fetch_children` replied `msg=603`. The linked folder is in the reply, with `parent-id` set to the project folder.
+- ✔️ 09:13 Pixel Tablet, `org.roojs.ollmchat.sourcediff`. The link is in the tree. Opening it shows the linked folder's own files and folders. The names of those are not recorded here.
+
 ## Next
 
-- ⏳ After the wire parent is the alias parent, crumb walking follows that parent and stops at the mapped project. That is a separate edit. `is_project` is still the wrong stop.
+- ⏳ 🔷 Opening the linked folder that still shows empty still has to list the files and folders inside the link. The pair of names for one link can lose one side.
+- ℹ️ The path bar that follows that parent is closed: `docs/bugs/done/2026-10-21-FIXED-tablet-path-bar-not-rendering.md`.

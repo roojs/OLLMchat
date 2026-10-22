@@ -247,6 +247,13 @@ namespace OLLMfiles
 		 * Unix timestamp of last modification (stored in database, default: 0).
 		 */
 		public int64 last_modified { get; set; default = 0; }
+
+		/**
+		 * Size in bytes. The directory scan stores it on the file
+		 * row. Folders stay at zero. The daemon sends it on every
+		 * row, including projects.
+		 */
+		public int64 size { get; set; default = 0; }
 		
 		/**
 		 * Whether this file is ignored by git (stored in database, default: false).

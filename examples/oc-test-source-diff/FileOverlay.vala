@@ -30,7 +30,10 @@ namespace OLLMapp
 	 * with file loading off. The right pane stays the file list.
 	 * Tree and Recent sit above the folder location. On tablet that
 	 * location is each folder name as a plain button, with a slash
-	 * between them. A tap on a name opens that folder. Search stays
+	 * between them. A tap on a name opens that folder. When the
+	 * names are wider than the row, folders after the project
+	 * become ''...'' from the second one, slashes stay between
+	 * them, until the row fits. Search stays
 	 * at the bottom. It accepts a tap, and it does not take focus
 	 * when the sheet opens. A tap on a file opens it.
 	 *
@@ -58,7 +61,25 @@ namespace OLLMapp
 		private FolderBrowse browse;
 		private Gtk.Button up;
 		private Gtk.Box path_box;
-		private int place_gen { get; set; default = 0; }
+
+		/**
+		 * Width of the path row last used to shorten crumb labels.
+		 */
+		private int fitted_width = -1;
+
+		/**
+		 * True while crumb labels change, so width notify does not
+		 * fit the same row again.
+		 */
+		private bool fitting_crumbs = false;
+
+		/**
+		 * Counts tablet folder changes. A private property would
+		 * not emit notify, so each change calls
+		 * {@link render_crumbs} itself. Width notify on the path
+		 * row skips fitting while this is still zero.
+		 */
+		private int place_gen = 0;
 
 		/**
 		 * Folder shown in the tablet left pane.
@@ -161,6 +182,7 @@ namespace OLLMapp
 					this.level = folder;
 					this.up.visible = !folder.is_project;
 					this.place_gen++;
+					this.render_crumbs();
 					this.browse.project = this.project;
 					this.browse.refresh_folder(folder);
 					this.file_list.load(folder);
@@ -176,6 +198,7 @@ namespace OLLMapp
 					this.level = parent;
 					this.up.visible = !parent.is_project;
 					this.place_gen++;
+					this.render_crumbs();
 					this.browse.project = this.project;
 					this.browse.refresh_folder(parent);
 					this.file_list.load(parent);
@@ -278,6 +301,7 @@ namespace OLLMapp
 			};
 			if (this.form == Form.TABLET) {
 				this.path_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+					hexpand = true,
 					valign = Gtk.Align.CENTER,
 				};
 				var crumb_click = new Gtk.GestureClick() {
@@ -310,24 +334,26 @@ namespace OLLMapp
 					}
 					GLib.Idle.add(() => {
 						this.place_gen++;
+						this.render_crumbs();
 						return false;
 					});
 				});
 				this.path_box.add_controller(crumb_click);
-				var path_scroll = new Gtk.ScrolledWindow() {
-					child = this.path_box,
-					hexpand = true,
-					valign = Gtk.Align.CENTER,
-					hscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
-					vscrollbar_policy = Gtk.PolicyType.NEVER,
-					propagate_natural_height = true,
-				};
 				place_row.hexpand = true;
 				place_row.valign = Gtk.Align.CENTER;
 				place_row.append(this.up);
-				place_row.append(path_scroll);
+				place_row.append(this.path_box);
 				place_row.append(close_files);
-				this.notify["place-gen"].connect(() => {
+				this.path_box.notify["width"].connect(() => {
+					if (this.fitting_crumbs) {
+						return;
+					}
+					if (this.place_gen == 0) {
+						return;
+					}
+					if (this.path_box.get_width() == this.fitted_width) {
+						return;
+					}
 					this.render_crumbs();
 				});
 			}
@@ -450,9 +476,17 @@ namespace OLLMapp
 		 * click opens that folder. The walk follows parent and
 		 * stops at the open project. Buttons that already match
 		 * stay. A step down adds one. A step up removes one.
+		 * Once the row has a width, folders after the project show
+		 * as ''...'' from the second folder until the buttons and
+		 * slashes fit. The project name stays. A tap on ''...''
+		 * still opens that folder.
 		 */
 		private void render_crumbs()
 		{
+			if (this.fitting_crumbs) {
+				return;
+			}
+			this.fitting_crumbs = true;
 			var above = new Gee.ArrayList<OLLMfiles.Folder>();
 			var walk = this.level;
 			while (true) {
@@ -504,6 +538,63 @@ namespace OLLMapp
 				this.path_box.append(crumb);
 				want--;
 			}
+			var avail = this.path_box.get_width();
+			if (avail <= 1) {
+				this.fitting_crumbs = false;
+				return;
+			}
+			this.fitted_width = avail;
+			child = this.path_box.get_first_child();
+			while (child != null) {
+				if (!(child is Gtk.Button)) {
+					child = child.get_next_sibling();
+					continue;
+				}
+				var named = (Gtk.Button) child;
+				var folder = named.get_data<OLLMfiles.Folder>("folder");
+				if (named.label != folder.path_basename) {
+					named.label = folder.path_basename;
+				}
+				child = child.get_next_sibling();
+			}
+			var total = 0;
+			var n = 0;
+			var min_w = 0;
+			var nat_w = 0;
+			child = this.path_box.get_first_child();
+			while (child != null) {
+				child.measure(Gtk.Orientation.HORIZONTAL, -1,
+					out min_w, out nat_w, null, null);
+				total += nat_w;
+				n++;
+				child = child.get_next_sibling();
+			}
+			if (n > 1) {
+				total += (n - 1) * this.path_box.spacing;
+			}
+			var index = 0;
+			child = this.path_box.get_first_child();
+			while (child != null && total > avail) {
+				if (!(child is Gtk.Button)) {
+					child = child.get_next_sibling();
+					continue;
+				}
+				index++;
+				if (index == 1) {
+					child = child.get_next_sibling();
+					continue;
+				}
+				var narrow = (Gtk.Button) child;
+				narrow.measure(Gtk.Orientation.HORIZONTAL, -1,
+					out min_w, out nat_w, null, null);
+				var wide = nat_w;
+				narrow.label = "...";
+				narrow.measure(Gtk.Orientation.HORIZONTAL, -1,
+					out min_w, out nat_w, null, null);
+				total -= wide - nat_w;
+				child = child.get_next_sibling();
+			}
+			this.fitting_crumbs = false;
 		}
 
 		/**
@@ -548,6 +639,7 @@ namespace OLLMapp
 			if (this.folder_tree.folders.loaded.contains(this.project.path)) {
 				this.level = this.project;
 				this.place_gen++;
+				this.render_crumbs();
 				this.up.visible = false;
 				this.browse.project = this.project;
 				this.browse.refresh_folder(this.project);
@@ -563,6 +655,7 @@ namespace OLLMapp
 				this.folder_tree.folders.load.end(res);
 				this.level = this.project;
 				this.place_gen++;
+				this.render_crumbs();
 				this.up.visible = false;
 				this.browse.project = this.project;
 				this.browse.refresh_folder(this.project);
@@ -640,6 +733,7 @@ namespace OLLMapp
 				this.search_open = false;
 				this.level = this.search_home;
 				this.place_gen++;
+				this.render_crumbs();
 				this.up.visible = !this.search_home.is_project;
 				this.browse.refresh_folder(this.search_home);
 				this.file_list.load(this.search_home);
@@ -722,6 +816,7 @@ namespace OLLMapp
 				}
 				this.level = found;
 				this.place_gen++;
+				this.render_crumbs();
 				this.up.visible = !found.is_project;
 				this.browse.refresh_folder(found);
 				this.file_list.query = query;

@@ -69,12 +69,6 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Size in bytes from the stored file row. The directory scan
-		 * writes it. A folder listing copies that stored value.
-		 */
-		public int64 size { get; set; default = 0; }
-
-		/**
 		 * Byte count shown in the file grid.
 		 *
 		 * Reads {@link size}. Zero is a real empty file.

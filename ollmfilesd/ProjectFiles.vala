@@ -410,26 +410,8 @@ namespace OLLMfilesd
 			// GLib.debug("DEBUG update_from_recursive: folder.path=%s, symlink_path='%s', children.count=%u", folder.path, symlink_path, folder.children.items.size);
 			foreach (var child in folder.children.items) {
 				// GLib.debug("DEBUG update_from_recursive: child.path=%s, child type=%s", child.path, child.get_type().name());
-				// Handle File objects - add real files to project_files
-				if (child is File) {
-					var file = child as File;
-					// Add all files to all_files (even non-text files)
-					this.all_files.set(file.path, file);
-				 
-					// Only add text files to ProjectFile list (via add_file_if_new)
-					// GLib.debug("DEBUG update_from_recursive: child is File (not FileAlias)");
-					this.add_file_if_new(
-						file,
-						project_folder,
-						found_files,
-						symlink_path);
-					continue;
-				}
-				
-				// Handle FileAlias - follow to the real file
+				// FileAlias is a File. This check has to come first.
 				if (child is FileAlias) {
-					// GLib.debug("DEBUG update_from_recursive: child is FileAlias");
-					// Add FileAlias to all_files (symlinks are included in all_files)
 					this.all_files.set(child.path, child);
 					this.handle_file_alias(
 						child as FileAlias,
@@ -437,6 +419,17 @@ namespace OLLMfilesd
 						scanned_folders,
 						found_files,
 						found_folders,
+						symlink_path);
+					continue;
+				}
+
+				if (child is File) {
+					var file = child as File;
+					this.all_files.set(file.path, file);
+					this.add_file_if_new(
+						file,
+						project_folder,
+						found_files,
 						symlink_path);
 					continue;
 				}
