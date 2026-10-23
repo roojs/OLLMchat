@@ -265,7 +265,9 @@ namespace OLLMfilesd
 
 		/**
 		 * Every folder under ''path'', in one list. The rows come
-		 * from the project's ''folder_map''. Files are left out.
+		 * from the project's ''folder_map''. A link target is left
+		 * out and the alias is sent in its place, with ''points_to''
+		 * set to that folder. Files are left out.
 		 * ''path'' is the first row. A deleted folder is left out.
 		 * Each row carries ''file_count'',
 		 * ''folder_count'', ''document_count'', and ''code_count''
@@ -308,10 +310,67 @@ namespace OLLMfilesd
 					"manager", "children", "project-files", "parent",
 					"points-to", "buffer"
 				});
+				// The alias row stands in for this solid folder.
 				if (project.project_files.link_parent.has_key((int) row.id)) {
-					row.parent_id = project.project_files.link_parent.get((int) row.id);
+					continue;
 				}
 				list.add(row);
+			}
+			if (project != null) {
+				foreach (var item in project.project_files.all_files.values) {
+					// File rows and a removed alias are not tree rows.
+					if (!(item is FileAlias) || item.delete_id != 0) {
+						continue;
+					}
+					// A link to a file stays out of the tree.
+					if (item.points_to_id != -1 && !(item.points_to is Folder)) {
+						continue;
+					}
+					// A resolved alias is sent only for the one
+					// link_parent kept. points_to_id -1 is a broken
+					// link and has no entry there.
+					if (item.points_to_id != -1 &&
+						(!project.project_files.link_parent.has_key((int) item.points_to_id) ||
+						project.project_files.link_parent.get((int) item.points_to_id) != (int) item.parent_id)) {
+						continue;
+					}
+					// A fetch of one folder only includes a link inside it.
+					if (!folder.is_project && !item.path.has_prefix(folder.path + "/")) {
+						continue;
+					}
+					// The list is decoded as Folder. Build one with the
+					// alias path and points_to. The counts are the solid
+					// folder's, so the row is not an empty folder.
+					// File properties stay off.
+					var link = new Folder(this.manager) {
+						id = item.id,
+						path = item.path,
+						parent_id = item.parent_id,
+						points_to_id = item.points_to_id,
+						points_to = item.points_to,
+						file_count = item.points_to == null ? 0 : item.points_to.file_count,
+						folder_count = item.points_to == null ? 0 : item.points_to.folder_count,
+						document_count = item.points_to == null ? 0 : item.points_to.document_count,
+						code_count = item.points_to == null ? 0 : item.points_to.code_count
+					};
+					list.add(link);
+				}
+				// A child of the solid folder is parented at that
+				// folder. Hang it off the alias row.
+				foreach (var row in list) {
+					var child = row as Folder;
+					if (child == null || child.points_to_id == -1) {
+						continue;
+					}
+					foreach (var other in list) {
+						var link = other as Folder;
+						if (link == null || link.points_to_id != child.parent_id) {
+							continue;
+						}
+						child.parent_id = link.id;
+						break;
+					}
+				}
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
@@ -324,7 +383,8 @@ namespace OLLMfilesd
 		 * Files directly inside ''path''. Subfolders are left out.
 		 * A symlink whose stored target is a folder is left out.
 		 * A symlink to a file is kept. Each row is a copy of the
-		 * stored file. Nothing here reads the filesystem.
+		 * stored file. Nothing here reads the filesystem. A link is
+		 * opened by passing the solid folder's path.
 		 *
 		 * @param request inbound RPC
 		 * @param path folder path

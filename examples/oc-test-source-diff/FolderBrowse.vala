@@ -238,9 +238,10 @@ namespace OLLMapp
 		 * List box factory for a folder or file. The caller picks the
 		 * icon, so the folder list and the file list can diverge
 		 * later. The second line is the path relative to the project,
-		 * including the item name. That line is absent at the project
-		 * root. A long path drops the item name first, then keeps the
-		 * first folder.
+		 * including the item name. A link uses the target path, so
+		 * the line shows where it points. That line is absent at the
+		 * project root. A long path drops the item name first, then
+		 * keeps the first folder.
 		 *
 		 * @param item Folder or file for this list box
 		 * @param icon_name Icon chosen by that list
@@ -268,6 +269,9 @@ namespace OLLMapp
 				css_classes = { "body", "list-chat-title" },
 			});
 			var rel = item.path;
+			if (item.points_to != null && item.points_to.path != "") {
+				rel = item.points_to.path;
+			}
 			if (this.project.path != "" && rel.has_prefix(this.project.path)) {
 				rel = rel.substring(this.project.path.length);
 			}

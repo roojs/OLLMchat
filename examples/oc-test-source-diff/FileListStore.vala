@@ -105,7 +105,8 @@ namespace OLLMapp
 
 		/**
 		 * Ask the file server for ''folder'''s files and show those
-		 * rows. A newer call drops the previous reply.
+		 * rows. A link asks for the solid folder. A newer call drops
+		 * the previous reply.
 		 *
 		 * @param folder Folder whose files should be listed
 		 */
@@ -113,11 +114,15 @@ namespace OLLMapp
 		{
 			this.clear();
 			var epoch = this.epoch;
+			var list_path = folder.path;
+			if (folder.points_to is OLLMfiles.Folder) {
+				list_path = folder.points_to.path;
+			}
 			OLLMrpc.Response response;
 			try {
 				response = yield folder.manager.rpc.call(new OLLMrpc.Request() {
 					method = "Folder.fetch_dir",
-					args = OLLMrpc.args("s", folder.path)
+					args = OLLMrpc.args("s", list_path)
 				});
 			} catch (GLib.Error e) {
 				if (epoch != this.epoch) {

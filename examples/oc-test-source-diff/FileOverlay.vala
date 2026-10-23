@@ -236,10 +236,16 @@ namespace OLLMapp
 					}
 					this.file_list.notice = "too many results";
 				});
-				folders = this.browse;
+				folders = new Gtk.ScrolledWindow() {
+					child = this.browse,
+					hexpand = true,
+					vexpand = true,
+					hscrollbar_policy = Gtk.PolicyType.NEVER,
+				};
 			}
 			this.pages = new Gtk.Stack() {
 				hexpand = true,
+				vexpand = true,
 				hhomogeneous = true,
 				vhomogeneous = false,
 			};
@@ -254,7 +260,12 @@ namespace OLLMapp
 				start_child = folders,
 				end_child = this.file_list,
 			}, "tree", "Tree");
-			this.pages.add_titled(this.recent_list, "history", "Recent");
+			this.pages.add_titled(new Gtk.ScrolledWindow() {
+				child = this.recent_list,
+				hexpand = true,
+				vexpand = true,
+				hscrollbar_policy = Gtk.PolicyType.NEVER,
+			}, "history", "Recent");
 			this.pages.visible_child_name = "tree";
 			var left = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				margin_start = 6,
@@ -388,13 +399,6 @@ namespace OLLMapp
 					this.on_load_results(epoch, res);
 				});
 			});
-			var scroll = new Gtk.ScrolledWindow() {
-				child = this.pages,
-				hexpand = true,
-				vexpand = true,
-				hscrollbar_policy = Gtk.PolicyType.NEVER,
-				can_focus = false,
-			};
 			this.list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = true,
@@ -406,7 +410,7 @@ namespace OLLMapp
 			if (this.form == Form.TABLET) {
 				this.list.append(place_row);
 			}
-			this.list.append(scroll);
+			this.list.append(this.pages);
 			if (this.form == Form.TABLET) {
 				this.list.append(this.entry);
 			}

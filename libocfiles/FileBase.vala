@@ -91,10 +91,15 @@ namespace OLLMfiles
 		 * CSS classes for this row's name. A folder with no files, or
 		 * one with {@link is_show_empty} set, uses ''dim-label'',
 		 * so the name is light grey. Child folders do not change
-		 * that. Any other row uses none.
+		 * that. Any other row uses none. ''points_to_id'' -1 is a
+		 * broken link and uses ''error'', which is red.
 		 */
 		public string[] css_classes {
 			owned get {
+				if (this.points_to_id == -1) {
+					string[] broken = { "error" };
+					return broken;
+				}
 				if (this.is_show_empty) {
 					string[] dim = { "dim-label" };
 					return dim;

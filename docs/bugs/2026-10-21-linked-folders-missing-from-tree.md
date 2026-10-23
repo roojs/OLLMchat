@@ -1,45 +1,73 @@
 # Linked folders missing from the project tree
 
-**Status:** ⏳ The link can show. Opening one still shows none of the files or folders inside it.
+**Status:** ⏳ A link is hidden until empty folders are shown, and opening it lists nothing of the target. The second line under a link is the target path.
 
 ## Problem
 
-- 🔷 A folder linked into a project does not appear in the tree, so it cannot be opened.
-- 🔷 Prime example: a project folder is a symlink to a directory outside that project.
-- 🔷 Expected: that link shows under the project, and opening it shows the linked folder.
-- 🔷 Actual: the tree has no row for it. Confirmed again on the Pixel Tablet emulator after the 2026-10-21 21:13 source-diff APK.
-- 🔷 `ProjectFiles` is what places a linked folder inside the project. The tree should use that.
-- 🔷 22 Oct, on the tablet: the link row can show, and opening it lists that folder.
+- 🔷 A folder linked into a project shows under the project, and opening it shows the linked folder.
+- ✔️ 22 Oct, on the tablet: one link row can show, and opening it lists that folder.
+- 🔷 Opening another linked folder shows the folder and none of the files or folders inside it.
 - 🔷 Two names in the project are the same link. One points at the other. Missing one of that pair is acceptable.
-- 🔷 Opening another linked folder shows the folder and none of the files or folders inside the linked directory.
+  - A name inside `Pman`, such as `Ai`, links to `Pman.Ai` on the parent of `Pman`. That parent link points again at the outside `Pman.Ai`.
+  - Those inner folders used to be sub-repositories checked out in the project. They moved to a flat list of repositories outside, and the inner names were linked through to those.
+  - The link on the parent is the top-level exposure for the public repository, so you can see what this project uses.
+- 🔷 The returned tree points at the final solid folder. The chain is followed through. The row is the link. Its path is that link, so the name is the basename (`Admin`). `points_to` is the solid folder (`Pman.Admin`). Opening it lists that folder, the way a desktop does. The render tree does not need the hops in between.
+- 🔷 `Builder`, `Documents`, and `Ftp` are links whose target folders are not on disk. They are not projects. A broken link still shows in the tree, in red. Its name is the link. `points_to_id` is -1.
+- 🔷 The file list is files only. A link to a folder is not a file-list row.
+- 🔷 Showing empty folders reveals the links. Opening one shows an empty folder. The target has files and folders.
+- 🔷 The left folder list does not merge a folder icon with a link icon. The second line under a link is the real path, so the row shows where it points.
 - 🚫 Do not name the outside projects, or list what is inside these links.
-- ℹ️ The path of the link is not a folder on the server. The real directory is. A folder listing of that real directory returns the files. The tree reply includes that directory under the folder that holds the link.
 
-## What the server sends for one folder
+## Reply we expect
 
-- ℹ️ This is the project folder that holds the links, from `Folder.fetch_children` (the tree) and `Folder.fetch_dir` (the file list). Skip scan, copy of the file index. The outside project name is not written here.
-- ℹ️ A folder link is not an alias row in the tree. The row is the outside directory. Its `parent-id` is this folder. The name is the outside directory's basename, not the link's name.
-- ℹ️ The file list is files only. A link to a folder is not a file-list row.
+- 🔷 `Folder.fetch_children` for this folder returns one flat list. A real folder inside the project stays as it is. A link is the alias row: its path is the link, so the name is the basename, and `points_to` is the solid folder on that same row. `parent_id` is the folder where the kept link sits, and that folder's own children follow it. A broken link is the alias with `points_to` empty and `points_to_id` -1. One name of a pair is enough. No row is an intermediate hop.
+
+```text
+expected, Folder.fetch_children
+Pman                          folder, inside the project
+├── Admin                     basename Admin, target is the Pman.Admin folder
+├── Ai                        basename Ai, target is the Pman.Ai folder, or the other name of this pair
+├── BAdmin                    basename BAdmin, target is the Pman.BAdmin folder
+├── Builder                   basename Builder, points_to_id -1
+├── Cash                      basename Cash, target is the Pman.Cash folder
+├── Clipping                  folder, inside
+├── Cms                       basename Cms, target is the Pman.Cms folder
+├── CmsMigrate                folder, inside
+├── Core                      basename Core, target is the Pman.Core folder
+├── Crm                       basename Crm, target is the Pman.Crm folder
+├── Documents                 basename Documents, points_to_id -1
+├── Ftp                       basename Ftp, points_to_id -1
+├── Mail                      basename Mail, target is the Pman.Mail folder
+├── (one other real folder)   folder, inside
+├── PressRelease              folder, inside
+└── templates                 basename templates, target is that folder
+```
+
+## What the server sends now
+
+- ℹ️ 23 Oct. Installed `/usr/bin/ollmfilesd`, the existing `--rpc-script` harness, skip scan, copy of the file index. 624 rows. The outside project name is not written here.
+- ℹ️ A link row is the alias. `path` is the link, so the basename is `Admin`. `points-to` is the nested solid folder. A null `points-to` is omitted. `Builder`, `Documents`, and `Ftp` are in the reply with `points-to-id` -1.
+- ℹ️ The solid folder is not also a row. Its child folders stay in the list, and their `parent-id` is the alias. `Ai` is the kept name of that pair, and no child folders came back under it. File aliases such as `I18n.php` are not in this list.
 
 ```text
 tree, Folder.fetch_children
 Pman                          folder, inside the project
-├── Admin                     folder, outside, row is Pman.Admin, 6 child folders
-├── Ai                        missing, alias to a folder
-├── BAdmin                    folder, outside, row is Pman.BAdmin, 1 child folder
-├── Builder                   missing, alias to a folder
-├── Cash                      folder, outside, row is Pman.Cash, 7 child folders
+├── Admin                     basename Admin, target Pman.Admin, 6 child folders
+├── Ai                        basename Ai, target Pman.Ai, no child folders
+├── BAdmin                    basename BAdmin, target Pman.BAdmin, 1 child folder
+├── Builder                   basename Builder, points_to_id -1
+├── Cash                      basename Cash, target Pman.Cash, 7 child folders
 ├── Clipping                  folder, inside, 11 child folders
-├── Cms                       folder, outside, row is Pman.Cms, 10 child folders
+├── Cms                       basename Cms, target Pman.Cms, 10 child folders
 ├── CmsMigrate                folder, inside, no child folders
-├── Core                      folder, outside, row is Pman.Core, 15 child folders
-├── Crm                       folder, outside, row is Pman.Crm, 11 child folders
-├── Documents                 missing, alias to a folder
-├── Ftp                       missing, alias to a folder
-├── Mail                      folder, outside, row is Pman.Mail, 7 child folders
+├── Core                      basename Core, target Pman.Core, 15 child folders
+├── Crm                       basename Crm, target Pman.Crm, 11 child folders
+├── Documents                 basename Documents, points_to_id -1
+├── Ftp                       basename Ftp, points_to_id -1
+├── Mail                      basename Mail, target Pman.Mail, 7 child folders
 ├── (one other real folder)   folder, inside, 3 child folders
-├── PressRelease              folder, inside, 19 child folders
-└── templates                 folder, outside, 1 child folder
+├── PressRelease              folder, inside, 21 child folders
+└── templates                 basename templates, target that folder, 1 child folder
 ```
 
 ```text
@@ -50,180 +78,36 @@ file list, Folder.fetch_dir
 └── Roo.php                   alias to a file
 ```
 
-- ℹ️ `Mail`'s 7 child folders are in the tree reply. Their names are not recorded here.
+- ℹ️ `Mail`'s 7 child folders are in the tree reply. Their names are not recorded here. The path of the link is not a folder on the server. A folder listing of the real directory returns the files.
+- ℹ️ `Ai` is the inner link. It points at `Pman.Ai` beside `Pman`, and that link points at the outside folder. The reply kept this name. The other name of the pair is not a row.
 
-## Evidence
+## Applied
 
-- ℹ️ The link on disk points at a directory outside the project.
-- ℹ️ `ProjectFiles.handle_file_alias` follows a folder alias. The target goes into `folder_map`. The alias goes into `all_files` at the path of the link. That alias's parent is the project folder where the link sits.
-- ℹ️ The target's own `parent_id` stays the real parent, outside this project. `ProjectFiles` does not rewrite that on the live folder. The other project still owns it.
-- ℹ️ `Folder.fetch_children` sends the `folder_map` row and copies that outside `parent_id`.
-- ℹ️ `FolderTreeStore.load` skips a row whose `parent_id` is not already in `id_map`. The outside parent is not in the map, so the row `ProjectFiles` included is dropped.
-- ℹ️ Children of the linked folder have real paths outside the project. The load loop sorts by that path and skips a row it sees before its parent is in the map. It does not come back to them.
-- 🚫 The real `parent` chain is the wrong one to walk. It leaves the mapped project. The in-project parent is the alias parent `ProjectFiles` already followed.
-- ℹ️ 2026-10-21 tablet run: `adb -s emulator-5554` installed `.pixiewood/oc-test-source-diff-arm64-v8a-debug.apk` and started `org.roojs.ollmchat.sourcediff`. The host process was `/usr/bin/ollmfilesd`. That binary was not rebuilt from this tree.
-- 💩 The tablet still missing the link matches an old daemon on the wire. It does not show that the `link_parent` copy is wrong, and it does not show that the copy is right. No reply from that session was captured.
-- ✔️ 23:35, this tree's `build/ollmfilesd/ollmfilesd` (the binary that contains `link_parent`). `OLLMFILES_IS_TEST=1`, a copy of the file index, skip scan, then `Folder.fetch_children` for the project. Activate replied `ok`. `fetch_children` replied `msg=95`.
-- ✔️ None of those 95 paths is the linked folder. The rows under the project are the project's own folders.
-- ℹ️ The alias row is `base_type` `fa`. Its `points_to_id` is the outside directory. That directory's `parent_id` is 0.
-- ✔️ `FileAlias` extends `File`. `update_from_recursive` checks `child is File` and `continue`s. The `child is FileAlias` branch is the only call to `handle_file_alias`. That branch does not run. `link_parent` stays empty, and the target never enters `folder_map`. `fetch_children` has nothing to reparent.
-
-## Root cause
-
-- ✔️ The linked folder is not in the reply. `handle_file_alias` is unreachable, so `folder_map` never receives the target and `link_parent` is never filled. The parent rewrite only matters after that follow runs. The real parent id on the target is still the wrong parent to send once the row exists.
+- ✔️ `FileAlias` was checked after `File`. A `FileAlias` is a `File`, so `handle_file_alias` never ran and the linked folder never entered `folder_map`. `update_from_recursive` now matches `FileAlias` first. Before that change a project fetch returned 95 rows and none was the linked folder. After it, the same fetch returned 603 rows and the linked folder was in the reply.
+- ✔️ `ProjectFiles.link_parent` maps a target id to the alias's parent id. `Folder.fetch_children` copies the `folder_map` row and sets `parent_id` from that map. The live folder keeps its real parent. `fetch_files_reply` does the same for a linked file. `fetch_dir` does not rewrite `parent_id`.
+- ✔️ `FolderTreeStore.load` keeps rows whose parent is not in the map yet and appends them once that parent arrives. The outside parent is not the parent to walk.
+- ✔️ 22 Oct 08:18 build, then `/usr/bin/ollmfilesd` (copied 08:51). 09:13 Pixel Tablet: the link is in the tree, and opening it shows that folder's own files and folders.
+- 🚫 No flag on the row. The applied reply still sends the solid folder as `path`, so the basename is `Pman.Admin`.
 
 ## Proposed fix
 
-- 🔷 A linked file or folder keeps its real `path` on the row that goes down the wire.
-- 🔷 That row's `parent_id` is the alias's parent, the folder where the link sits in this project.
-- 🔷 The live object is left alone. `build_tree_structure` still attaches it to its real parent. The other project still owns that parent.
-- 🔷 `ProjectFiles` already holds the alias, with `parent_id` and `points_to`. It records `link_parent` then, target id to that parent id. A fetch only calls `has_key` and `get`.
-- 🚫 No flag. The row path is the real path. The parent path is where the link sits. The consumer sees that the row path does not start with the parent path.
-- 🚫 `fetch_dir` does not rewrite `parent_id`. Those files already parent to the folder being listed.
-- ℹ️ A name search still returns folder ids, not rows. Nothing on that reply has a parent to replace.
-- ✔️ Applied in `ollmfilesd/ProjectFiles.vala`, `ollmfilesd/Folder.vala`, and `examples/oc-test-source-diff/FolderTreeStore.vala`.
-- 🔷 `update_from_recursive` has to match `FileAlias` before `File`. `FileAlias` is a `File`, so the first check swallows the alias.
-
-### `ollmfilesd/ProjectFiles.vala` — `update_from_recursive` checks the alias first
-
-**Why:** `handle_file_alias` is what puts the target in `folder_map` and what records `link_parent`. It is only called from the `FileAlias` branch. That branch sits after `child is File`, and a `FileAlias` is a `File`, so the follow never happens.
-
-**Where:** The child loop in `update_from_recursive`.
-
-#### Remove
-
-```vala
-				// Handle File objects - add real files to project_files
-				if (child is File) {
-					var file = child as File;
-					// Add all files to all_files (even non-text files)
-					this.all_files.set(file.path, file);
-				 
-					// Only add text files to ProjectFile list (via add_file_if_new)
-					// GLib.debug("DEBUG update_from_recursive: child is File (not FileAlias)");
-					this.add_file_if_new(
-						file,
-						project_folder,
-						found_files,
-						symlink_path);
-					continue;
-				}
-				
-				// Handle FileAlias - follow to the real file
-				if (child is FileAlias) {
-					// GLib.debug("DEBUG update_from_recursive: child is FileAlias");
-					// Add FileAlias to all_files (symlinks are included in all_files)
-					this.all_files.set(child.path, child);
-					this.handle_file_alias(
-						child as FileAlias,
-						project_folder,
-						scanned_folders,
-						found_files,
-						found_folders,
-						symlink_path);
-					continue;
-				}
-```
-
-#### Replace with
-
-```vala
-				// FileAlias is a File. This check has to come first.
-				if (child is FileAlias) {
-					this.all_files.set(child.path, child);
-					this.handle_file_alias(
-						child as FileAlias,
-						project_folder,
-						scanned_folders,
-						found_files,
-						found_folders,
-						symlink_path);
-					continue;
-				}
-
-				if (child is File) {
-					var file = child as File;
-					this.all_files.set(file.path, file);
-					this.add_file_if_new(
-						file,
-						project_folder,
-						found_files,
-						symlink_path);
-					continue;
-				}
-```
-
-### `ollmfilesd/ProjectFiles.vala` — `link_parent` filled while the project is built
-
-**Why:** `folder_map` is keyed by path. `all_files` is keyed by path. The alias already stores `parent_id` and `points_to`. Nothing stores the reverse, target id to that alias. `load_files_from_db` builds an id map and drops it when the tree is done.
-
-**Where:** Next to `folder_map`. Cleared where `folder_map` and `all_files` are cleared in `update_from`. Set at the start of `handle_file_alias` once `points_to` is in hand.
-
-#### Add — after the `folder_map` property
-
-```vala
-		/**
-		 * Target id to the parent id of the alias that linked it
-		 * into this project.
-		 */
-		public Gee.HashMap<int, int> link_parent { get; private set;
-			default = new Gee.HashMap<int, int>(); }
-```
-
-#### Remove
-
-```vala
-			this.folder_map.clear();
-			this.all_files.clear();
-```
-
-#### Replace with
-
-```vala
-			this.folder_map.clear();
-			this.link_parent.clear();
-			this.all_files.clear();
-```
-
-#### Remove
-
-```vala
-			var target = alias.points_to;
-```
-
-#### Replace with
-
-```vala
-			var target = alias.points_to;
-			this.link_parent.set((int) target.id, (int) alias.parent_id);
-```
+- 🔷 The link row is the alias. `path` is the link, so the name is the basename. `points_to` on that row is the solid folder, nested. `parent_id` is the folder where the kept link sits.
+- 🔷 A broken link is the same kind of row. `points_to` is empty. `points_to_id` is -1.
+- 🚫 No `display_name`, and no second map of paths. The alias already has `path` and `points_to`.
+- ℹ️ The bin writer already writes an object property as a nested object. `fetch_children` copies the target folder and the copy drops `points-to`, so neither the alias nor the nested folder is in the reply.
+- ℹ️ The list is one type, taken from the first row, which is a `Folder`. Each later row is built as that type. Adding the `FileAlias` writes file properties the `Folder` reader does not have. A `Folder` constructor takes the alias `path` and `points_to`, and the file properties stay off the wire.
+- ℹ️ One alias of a pair wins, the one `link_parent` kept. The solid folder is not also sent as its own row. Its children stay in the list. Their `parent_id` is `points_to.id`, so the tree attaches them to the alias row.
+- 🚫 No new flag. -1 is the existing `points_to_id`. A null `points_to` is already omitted on the wire.
 
 ### `ollmfilesd/Folder.vala` — `fetch_children`
 
-**Why:** This is the tree the client builds. The copy parents a linked folder from `link_parent`. It does not walk the project.
+**Why:** The reply sends the folder the alias points at, with `points-to` removed. The alias path never leaves the server. A missing target never enters `folder_map`.
 
-**Where:** The loop that copies each `folder_map` row into the reply. `project` is the project `fetch_children` already resolved.
+**Where:** The loop that copies each `folder_map` row. Skip a folder that is a link target. Add the alias, with `points_to` set, in its place. `project` is the project `fetch_children` already resolved.
 
 #### Remove
 
 ```vala
-			var list = new Gee.ArrayList<GLib.Object>();
-			foreach (var next in rows) {
-				var row = new Folder(this.manager);
-				row.copy_from(next, {
-					"manager", "children", "project-files", "parent",
-					"points-to", "buffer"
-				});
-				list.add(row);
-			}
-```
-
-#### Replace with
-
-```vala
-			var list = new Gee.ArrayList<GLib.Object>();
-			foreach (var next in rows) {
-				var row = new Folder(this.manager);
 				row.copy_from(next, {
 					"manager", "children", "project-files", "parent",
 					"points-to", "buffer"
@@ -232,144 +116,164 @@ file list, Folder.fetch_dir
 					row.parent_id = project.project_files.link_parent.get((int) row.id);
 				}
 				list.add(row);
+```
+
+#### Replace with
+
+```vala
+				row.copy_from(next, {
+					"manager", "children", "project-files", "parent",
+					"points-to", "buffer"
+				});
+				// The alias row stands in for this solid folder.
+				if (project.project_files.link_parent.has_key((int) row.id)) {
+					continue;
+				}
+				list.add(row);
+```
+
+#### Add — after that loop, before `request.reply`
+
+```vala
+			if (project != null) {
+				foreach (var item in project.project_files.all_files.values) {
+					// File rows and a removed alias are not tree rows.
+					if (!(item is FileAlias) || item.delete_id != 0) {
+						continue;
+					}
+					// A resolved alias is sent only for the one
+					// link_parent kept. points_to_id -1 is a broken
+					// link and has no entry there.
+					if (item.points_to_id != -1 &&
+						(!project.project_files.link_parent.has_key((int) item.points_to_id) ||
+						project.project_files.link_parent.get((int) item.points_to_id) != (int) item.parent_id)) {
+						continue;
+					}
+					// A fetch of one folder only includes a link inside it.
+					if (!folder.is_project && !item.path.has_prefix(folder.path + "/")) {
+						continue;
+					}
+					// The list is decoded as Folder. Build one with the
+					// alias path and points_to. File properties stay off.
+					var link = new Folder(this.manager) {
+						id = item.id,
+						path = item.path,
+						parent_id = item.parent_id,
+						points_to_id = item.points_to_id,
+						points_to = item.points_to
+					};
+					list.add(link);
+				}
+				// A child of the solid folder is parented at that
+				// folder. Hang it off the alias row.
+				foreach (var row in list) {
+					var child = row as Folder;
+					if (child == null || child.points_to_id == -1) {
+						continue;
+					}
+					foreach (var other in list) {
+						var link = other as Folder;
+						if (link == null || link.points_to_id != child.parent_id) {
+							continue;
+						}
+						child.parent_id = link.id;
+						break;
+					}
+				}
 			}
 ```
 
-The linked folder then goes out with its real path and `parent_id` set to the folder where the link sits. That path does not start with the parent path. A folder inside the link keeps `parent_id` pointing at the linked folder. Its path does start with that folder's path.
+The tree already attaches a row by `parent_id`. After this, a child of the solid folder hangs off the alias. `FolderTreeStore.load` still drops `points-to` when it copies the requested folder onto a row it already has. The nested folder has to survive that copy.
 
-### `ollmfilesd/Folder.vala` — `fetch_files_reply`
+### `libocfiles/FileBase.vala` — a broken link is red
 
-**Why:** A file page and a path batch send file rows. A file reached through a link has the same real path and the same outside parent as a linked folder.
+**Why:** `points_to_id` -1 is on the row. `css_classes` is computed on the client. A folder with no files is grey. A broken link uses GTK's `error` class, which this app's stylesheet colors red.
 
-**Where:** The path-batch copy and the empty-query page. Both use `link_parent` on `project.project_files`. The name-search reply stays as it is.
+**Where:** The start of the `css_classes` getter. `resources/style.css`.
 
-#### Remove
-
-```vala
-					var row = new File(this.manager);
-					row.copy_from(source, {
-						"manager",
-						"buffer",
-						"parent",
-						"last-modified"
-					});
-					list.add(row);
-```
-
-#### Replace with
+#### Add — at the start of the getter, before the `is_show_empty` check
 
 ```vala
-					var row = new File(this.manager);
-					row.copy_from(source, {
-						"manager",
-						"buffer",
-						"parent",
-						"last-modified"
-					});
-					if (project.project_files.link_parent.has_key((int) row.id)) {
-						row.parent_id = project.project_files.link_parent.get((int) row.id);
-					}
-					list.add(row);
-```
-
-#### Remove
-
-```vala
-				if (matched.size > 0) {
-					list.add_all(matched.slice(0, int.min(limit, matched.size)));
+				if (this.points_to_id == -1) {
+					string[] broken = { "error" };
+					return broken;
 				}
 ```
 
-#### Replace with
+#### Add — `resources/style.css`
 
-```vala
-				var take = int.min(limit, matched.size);
-				for (var i = 0; i < take; i++) {
-					var source = matched.get(i);
-					if (!project.project_files.link_parent.has_key((int) source.id)) {
-						list.add(source);
-						continue;
-					}
-					var row = new File(this.manager);
-					row.copy_from(source, {
-						"manager", "buffer", "parent", "points-to"
-					});
-					row.parent_id = project.project_files.link_parent.get((int) row.id);
-					list.add(row);
-				}
+```css
+label.error {
+  color: @error_color;
+}
 ```
 
-A file already inside the project is still the live object. A linked file is a copy, so `parent_id` on that copy is the alias parent and the stored row is unchanged.
+## Still open
 
-### `examples/oc-test-source-diff/FolderTreeStore.vala` — `load`
+- ✔️ 23 Oct, tablet, after reload. With empty folders hidden, `Pman` shows the four real folders. Showing empty folders reveals the links. Opening one does not list the target.
+- ✔️ The alias row is built with `file_count` and `folder_count` left at 0. Those counts stay on `points_to`. The left list hides a row while empty folders are hidden when both counts are 0. `Folder.fetch_dir` of the link path is not a folder row, so the file list is empty.
+- 🚫 A hybrid folder-and-link icon. The second line is the target path.
 
-**Why:** The linked folder sorts before the project folders because its real path is outside the project. Its children sort before the linked folder itself. One list holds the rows whose parent is not in the map yet. An offset walks that list, and goes back to zero when it passes the end. The walk does not yield. `load_epoch` is already checked when the reply arrives, and it cannot change until this method yields again.
+### `ollmfilesd/Folder.vala` — counts on the alias
 
-**Where:** The loop after `rows.sort` that calls `append`.
+**Why:** The link is sent as an empty folder. The file list already has `points_to` on that row, so it asks `fetch_dir` for the solid folder. No walk of the projects.
 
-#### Remove
+**Where:** The `Folder` built for the alias in `fetch_children`. `FileListStore.load` chooses the path.
 
-```vala
-				for (var i = 0; i < rows.size; i++) {
-					if (epoch != this.load_epoch) {
-						break;
-					}
-					var row = rows.get(i);
-					if (row.path == "" || row.path == folder.path) {
-						continue;
-					}
-					if (!this.id_map.has_key((int) row.parent_id)) {
-						continue;
-					}
-					row.manager = folder.manager;
-					this.append(this.id_map.get((int) row.parent_id), row);
-				}
-```
-
-#### Replace with
+#### Replace with — the alias `Folder`
 
 ```vala
-				var waiting = new Gee.ArrayList<OLLMfiles.Folder>();
-				for (var i = 0; i < rows.size; i++) {
-					var row = rows.get(i);
-					if (row.path == "" || row.path == folder.path) {
-						continue;
-					}
-					if (!this.id_map.has_key((int) row.parent_id)) {
-						waiting.add(row);
-						continue;
-					}
-					row.manager = folder.manager;
-					this.append(this.id_map.get((int) row.parent_id), row);
-				}
-				var offset = 0;
-				var skipped = 0;
-				while (waiting.size > 0) {
-					if (offset >= waiting.size) {
-						offset = 0;
-					}
-					if (skipped >= waiting.size) {
-						break;
-					}
-					var row = waiting.get(offset);
-					if (!this.id_map.has_key((int) row.parent_id)) {
-						offset++;
-						skipped++;
-						continue;
-					}
-					row.manager = folder.manager;
-					this.append(this.id_map.get((int) row.parent_id), row);
-					waiting.remove_at(offset);
-					skipped = 0;
-				}
+					var link = new Folder(this.manager) {
+						id = item.id,
+						path = item.path,
+						parent_id = item.parent_id,
+						points_to_id = item.points_to_id,
+						points_to = item.points_to,
+						file_count = item.points_to == null ? 0 : item.points_to.file_count,
+						folder_count = item.points_to == null ? 0 : item.points_to.folder_count,
+						document_count = item.points_to == null ? 0 : item.points_to.document_count,
+						code_count = item.points_to == null ? 0 : item.points_to.code_count
+					};
 ```
 
-## Attempts
+### `examples/oc-test-source-diff/FileListStore.vala` — list the solid folder
 
-- ✔️ 22 Oct 08:18 build, then `/usr/bin/ollmfilesd` (copied 08:51, different checksum, same size). Same script as the 95-row run, skip scan, database copy. `fetch_children` replied `msg=603`. The linked folder is in the reply, with `parent-id` set to the project folder.
-- ✔️ 09:13 Pixel Tablet, `org.roojs.ollmchat.sourcediff`. The link is in the tree. Opening it shows the linked folder's own files and folders. The names of those are not recorded here.
+**Why:** `fetch_dir` looks up a folder by path. The link path is not that folder. The row already holds the target.
+
+**Where:** `load`, the path passed to `Folder.fetch_dir`.
+
+#### Add — before the request
+
+```vala
+			var list_path = folder.path;
+			if (folder.points_to is OLLMfiles.Folder) {
+				list_path = folder.points_to.path;
+			}
+```
+
+#### Replace with — the request argument
+
+```vala
+					args = OLLMrpc.args("s", list_path)
+```
+
+### `examples/oc-test-source-diff/FolderBrowse.vala` — second line
+
+**Why:** The second line is the row path. For a link that is `Pman/Admin`, which does not say where it points.
+
+**Where:** `list_box_factory`, the path used for the second line.
+
+#### Add — before the project-prefix trim
+
+```vala
+			if (item.points_to != null && item.points_to.path != "") {
+				rel = item.points_to.path;
+			}
+```
 
 ## Next
 
-- ⏳ 🔷 Opening the linked folder that still shows empty still has to list the files and folders inside the link. The pair of names for one link can lose one side.
+- ✔️ Applied in `ollmfilesd/Folder.vala` and `FolderBrowse.vala`. The daemon has to be rebuilt and restarted before the counts and the file list change. The second line is in the tablet app, so that app has to be rebuilt and installed.
+- ⏳ 🔷 The pair of names for one link can lose one side. A broken link stays empty, and red still needs the rebuilt app.
+- ✔️ 23 Oct, installed `/usr/bin/ollmfilesd`. `Folder.fetch_children` for this project returns the alias row. The name is the basename of the link. `points-to` is the solid folder. `Builder`, `Documents`, and `Ftp` have `points-to-id` -1.
 - ℹ️ The path bar that follows that parent is closed: `docs/bugs/done/2026-10-21-FIXED-tablet-path-bar-not-rendering.md`.

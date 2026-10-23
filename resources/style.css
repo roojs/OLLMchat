@@ -256,6 +256,10 @@ separator.horizontal.oc-table-body-sep {
   color: @error_color;
 }
 
+label.error {
+  color: @error_color;
+}
+
 .oc-diff-review-overlay {
   padding: 8px 12px;
   margin-bottom: 12px;
