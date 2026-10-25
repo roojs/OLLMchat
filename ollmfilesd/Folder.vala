@@ -268,6 +268,8 @@ namespace OLLMfilesd
 		 * from the project's ''folder_map''. A link target is left
 		 * out and the alias is sent in its place, with ''points_to''
 		 * set to that folder. Files are left out.
+		 * A path that is a project uses that project. The same path
+		 * stored under another project is not used.
 		 * ''path'' is the first row. A deleted folder is left out.
 		 * Each row carries ''file_count'',
 		 * ''folder_count'', ''document_count'', and ''code_count''
@@ -282,6 +284,9 @@ namespace OLLMfilesd
 		public void fetch_children(OLLMrpc.Request request, string path)
 		{
 			var folder = this.manager.get_folder_at_path(path);
+			if (this.manager.projects.path_map.has_key(path)) {
+				folder = this.manager.projects.path_map.get(path);
+			}
 			if (folder == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -311,7 +316,8 @@ namespace OLLMfilesd
 					"points-to", "buffer"
 				});
 				// The alias row stands in for this solid folder.
-				if (project.project_files.link_parent.has_key((int) row.id)) {
+				if (project != null &&
+					project.project_files.link_parent.has_key((int) row.id)) {
 					continue;
 				}
 				list.add(row);
@@ -382,9 +388,11 @@ namespace OLLMfilesd
 		/**
 		 * Files directly inside ''path''. Subfolders are left out.
 		 * A symlink whose stored target is a folder is left out.
+		 * A broken link is kept. It is not a folder.
 		 * A symlink to a file is kept. Each row is a copy of the
 		 * stored file. Nothing here reads the filesystem. A link is
-		 * opened by passing the solid folder's path.
+		 * opened by passing the solid folder's path. A path that is
+		 * a project uses that project.
 		 *
 		 * @param request inbound RPC
 		 * @param path folder path
@@ -392,6 +400,9 @@ namespace OLLMfilesd
 		public void fetch_dir(OLLMrpc.Request request, string path)
 		{
 			var folder = this.manager.get_folder_at_path(path);
+			if (this.manager.projects.path_map.has_key(path)) {
+				folder = this.manager.projects.path_map.get(path);
+			}
 			if (folder == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -1135,25 +1146,31 @@ namespace OLLMfilesd
 			
 			// we do not need to deal with DB/cache as 
 			// we have created the origial data from there.
-			if (new_item is FileAlias && new_item.points_to_id > -1 
-				&& new_item.points_to != null) {
-				
-				if (old_item != null && old_item.target_path == new_item.target_path) {
+			if (new_item is FileAlias && new_item.points_to_id > -1 &&
+					new_item.points_to != null) {
+				if (this.manager.projects.path_map.has_key(new_item.target_path)) {
+					new_item.points_to = this.manager.projects.path_map.get(new_item.target_path);
+					new_item.points_to_id = new_item.points_to.id;
+				}
+				if (new_item.points_to.id == 0 &&
+						this.manager.file_cache.has_key(new_item.target_path)) {
+					new_item.points_to = this.manager.file_cache.get(new_item.target_path);
+					new_item.points_to_id = new_item.points_to.id;
+				}
+				if (new_item.points_to.id == 0 &&
+						old_item != null &&
+						old_item.target_path == new_item.target_path) {
 					new_item.points_to = old_item.points_to;
-					new_item.points_to_id  = old_item.points_to_id;
-				} else if (this.manager.file_cache.has_key(new_item.path)) {
-					new_item.points_to = this.manager.file_cache.get(new_item.path);
+					new_item.points_to_id = old_item.points_to_id;
+				}
+				if (new_item.points_to.id == 0) {
+					new_item.points_to.saveToDB(this.manager.db, null, false);
 					new_item.points_to_id = new_item.points_to.id;
-					// do we need to do anything?
-					// i dont think so - the recursive code should handle it.
-				} else {
-					// it really does not exist.
-					new_item.points_to.saveToDB(this.manager.db, null,false);
-					new_item.points_to_id = new_item.points_to.id;
-					if (new_item.points_to is Folder) { 
-						yield ((Folder)new_item.points_to).load_files_from_db();
+					if (new_item.points_to is Folder) {
+						yield ((Folder) new_item.points_to).load_files_from_db();
 					}
 				}
+				new_item.mime_type = new_item.points_to.mime_type;
 			}
 				// TODO: Resolve points_to_id for FileAlias objects
 			// When a FileAlias has target_path set but points_to_id is 0, query the database
@@ -1206,6 +1223,7 @@ namespace OLLMfilesd
 				"target-path", "base-type", "parent",
 				"is-ignored", "is-repo",
 				"is-text", "language", "size",
+				"mime-type",
 			});
 			//GLib.debug(
 			//	"path=%s is_ignored=%s is_repo=%d",
@@ -1221,6 +1239,7 @@ namespace OLLMfilesd
 			old_item.is_text = new_item.is_text;
 			old_item.language = new_item.language;
 			old_item.size = new_item.size;
+			old_item.mime_type = new_item.mime_type;
 			
 			// Ensure it's in children list
 			// this will not actually do anything as it's 

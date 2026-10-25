@@ -51,6 +51,7 @@ sudo apt install \
   libllama-dev \
   libtree-sitter-dev \
   desktop-file-utils \
+  humanity-icon-theme \
   bubblewrap \
   build-essential \
   pkg-config
@@ -60,6 +61,7 @@ sudo apt install \
 - **libseccomp-dev** — sandbox syscall reporting (`libocbwrap`)
 - **libavahi-gobject-dev** — mDNS pairing (`libocrpc` `Transport/PairPublish.vala`; Meson requires it when Unix sockets are enabled)
 - **libsecret-1-dev** — sudo password keyring (`OLLMchatGtk.Sudo`, Linux)
+- **humanity-icon-theme** — file-type icons. `meson install` copies them into `share/icons/hicolor/scalable/mimetypes`
 - **bubblewrap** — `bwrap` for sandboxed `run_command` and MCP stdio servers
 - **libblas-dev** / **liblapack-dev** / **libopenblas-dev** — required to link
   FAISS. Meson accepts either OpenBLAS or the reference BLAS/LAPACK packages;

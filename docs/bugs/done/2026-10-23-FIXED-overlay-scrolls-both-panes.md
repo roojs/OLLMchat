@@ -1,6 +1,6 @@
 # Overlay scroll moves both panes
 
-**Status:** ⏳ The tablet file sheet scrolls the folder list and the file list together.
+**Status:** ✅ User confirmed the folder list scrolls on its own. Closed 2026-10-24.
 
 ## Problem
 
@@ -69,3 +69,7 @@
 ## Next
 
 - ✔️ Applied in `FileOverlay.vala`. The tablet app has to be rebuilt and installed. The daemon is unchanged.
+
+## Conclusion
+
+- ✅ 🔷 The folder list scrolls inside the pane. The file list stays put. User closed this bug on 2026-10-24.

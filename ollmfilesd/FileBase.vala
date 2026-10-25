@@ -221,6 +221,12 @@ namespace OLLMfilesd
 		 * Whether this file is a text file (stored in database, default: false).
 		 */
 		public bool is_text { get; set; default = false; }
+
+		/**
+		 * MIME type from the scan, such as ''text/x-vala''.
+		 * Stored on the file row. The file list sends it.
+		 */
+		public string mime_type { get; set; default = ""; }
 		
 		/**
 		 * Whether this folder is a git repository (stored in database, default: -1).
@@ -279,7 +285,8 @@ namespace OLLMfilesd
 				"last_vector_scan INT64 NOT NULL DEFAULT 0, " +
 				"delete_id INT64 NOT NULL DEFAULT 0, " +
 				"is_need_approval INTEGER NOT NULL DEFAULT 0, " +
-				"last_change_type TEXT NOT NULL DEFAULT ''" +
+				"last_change_type TEXT NOT NULL DEFAULT '', " +
+				"mime_type TEXT NOT NULL DEFAULT ''" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
@@ -323,6 +330,13 @@ namespace OLLMfilesd
 			var migrate_last_change_type = "ALTER TABLE filebase ADD COLUMN last_change_type TEXT NOT NULL DEFAULT ''";
 			if (Sqlite.OK != db.db.exec(migrate_last_change_type, null, out errmsg)) {
 				// Column might already exist, which is fine
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+
+			var migrate_mime_type = "ALTER TABLE filebase ADD COLUMN mime_type TEXT NOT NULL DEFAULT ''";
+			if (Sqlite.OK != db.db.exec(migrate_mime_type, null, out errmsg)) {
 				if (!errmsg.contains("duplicate column name")) {
 					GLib.debug("Migration note (may be expected): %s", errmsg);
 				}

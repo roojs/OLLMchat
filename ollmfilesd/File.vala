@@ -503,14 +503,15 @@ namespace OLLMfilesd
 			}
 			this.size = (int64) info.get_size();
 			
-			// Detect and set is_text from content type
-			var  content_type = info.get_content_type();
- 			this.is_text = content_type != null && content_type != "" &&  content_type.has_prefix("text/");
-			
-			// Detect language from filename if not already set
+			var mime_type = info.get_content_type();
+			if (mime_type != null && mime_type != "") {
+				this.mime_type = mime_type;
+			}
 			if (this.language == "") {
 				this.detect_language();
 			}
+ 			this.is_text = this.mime_type.has_prefix("text/");
+
 			// Treat as text if we have a code language (e.g. .php → application/x-php, not text/*)
 			if (!this.is_text && this.language != "") {
 				this.is_text = true;
@@ -753,13 +754,15 @@ namespace OLLMfilesd
 			}
 			if (!this.is_text
 				&& GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
-				var content_type = GLib.File.new_for_path(this.path).query_info(
+				var mime_type = GLib.File.new_for_path(this.path).query_info(
 					GLib.FileAttribute.STANDARD_CONTENT_TYPE,
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				).get_content_type();
-				this.is_text = content_type != null && content_type != ""
-					&& content_type.has_prefix("text/");
+				if (mime_type != null && mime_type != "") {
+					this.mime_type = mime_type;
+				}
+				this.is_text = this.mime_type.has_prefix("text/");
 			}
 			parent_folder.children.append(this);
 			this.manager.buffer_provider.create_buffer(this);

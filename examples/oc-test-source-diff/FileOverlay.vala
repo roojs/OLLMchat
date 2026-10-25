@@ -409,8 +409,38 @@ namespace OLLMapp
 			this.list.append(header);
 			if (this.form == Form.TABLET) {
 				this.list.append(place_row);
+				var loading_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
+					visible = false,
+					halign = Gtk.Align.CENTER,
+					valign = Gtk.Align.CENTER,
+					can_target = false,
+				};
+				var spinner = new Gtk.Spinner() {
+					width_request = 16,
+					height_request = 16,
+					valign = Gtk.Align.CENTER,
+				};
+				loading_row.append(spinner);
+				loading_row.append(new Gtk.Label("Loading folders") {
+					halign = Gtk.Align.START,
+					valign = Gtk.Align.CENTER,
+				});
+				var body = new Gtk.Overlay() {
+					hexpand = true,
+					vexpand = true,
+					child = this.pages,
+				};
+				body.add_overlay(loading_row);
+				this.folder_tree.folders.notify["loading"].connect(() => {
+					spinner.spinning = this.folder_tree.folders.loading;
+					loading_row.visible = this.folder_tree.folders.loading;
+					this.pages.opacity = this.folder_tree.folders.loading ? 0 : 1;
+				});
+				this.list.append(body);
 			}
-			this.list.append(this.pages);
+			if (this.form != Form.TABLET) {
+				this.list.append(this.pages);
+			}
 			if (this.form == Form.TABLET) {
 				this.list.append(this.entry);
 			}
@@ -640,35 +670,44 @@ namespace OLLMapp
 				this.entry.select_region(-1, -1);
 				return;
 			}
+			this.list.visible = true;
 			if (this.folder_tree.folders.loaded.contains(this.project.path)) {
 				this.level = this.project;
+				var open = this.manager.active_file;
+				if (open != null &&
+					this.folder_tree.folders.id_map.has_key((int) open.parent_id)) {
+					this.level = this.folder_tree.folders.id_map.get((int) open.parent_id);
+				}
 				this.place_gen++;
 				this.render_crumbs();
-				this.up.visible = false;
+				this.up.visible = !this.level.is_project;
 				this.browse.project = this.project;
-				this.browse.refresh_folder(this.project);
-				this.file_list.load(this.project);
+				this.browse.refresh_folder(this.level);
+				this.file_list.load(this.level);
 				this.entry.text = "";
 				this.history_epoch++;
 				this.load("", this.recent_files, this.recent_list,
 					this.history_epoch, Slot.HISTORY);
-				this.list.visible = true;
 				return;
 			}
 			this.folder_tree.folders.load.begin(this.project, (obj, res) => {
 				this.folder_tree.folders.load.end(res);
 				this.level = this.project;
+				var open = this.manager.active_file;
+				if (open != null &&
+					this.folder_tree.folders.id_map.has_key((int) open.parent_id)) {
+					this.level = this.folder_tree.folders.id_map.get((int) open.parent_id);
+				}
 				this.place_gen++;
 				this.render_crumbs();
-				this.up.visible = false;
+				this.up.visible = !this.level.is_project;
 				this.browse.project = this.project;
-				this.browse.refresh_folder(this.project);
-				this.file_list.load(this.project);
+				this.browse.refresh_folder(this.level);
+				this.file_list.load(this.level);
 				this.entry.text = "";
 				this.history_epoch++;
 				this.load("", this.recent_files, this.recent_list,
 					this.history_epoch, Slot.HISTORY);
-				this.list.visible = true;
 			});
 		}
 
@@ -888,6 +927,13 @@ namespace OLLMapp
 				if (this.file_list.notice == "" && files.n_items > 0 &&
 						files.selected != Gtk.INVALID_LIST_POSITION) {
 					var next = (int) files.selected + step;
+					while (next >= 0 && next < (int) files.n_items) {
+						var file = (OLLMfiles.File) files.get_item((uint) next);
+						if (file.points_to_id != -1) {
+							break;
+						}
+						next = next + step;
+					}
 					if (next < 0 || next >= (int) files.n_items) {
 						return true;
 					}

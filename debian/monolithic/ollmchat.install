@@ -7,6 +7,7 @@ usr/lib/*/liboc*.so
 usr/lib/*/liboll*.so
 usr/share/applications/org.roojs.ollmchat.desktop
 usr/share/icons/hicolor/scalable/apps/org.roojs.ollmchat.svg
+usr/share/icons/hicolor/scalable/mimetypes/*.svg
 usr/share/gir-1.0/OC*.gir
 usr/share/gir-1.0/OLL*.gir
 usr/lib/*/girepository-1.0/OC*.typelib

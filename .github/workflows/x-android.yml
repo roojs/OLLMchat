@@ -141,6 +141,8 @@ jobs:
             gir1.2-appstream \
             glslc \
             adwaita-icon-theme \
+            humanity-icon-theme \
+            shared-mime-info \
             libadwaita-1-dev \
             libglib-object-introspection-perl \
             libglib-perl \

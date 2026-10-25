@@ -22,8 +22,11 @@ namespace OLLMapp
 	 * File grid for one folder.
 	 *
 	 * Sits beside {@link FolderTree}. Three columns: name with a type
-	 * icon, size, and modified time. The name column starts in
-	 * alphabetical order, ignoring case. The model is a
+	 * icon, size, and modified time. The icon name comes from the
+	 * daemon MIME type. The theme draws that name at 48 pixels. A
+	 * name it does not have uses the generic icon for that type,
+	 * then ''text-x-generic''. The name column
+	 * starts in alphabetical order, ignoring case. The model is a
 	 * {@link FileListStore}. No folder selected shows
 	 * ''Select a folder''. An empty reply shows ''No files''.
 	 * {@link kind} narrows that grid to documents or to code.
@@ -107,6 +110,9 @@ namespace OLLMapp
 		 */
 		public string notice { get; set; default = ""; }
 
+		private OLLMfiles.Folder showing_folder;
+		private bool showing_kept = false;
+
 		/**
 		 * Build the grid over an empty {@link FileListStore}.
 		 *
@@ -120,7 +126,7 @@ namespace OLLMapp
 				var row = (Gtk.ListItem) obj;
 				var line = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8);
 				line.append(new Gtk.Image() {
-					pixel_size = 16,
+					pixel_size = 48,
 				});
 				line.append(new Gtk.Label("") {
 					halign = Gtk.Align.START,
@@ -135,10 +141,24 @@ namespace OLLMapp
 				var line = (Gtk.Box) row.child;
 				var file = (OLLMfiles.File) row.item;
 				var name_label = (Gtk.Label) line.get_first_child().get_next_sibling();
-				file.bind_property("icon_name", (Gtk.Image) line.get_first_child(),
-					"icon-name", GLib.BindingFlags.SYNC_CREATE);
-				file.bind_property("path_basename", name_label,
-					"label", GLib.BindingFlags.SYNC_CREATE);
+				var icon = file.icon_name;
+				if (!Gtk.IconTheme.get_for_display(this.get_display()).has_icon(icon)) {
+					var generic = GLib.ContentType.get_generic_icon_name(file.mime_type);
+					icon = generic != null ? generic : "text-x-generic";
+				}
+				if (!Gtk.IconTheme.get_for_display(this.get_display()).has_icon(icon)) {
+					icon = "text-x-generic";
+				}
+				((Gtk.Image) line.get_first_child()).icon_name = icon;
+				var title = file.path_basename;
+				if (file.points_to_id == -1) {
+					title = title + " [broken link]";
+					name_label.add_css_class("error");
+				}
+				if (file.points_to_id != -1) {
+					name_label.remove_css_class("error");
+				}
+				name_label.label = title;
 				file.bind_property("tooltip", name_label,
 					"tooltip-text", GLib.BindingFlags.SYNC_CREATE);
 			});
@@ -147,6 +167,7 @@ namespace OLLMapp
 				var row = (Gtk.ListItem) obj;
 				row.child = new Gtk.Label("") {
 					halign = Gtk.Align.END,
+					hexpand = true,
 					xalign = 1,
 					css_classes = { "caption", "dim-label" },
 				};
@@ -181,7 +202,7 @@ namespace OLLMapp
 			};
 			var size_column = new Gtk.ColumnViewColumn("Size", size_factory) {
 				resizable = false,
-				fixed_width = 44,
+				fixed_width = 53,
 				sorter = new Gtk.NumericSorter(
 					new Gtk.PropertyExpression(typeof(OLLMfiles.File), null, "size")
 				),
@@ -237,10 +258,37 @@ namespace OLLMapp
 				autoselect = false,
 				can_unselect = true,
 			};
+			var row_factory = new Gtk.SignalListItemFactory();
+			row_factory.bind.connect((obj) => {
+				var view_row = (Gtk.ColumnViewRow) obj;
+				var shown = (OLLMfiles.File) view_row.item;
+				var openable = shown.points_to_id != -1;
+				view_row.selectable = openable;
+				view_row.activatable = openable;
+				((Gtk.Widget) view_row).remove_css_class("selector-mark");
+				if (shown.is_active) {
+					((Gtk.Widget) view_row).add_css_class("selector-mark");
+				}
+				var active_watch = shown.notify["is-active"].connect(() => {
+					if (shown.is_active) {
+						((Gtk.Widget) view_row).add_css_class("selector-mark");
+						return;
+					}
+					((Gtk.Widget) view_row).remove_css_class("selector-mark");
+				});
+				view_row.set_data("active-watch", active_watch);
+			});
+			row_factory.unbind.connect((obj) => {
+				var view_row = (Gtk.ColumnViewRow) obj;
+				var shown = (OLLMfiles.File) view_row.item;
+				shown.disconnect(view_row.get_data<ulong>("active-watch"));
+				((Gtk.Widget) view_row).remove_css_class("selector-mark");
+			});
 			this.file_view = new Gtk.ColumnView(this.file_selection) {
 				hexpand = true,
 				vexpand = true,
 				single_click_activate = single_click,
+				row_factory = row_factory,
 			};
 			this.file_view.append_column(this.name_column);
 			this.file_view.append_column(size_column);
@@ -252,10 +300,18 @@ namespace OLLMapp
 			this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
 			this.file_view.activate.connect((position) => {
 				var file = (OLLMfiles.File) this.file_selection.get_item(position);
+				if (file.points_to_id == -1) {
+					return;
+				}
 				this.file_activated(file);
 			});
 			this.file_selection.selection_changed.connect(() => {
 				if (this.file_selection.selected == Gtk.INVALID_LIST_POSITION) {
+					return;
+				}
+				var chosen = (OLLMfiles.File) this.file_selection.selected_item;
+				if (chosen.points_to_id == -1) {
+					this.file_selection.selected = Gtk.INVALID_LIST_POSITION;
 					return;
 				}
 				this.file_view.scroll_to(this.file_selection.selected, null,
@@ -368,19 +424,26 @@ namespace OLLMapp
 		/**
 		 * Show ''folder''. The header sort goes back to the file name
 		 * and the list opens at the top. {@link FileListStore.load}
-		 * fills the grid.
+		 * fills the grid. The grid says Loading files until
+		 * that reply.
 		 *
 		 * @param folder Folder whose files should be shown
 		 */
 		public void load(OLLMfiles.Folder folder)
 		{
+			if (this.showing_kept && this.showing_folder.id == folder.id) {
+				return;
+			}
+			this.showing_kept = true;
+			this.showing_folder = folder;
 			this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
 			this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
 			this.notice = "";
 			this.file_selection.selected = Gtk.INVALID_LIST_POSITION;
-			this.file_empty.visible = false;
-			this.file_view.visible = true;
 			this.files.load.begin(folder);
+			this.file_empty.label = "Loading files";
+			this.file_empty.visible = true;
+			this.file_view.visible = true;
 		}
 
 		/**
@@ -390,6 +453,7 @@ namespace OLLMapp
 		 */
 		public void clear()
 		{
+			this.showing_kept = false;
 			this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
 			this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
 			this.notice = "";

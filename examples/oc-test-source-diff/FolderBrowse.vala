@@ -237,7 +237,8 @@ namespace OLLMapp
 		/**
 		 * List box factory for a folder or file. The caller picks the
 		 * icon, so the folder list and the file list can diverge
-		 * later. The second line is the path relative to the project,
+		 * later. A link keeps that icon. Its name has a link mark
+		 * before it. The second line is the path relative to the project,
 		 * including the item name. A link uses the target path, so
 		 * the line shows where it points. That line is absent at the
 		 * project root. A long path drops the item name first, then
@@ -261,7 +262,11 @@ namespace OLLMapp
 			var column = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) {
 				hexpand = true,
 			};
-			column.append(new Gtk.Label(item.path_basename) {
+			var title = item.path_basename;
+			if (item is OLLMfiles.Folder && item.points_to_id != 0) {
+				title = "🔗 " + title;
+			}
+			column.append(new Gtk.Label(title) {
 				xalign = 0,
 				halign = Gtk.Align.START,
 				hexpand = true,

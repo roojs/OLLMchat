@@ -7,6 +7,8 @@
 # source_theme "bundled" uses android/icons/Adwaita/<dest_relpath> from the repo.
 # Otherwise source files are taken from /usr/share/icons/<source_theme>/ on the
 # build host, then copied with cp -rL into the APK (no symlinks on device).
+# Humanity rows are the programming-language icons. The Android build stops
+# when that theme is not installed on the host.
 #
 # Add a row when Android-shipped UI references a new icon_name.
 
@@ -24,6 +26,7 @@ symbolic/ui/pan-down-symbolic.svg	Adwaita	symbolic/ui/pan-down-symbolic.svg
 symbolic/ui/pan-up-symbolic.svg	Adwaita	symbolic/ui/pan-up-symbolic.svg
 symbolic/actions/object-flip-horizontal-symbolic.svg	Adwaita	symbolic/actions/object-flip-horizontal-symbolic.svg
 symbolic/mimetypes/x-office-document-symbolic.svg	Adwaita	symbolic/mimetypes/x-office-document-symbolic.svg
+symbolic/mimetypes/text-x-generic-symbolic.svg	Adwaita	symbolic/mimetypes/text-x-generic-symbolic.svg
 symbolic/actions/edit-copy-symbolic.svg	Adwaita	symbolic/actions/edit-copy-symbolic.svg
 symbolic/actions/edit-undo-symbolic.svg	Adwaita	symbolic/actions/edit-undo-symbolic.svg
 symbolic/actions/edit-redo-symbolic.svg	Adwaita	symbolic/actions/edit-redo-symbolic.svg

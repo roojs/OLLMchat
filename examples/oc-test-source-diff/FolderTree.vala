@@ -160,11 +160,12 @@ namespace OLLMapp
 		/**
 		 * Shared by the top folder list and every child segment.
 		 * While hiding, an empty folder or a gitignored folder is
-		 * left out. {@link kind} hides a folder whose count for
-		 * that type is zero. The project row stays. While
-		 * {@link searching} is true, a folder stays when its id is
-		 * on {@link visible}. A ''false'' folder has
-		 * ''is-show-empty'' set.
+		 * left out. A broken link is a file row, so this list
+		 * leaves it out. {@link kind} hides a folder whose
+		 * count for that type is zero. The project row stays.
+		 * While {@link searching} is true, a folder stays
+		 * when its id is on {@link visible}. A ''false'' folder
+		 * has ''is-show-empty'' set.
 		 */
 		public Gtk.CustomFilter filter { get; private set; }
 
@@ -216,6 +217,9 @@ namespace OLLMapp
 				}
 				if (this.searching) {
 					return this.visible.has_key((int) folder.id);
+				}
+				if (folder.points_to_id == -1) {
+					return false;
 				}
 				if (this.hiding && folder.is_ignored) {
 					return false;
@@ -314,7 +318,11 @@ namespace OLLMapp
 					});
 				}
 				var parts = new Gee.ArrayList<string>();
-				parts.add(folder.path_basename);
+				var shown = folder.path_basename;
+				if (folder.points_to_id != 0) {
+					shown = "🔗 " + shown;
+				}
+				parts.add(shown);
 				var tip = folder;
 				while (!tip.is_project &&
 						this.folders.segments.has_key(tip.path) &&
@@ -322,7 +330,11 @@ namespace OLLMapp
 						tip.folder_count == 1 &&
 						tip.file_count == 0) {
 					tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
-					parts.add(tip.path_basename);
+					shown = tip.path_basename;
+					if (tip.points_to_id != 0) {
+						shown = "🔗 " + shown;
+					}
+					parts.add(shown);
 				}
 				var line = (Gtk.Box) expander.child;
 				var name_label = (Gtk.Label) line.get_first_child();

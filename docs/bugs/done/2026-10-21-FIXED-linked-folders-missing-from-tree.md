@@ -1,6 +1,6 @@
 # Linked folders missing from the project tree
 
-**Status:** ⏳ A link is hidden until empty folders are shown, and opening it lists nothing of the target. The second line under a link is the target path.
+**Status:** ✅ User confirmed linked folders show in the project tree. Closed 2026-10-24.
 
 ## Problem
 
@@ -16,6 +16,7 @@
 - 🔷 The file list is files only. A link to a folder is not a file-list row.
 - 🔷 Showing empty folders reveals the links. Opening one shows an empty folder. The target has files and folders.
 - 🔷 The left folder list does not merge a folder icon with a link icon. The second line under a link is the real path, so the row shows where it points.
+- 🔷 A link keeps the folder icon. The name has a link emoji beside it. The phone list and the desktop tree use the same mark.
 - 🚫 Do not name the outside projects, or list what is inside these links.
 
 ## Reply we expect
@@ -271,9 +272,30 @@ label.error {
 			}
 ```
 
+### Folder name — link mark
+
+**Why:** The folder icon stays. A link is the name plus a link emoji. `points_to_id` is 0 on a real folder, and set on a link, including a broken one.
+
+**Where:** `FolderBrowse.list_box_factory` (tablet and phone). `FolderTree` row label (desktop).
+
+#### Add — the name
+
+```vala
+			var title = item.path_basename;
+			if (item is OLLMfiles.Folder && item.points_to_id != 0) {
+				title = "🔗 " + title;
+			}
+```
+
 ## Next
 
 - ✔️ Applied in `ollmfilesd/Folder.vala` and `FolderBrowse.vala`. The daemon has to be rebuilt and restarted before the counts and the file list change. The second line is in the tablet app, so that app has to be rebuilt and installed.
-- ⏳ 🔷 The pair of names for one link can lose one side. A broken link stays empty, and red still needs the rebuilt app.
+- ✔️ The link mark is in `FolderBrowse` and `FolderTree`. The tablet app has to be rebuilt and installed. The daemon is unchanged for that mark.
+- ✔️ 24 Oct. The mark sits in front of the name. `FolderBrowse` and both `FolderTree` labels.
 - ✔️ 23 Oct, installed `/usr/bin/ollmfilesd`. `Folder.fetch_children` for this project returns the alias row. The name is the basename of the link. `points-to` is the solid folder. `Builder`, `Documents`, and `Ftp` have `points-to-id` -1.
 - ℹ️ The path bar that follows that parent is closed: `docs/bugs/done/2026-10-21-FIXED-tablet-path-bar-not-rendering.md`.
+- ℹ️ One name of a pair is enough. That was the accepted result, not a leftover defect.
+
+## Conclusion
+
+- ✅ 🔷 Linked folders show in the project tree, and opening one lists the target. User closed this bug on 2026-10-24.

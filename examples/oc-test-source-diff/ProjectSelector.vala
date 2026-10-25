@@ -223,7 +223,7 @@ namespace OLLMapp
 			});
 
 			this.selector_list_box = new Gtk.ListBox() {
-				selection_mode = Gtk.SelectionMode.SINGLE,
+				selection_mode = Gtk.SelectionMode.NONE,
 				activate_on_single_click = true,
 				hexpand = true,
 				vexpand = true,

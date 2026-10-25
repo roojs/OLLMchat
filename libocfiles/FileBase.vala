@@ -269,6 +269,13 @@ namespace OLLMfiles
 		 * Whether this file is a text file (stored in database, default: false).
 		 */
 		public bool is_text { get; set; default = false; }
+
+		/**
+		 * MIME type from the daemon, such as ''text/x-vala''.
+		 * Stored on the file row. The file grid uses it
+		 * for the icon.
+		 */
+		public string mime_type { get; set; default = ""; }
 		
 		/**
 		 * Whether this folder is a git repository (stored in database, default: -1).

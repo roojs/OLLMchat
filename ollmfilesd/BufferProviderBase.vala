@@ -33,6 +33,13 @@ namespace OLLMfilesd
 		 * Static hashmap mapping file extensions to language identifiers.
 		 */
 		private static Gee.HashMap<string, string>? extension_map = null;
+
+		/**
+		 * Language id to MIME type. Used when the scan stored
+		 * ''text/plain'' or left the type empty. ''json'' is
+		 * ''application/json'', so ''bjs'' follows the extension map.
+		 */
+		private static Gee.HashMap<string, string>? mime_map = null;
 		
 		/**
 		 * Initialize the extension map with common file extensions.
@@ -44,6 +51,7 @@ namespace OLLMfilesd
 			}
 			
 			extension_map = new Gee.HashMap<string, string>();
+			mime_map = new Gee.HashMap<string, string>();
 			
 			// Vala
 			extension_map.set("vala", "vala");
@@ -169,6 +177,8 @@ namespace OLLMfilesd
 			
 			// JSON
 			extension_map.set("json", "json");
+			extension_map.set("bjs", "json");
+			mime_map.set("json", "application/json");
 			
 			// YAML
 			extension_map.set("yaml", "yaml");
@@ -187,7 +197,8 @@ namespace OLLMfilesd
 		/**
 		 * Detect programming language from file extension.
 		 *
-		 * @param file The file to detect language for
+		 * @param file The file to detect language for. A language in
+		 * the mime map replaces an empty type or ''text/plain''.
 		 * @return Language identifier (e.g., "vala", "python"), or "" if not detected
 		 */
 		public virtual string detect_language(File file)
@@ -207,7 +218,15 @@ namespace OLLMfilesd
 			
 			var extension = path.substring(last_dot + 1).down();
 			var lang = extension_map.get(extension);
-			return lang != null ? lang : "";
+			if (lang == null) {
+				return "";
+			}
+			var mapped = mime_map.get(lang);
+			if (mapped != null &&
+					(file.mime_type == "" || file.mime_type == "text/plain")) {
+				file.mime_type = mapped;
+			}
+			return lang;
 		}
 		
 		/**

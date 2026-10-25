@@ -71,11 +71,30 @@ namespace OLLMfiles
 		/**
 		 * Byte count shown in the file grid.
 		 *
-		 * Reads {@link size}. Zero is a real empty file.
+		 * Under 1000 the digits stand alone. K, M, G, T, and
+		 * P follow the number with no space. Under ten of a
+		 * unit keeps one decimal. Zero is an empty file.
 		 */
 		public string display_size {
 			owned get {
-				return GLib.format_size((uint64) this.size);
+				if (this.size < 1000) {
+					return this.size.to_string();
+				}
+				string[] marks = { "K", "M", "G", "T", "P" };
+				var scaled = (double) this.size / 1000.0;
+				var step = 0;
+				while (scaled >= 1000.0 && step < marks.length - 1) {
+					scaled = scaled / 1000.0;
+					step++;
+				}
+				if (scaled >= 999.5 && step < marks.length - 1) {
+					scaled = scaled / 1000.0;
+					step++;
+				}
+				if (scaled < 9.95) {
+					return "%.1f".printf(scaled) + marks[step];
+				}
+				return "%.0f".printf(scaled) + marks[step];
 			}
 		}
 
@@ -225,10 +244,6 @@ namespace OLLMfiles
 		public bool is_unsaved { get; set; default = false; }
 		
 		private string _icon_name = "";
-		/**
-		 * Icon name for binding in lists.
-		 * Returns icon_name if set, otherwise derives from file content type.
-		 */
 		public override string to_summary(Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent)
 		{
 			var type = "file";
@@ -246,24 +261,22 @@ namespace OLLMfiles
 			return indent + "- (" + type + ") " + GLib.Path.get_basename(this.path) + description;
 		}
 		
+		/**
+		 * Icon name for binding in lists.
+		 *
+		 * Uses {@link mime_type} from the daemon.
+		 * ''text/x-vala'' becomes ''text-x-vala''. A row
+		 * with no type uses ''text-x-generic''.
+		 */
 		public override string icon_name {
 			get {
 				if (this._icon_name != "") {
 					return this._icon_name;
 				}
-				if (this.path == "") {
-					return "text-x-generic";
+				if (this.mime_type != "") {
+					this._icon_name = this.mime_type.replace("/", "-");
+					return this._icon_name;
 				}
-				var content_type = GLib.ContentType.guess(this.path, null, null);
-				if (content_type != null && content_type != "") {
-					// Get generic icon name from content type
-					var icon_name = GLib.ContentType.get_generic_icon_name(content_type);
-					if (icon_name != null && icon_name != "") {
-						this._icon_name = icon_name;
-						return this._icon_name;
-					}
-				}
-				// Default fallback
 				return "text-x-generic";
 			}
 			set {

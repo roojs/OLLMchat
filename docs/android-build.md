@@ -159,6 +159,8 @@ sudo apt-get install -y --no-install-recommends \
   gir1.2-appstream \
   glslc \
   adwaita-icon-theme \
+  humanity-icon-theme \
+  shared-mime-info \
   libadwaita-1-dev \
   libglib-object-introspection-perl \
   libglib-perl \
@@ -211,7 +213,17 @@ same class of problem as Windows before `sqgipkg.json` bundled
 `adwaita-icon-theme`. The Android build reads `android/icons/manifest` (tab-separated
 list of dest path, source theme, source path), symlinks each SVG from the build
 host’s `/usr/share/icons/` into a staging tree, then copies with `cp -rL` into
-`assets/share/icons/Adwaita/` (~tens of KB, not the full theme). Add a manifest
+`assets/share/icons/Adwaita/` (~tens of KB, not the full theme). File-type
+icons are a separate folder, `share/icons/hicolor/scalable/mimetypes`.
+`scripts/install-mime-icons.sh` copies the host Humanity mime SVGs into that
+folder (`apt install humanity-icon-theme`). Desktop `meson install` uses the
+same script, and the Android package ships that folder without an
+`index.theme`. GTK keeps its built-in hicolor index, which already
+lists `scalable/mimetypes` and supplies `image-missing`. A replacement
+index hides that icon and the lookup recurses until the process dies.
+The file grid only sets the icon name.
+The APK also ships the host `shared-mime-info` cache at
+`assets/share/mime/mime.cache`. Add a manifest
 row when Android-shipped UI references a new `icon_name`. GTK extracts assets
 with the rest of `assets/share/` before `main()`.
 `AndroidApplication` sets `Gtk.Settings.gtk_icon_theme_name = "Adwaita"` (see

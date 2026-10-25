@@ -30,6 +30,8 @@ required=(
   assets/share/ssl/certs/ca-certificates.crt
   assets/share/ollmchat-android-runtime.tag
   assets/share/icons/Adwaita/index.theme
+  assets/share/icons/hicolor/scalable/mimetypes/text-x-generic.svg
+  assets/share/mime/mime.cache
   assets/share/gtksourceview-5/language-specs/language2.rng
 )
 
@@ -53,6 +55,11 @@ for path in "${required[@]}"; do
     exit 1
   fi
 done
+
+if grep -q 'assets/share/icons/hicolor/index.theme' "$apk_list"; then
+  echo "APK must not ship icons/hicolor/index.theme; GTK's built-in index provides image-missing." >&2
+  exit 1
+fi
 
 apk_extract="$(mktemp -d)"
 trap 'rm -f "$apk_list"; rm -rf "$apk_extract"' EXIT

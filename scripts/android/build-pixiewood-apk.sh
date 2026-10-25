@@ -479,7 +479,7 @@ install_icon_themes_to_assets() {
     exit 1
   fi
 
-  rm -rf "$stage" "$assets_icons/Adwaita"
+  rm -rf "$stage" "$assets_icons/Adwaita" "$assets_icons/hicolor"
   mkdir -p "$stage_adwaita"
   cp -a "$index_theme" "$stage_adwaita/"
 
@@ -514,12 +514,42 @@ install_icon_themes_to_assets() {
     cp -a "$src" "$dest_file"
   done < "$manifest"
 
+  # No index.theme here. GTK's built-in hicolor index already
+  # lists scalable/mimetypes and is what provides image-missing.
+  # A replacement index hides that icon, and the lookup recurses
+  # until the process dies.
+  bash "$ROOT_DIR/scripts/install-mime-icons.sh" \
+    "$assets_icons/hicolor/scalable/mimetypes"
+
   mkdir -p "$assets_icons"
   cp -rL "$stage_adwaita" "$assets_icons/"
   rm -rf "$stage"
 
   if [ ! -f "$assets_icons/Adwaita/symbolic/actions/sidebar-show-symbolic.svg" ]; then
     echo "Expected icon missing after staging: sidebar-show-symbolic.svg" >&2
+    exit 1
+  fi
+}
+
+# Stage the host shared-mime-info cache. GLib content-type guesses
+# need it. The file grid uses the daemon MIME type.
+install_shared_mime_to_assets() {
+  local src="${SHARED_MIME_CACHE:-/usr/share/mime/mime.cache}"
+  local dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/mime"
+
+  if [ ! -f "$src" ]; then
+    echo "Shared MIME database missing: $src" >&2
+    echo "Android builds need the shared MIME database." >&2
+    echo "Install it on the build host: apt install shared-mime-info" >&2
+    exit 1
+  fi
+
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  cp -a "$src" "$dest/mime.cache"
+
+  if [ ! -s "$dest/mime.cache" ]; then
+    echo "Shared MIME staging failed: $dest/mime.cache" >&2
     exit 1
   fi
 }
@@ -695,6 +725,7 @@ run_pixiewood_build() {
   install_ca_certificates_to_assets
   install_gtksourceview_language_schema
   install_icon_themes_to_assets
+  install_shared_mime_to_assets
   # Chat Java and the chat Application class belong to the chat package.
   # The source-diff smoke app binds pairing against its own library.
   if [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-source-diff.xml ]]; then

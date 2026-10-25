@@ -275,6 +275,10 @@ endif
 
 # Post-install script to update icon cache and desktop database when the host
 # tools are available. Minimal CI/package builders may not install both.
+if host_machine.system() == 'linux' and not android_cross_build
+  meson.add_install_script('scripts/install-mime-icons.sh')
+endif
+
 if not android_cross_build
   gnome.post_install(
     gtk_update_icon_cache: find_program('gtk-update-icon-cache', required: false).found(),
