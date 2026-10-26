@@ -411,38 +411,34 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			GLib.SourceFunc reply = () => {
-				var list = new Gee.ArrayList<GLib.Object>();
-				foreach (var child in folder.children.items) {
-					if (child.delete_id != 0) {
-						continue;
-					}
-					if (child.base_type != "f" && child.base_type != "fa") {
-						continue;
-					}
-					if (child.points_to is Folder) {
-						continue;
-					}
-					var row = new File(this.manager);
-					row.copy_from((File) child, {
-						"manager", "buffer", "parent", "points-to"
-					});
-					list.add(row);
-				}
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					retval = OLLMrpc.val("o", list),
-					msg = list.size.to_string()
+			if (folder.children.items.size == 0 && folder.id > 0 && folder.needs_reload()) {
+				folder.load_files_from_db.begin((obj, res) => {
+					folder.load_files_from_db.end(res);
+					this.fetch_dir(request, path);
 				});
-				return false;
-			};
-			if (folder.children.items.size > 0 || folder.id <= 0) {
-				reply();
 				return;
 			}
-			folder.load_files_from_db.begin((obj, res) => {
-				folder.load_files_from_db.end(res);
-				reply();
+			var list = new Gee.ArrayList<GLib.Object>();
+			foreach (var child in folder.children.items) {
+				if (child.delete_id != 0) {
+					continue;
+				}
+				if (child.base_type != "f" && child.base_type != "fa") {
+					continue;
+				}
+				if (child.points_to is Folder) {
+					continue;
+				}
+				var row = new File(this.manager);
+				row.copy_from((File) child, {
+					"manager", "buffer", "parent", "points-to"
+				});
+				list.add(row);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", list),
+				msg = list.size.to_string()
 			});
 		}
 

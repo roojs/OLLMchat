@@ -10,6 +10,7 @@
 - ℹ️ [`docs/bugs/done/2026-10-13-FIXED-folder-tree-filter-slow.md`](../bugs/done/2026-10-13-FIXED-folder-tree-filter-slow.md) — folder tree load. Closed. The current open is 74ms.
 - ℹ️ Today: `liboccoder/ProjectDropdown.vala`, `liboccoder/FileDropdown.vala`, `liboccoder/SearchableDropdown.vala`.
 - ℹ️ Smoke app: `examples/oc-test-source-diff.vala`. Classes live in `examples/oc-test-source-diff/`.
+- ℹ️ Moving the coder screen onto `liboccoder`, including the diffs, then pointing this smoke app at that copy, is [`CODER-4.2.6-file-nav-mainline.md`](CODER-4.2.6-file-nav-mainline.md).
 - ℹ️ Phone history today: `ollmapp/android/OllmchatWindow.vala` and `libollmchatgtk/HistoryBrowser.vala`.
 - ℹ️ Phone source-view trouble, partly worked: [`docs/bugs/2026-09-29-android-source-view-phone.md`](../bugs/2026-09-29-android-source-view-phone.md).
 
