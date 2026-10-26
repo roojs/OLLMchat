@@ -166,6 +166,7 @@ ollmchat_ollama_src = files([
   'ApplicationInterface.vala',
   'ChatDesktopInterface.vala',
   'Settings/Connection.vala',
+  'Settings/SearchFault.vala',
   'Settings/ModelUsage.vala',
   'Settings/ConnectionModels.vala',
   'Settings/Window.vala',  # Before Config2 (Config2.windows uses Window)

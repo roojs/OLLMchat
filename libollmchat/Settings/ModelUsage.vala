@@ -49,12 +49,28 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Whether this ModelUsage is valid (connection exists, model is available).
-		 * 
+		 *
 		 * Not serialized and not shown in config dialogs.
 		 * Set to false by validation methods if the connection is missing or
 		 * the model is not available on the server.
 		 */
 		public bool is_valid = true;
+
+		/**
+		 * Why the last {@link verify_model} call failed.
+		 *
+		 * {@link SearchFault.NONE} when that call returned true.
+		 * Not serialized. Banner text is {@link SearchFault.text}.
+		 */
+		public SearchFault fault = SearchFault.NONE;
+
+		/**
+		 * Raw error from listing models, or empty.
+		 *
+		 * Set only for {@link SearchFault.LIST_FAILED}. Not a banner
+		 * sentence, and not serialized.
+		 */
+		public string detail = "";
 		
 		/**
 		 * Response.Model object for display names and filling in details later.
@@ -71,37 +87,55 @@ namespace OLLMchat.Settings
 		 * 
 		 * Returns false if connection is empty, model is empty, connection is not found,
 		 * or if there's an error fetching models. Returns true only if the model is available.
-		 * 
+		 * Sets {@link fault}. {@link detail} holds the list-models error, if any.
+		 *
 		 * @param config The Config2 instance containing the connection configuration
 		 * @return true if the model is available, false otherwise
 		 */
 		public async bool verify_model(Config2 config)
 		{
-			if (this.connection == "" || this.model == "") {
+			this.detail = "";
+			if (this.connection == "" && this.model == "") {
 				this.is_valid = false;
+				this.fault = SearchFault.EMPTY;
 				return false;
 			}
-			
+			if (this.connection == "") {
+				this.is_valid = false;
+				this.fault = SearchFault.NO_CONNECTION;
+				return false;
+			}
+			if (this.model == "") {
+				this.is_valid = false;
+				this.fault = SearchFault.NO_MODEL;
+				return false;
+			}
+
 			var connection_obj = config.connections.get(this.connection);
 			if (connection_obj == null) {
 				this.is_valid = false;
+				this.fault = SearchFault.UNKNOWN_CONNECTION;
 				return false;
 			}
-			
+
 			try {
 				yield connection_obj.load_models();
-
-				this.is_valid = connection_obj.models.has_key(this.model);
-				if (this.is_valid) {
-					this.model_obj = connection_obj.models.get(this.model);
-					//GLib.debug("ModelUsage.verify_model: model=%s model_obj set is_thinking=%s",
-					//	this.model, this.model_obj != null && this.model_obj.is_thinking ? "true" : "false");
-				}
-				return this.is_valid;
 			} catch (GLib.Error e) {
 				this.is_valid = false;
+				this.fault = SearchFault.LIST_FAILED;
+				this.detail = e.message;
 				return false;
 			}
+
+			if (!connection_obj.models.has_key(this.model)) {
+				this.is_valid = false;
+				this.fault = SearchFault.NOT_LISTED;
+				return false;
+			}
+			this.model_obj = connection_obj.models.get(this.model);
+			this.is_valid = true;
+			this.fault = SearchFault.NONE;
+			return true;
 		}
 
 		public unowned ParamSpec? find_property(string name)

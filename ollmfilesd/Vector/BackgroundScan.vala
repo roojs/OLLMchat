@@ -21,6 +21,21 @@ namespace OLLMfilesd.Vector {
          * are preserved. Set by ''Codebase.stop''; cleared by ''Codebase.start''.
          */
         public bool stop_requested { get; set; default = false; }
+        /**
+         * Tool-level fault from the last {@link open_vector_db}.
+         *
+         * NONE when the tool exists and is enabled. Model faults are
+         * {@link embed_fault} and {@link analysis_fault}.
+         */
+        public OLLMchat.Settings.SearchFault tool_fault = OLLMchat.Settings.SearchFault.NONE;
+        /** Embed-model fault from the last {@link open_vector_db}, or NONE. */
+        public OLLMchat.Settings.SearchFault embed_fault = OLLMchat.Settings.SearchFault.NONE;
+        /** Raw embed-model error, or empty. */
+        public string embed_detail = "";
+        /** Analysis-model fault from the last {@link open_vector_db}, or NONE. */
+        public OLLMchat.Settings.SearchFault analysis_fault = OLLMchat.Settings.SearchFault.NONE;
+        /** Raw analysis-model error, or empty. */
+        public string analysis_detail = "";
         private Indexer? indexer = null;
         private string queued_project = "";
 
@@ -52,26 +67,57 @@ namespace OLLMfilesd.Vector {
 
         /**
          * Probe embed dimension and set {@link OLLMfilesd.ProjectManager.vector_db}.
-         * Uses dimension 0 when codebase_search is not configured.
-         * Clears cached {@link Indexer} so reopen picks up a fresh FAISS handle.
+         * Uses dimension 0 when codebase search cannot run, and stores fault
+         * codes on {@link tool_fault}, {@link embed_fault}, and
+         * {@link analysis_fault}. Clears cached {@link Indexer}.
          */
         public async void open_vector_db ()
         {
             this.indexer = null;
+            this.tool_fault = OLLMchat.Settings.SearchFault.NONE;
+            this.embed_fault = OLLMchat.Settings.SearchFault.NONE;
+            this.embed_detail = "";
+            this.analysis_fault = OLLMchat.Settings.SearchFault.NONE;
+            this.analysis_detail = "";
+            var tool_config = this.config.tools.has_key ("codebase_search")
+                ? this.config.tools.get ("codebase_search") as OLLMvector2.VectorToolConfig
+                : null;
+            if (tool_config != null) {
+                tool_config.embed.fault = OLLMchat.Settings.SearchFault.NONE;
+                tool_config.embed.detail = "";
+                tool_config.analysis.fault = OLLMchat.Settings.SearchFault.NONE;
+                tool_config.analysis.detail = "";
+            }
             var dimension = 0;
-            try {
-                if (yield OLLMvector2.Database.check_required_models_available (
-                    this.config)) {
-                    var probe = new OLLMvector2.Database (
-                        this.config,
-                        this.project_manager.vector_db_path,
-                        0);
+            this.tool_fault = yield OLLMvector2.Database.check_required_models_available (
+                this.config);
+            if (this.tool_fault == OLLMchat.Settings.SearchFault.NONE && tool_config != null) {
+                var probe = new OLLMvector2.Database (
+                    this.config,
+                    this.project_manager.vector_db_path,
+                    0);
+                try {
                     yield probe.connection ("analysis", true);
-                    dimension = yield probe.embed_dimension ();
+                } catch (GLib.Error e) {
+                    GLib.warning ("vector index: " + e.message);
+                    tool_config.analysis.fault = OLLMchat.Settings.SearchFault.CALL_FAILED;
+                    tool_config.analysis.detail = e.message;
                 }
-            } catch (GLib.Error e) {
-                GLib.warning (
-                    "vector index: " + e.message);
+                if (tool_config.analysis.fault == OLLMchat.Settings.SearchFault.NONE) {
+                    try {
+                        dimension = yield probe.embed_dimension ();
+                    } catch (GLib.Error e) {
+                        GLib.warning ("vector index: " + e.message);
+                        tool_config.embed.fault = OLLMchat.Settings.SearchFault.CALL_FAILED;
+                        tool_config.embed.detail = e.message;
+                    }
+                }
+            }
+            if (tool_config != null) {
+                this.embed_fault = tool_config.embed.fault;
+                this.embed_detail = tool_config.embed.detail;
+                this.analysis_fault = tool_config.analysis.fault;
+                this.analysis_detail = tool_config.analysis.detail;
             }
             this.project_manager.vector_db = new OLLMvector2.Database (
                 this.config,

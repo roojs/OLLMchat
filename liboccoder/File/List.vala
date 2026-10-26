@@ -161,6 +161,30 @@ namespace OLLMcoder.File
 				name_label.label = title;
 				file.bind_property("tooltip", name_label,
 					"tooltip-text", GLib.BindingFlags.SYNC_CREATE);
+				var host = (!) line.get_parent();
+				while (host.css_name != "row") {
+					host = (!) host.get_parent();
+				}
+				host.remove_css_class("selector-mark");
+				if (file.is_active) {
+					host.add_css_class("selector-mark");
+				}
+				host.set_data("active-watch", file.notify["is-active"].connect(() => {
+					if (file.is_active) {
+						host.add_css_class("selector-mark");
+						return;
+					}
+					host.remove_css_class("selector-mark");
+				}));
+			});
+			name_factory.unbind.connect((obj) => {
+				var row = (Gtk.ListItem) obj;
+				var host = (!) ((!) row.child).get_parent();
+				while (host.css_name != "row") {
+					host = (!) host.get_parent();
+				}
+				((OLLMfiles.File) row.item).disconnect(host.get_data<ulong>("active-watch"));
+				host.remove_css_class("selector-mark");
 			});
 			var size_factory = new Gtk.SignalListItemFactory();
 			size_factory.setup.connect((obj) => {
@@ -261,28 +285,9 @@ namespace OLLMcoder.File
 			var row_factory = new Gtk.SignalListItemFactory();
 			row_factory.bind.connect((obj) => {
 				var view_row = (Gtk.ColumnViewRow) obj;
-				var shown = (OLLMfiles.File) view_row.item;
-				var openable = shown.points_to_id != -1;
+				var openable = ((OLLMfiles.File) view_row.item).points_to_id != -1;
 				view_row.selectable = openable;
 				view_row.activatable = openable;
-				((Gtk.Widget) view_row).remove_css_class("selector-mark");
-				if (shown.is_active) {
-					((Gtk.Widget) view_row).add_css_class("selector-mark");
-				}
-				var active_watch = shown.notify["is-active"].connect(() => {
-					if (shown.is_active) {
-						((Gtk.Widget) view_row).add_css_class("selector-mark");
-						return;
-					}
-					((Gtk.Widget) view_row).remove_css_class("selector-mark");
-				});
-				view_row.set_data("active-watch", active_watch);
-			});
-			row_factory.unbind.connect((obj) => {
-				var view_row = (Gtk.ColumnViewRow) obj;
-				var shown = (OLLMfiles.File) view_row.item;
-				shown.disconnect(view_row.get_data<ulong>("active-watch"));
-				((Gtk.Widget) view_row).remove_css_class("selector-mark");
 			});
 			this.file_view = new Gtk.ColumnView(this.file_selection) {
 				hexpand = true,

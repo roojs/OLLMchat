@@ -21,11 +21,12 @@ namespace OLLMcoder
 	/**
 	 * Coder screen: header, editor, and the search bar along the bottom.
 	 *
-	 * The header is {@link ProjectSelector}, {@link File.Nav}, and
-	 * the editor save button.
-	 * The editor is {@link SourceView}. The project list is an
-	 * overlay on that editor. Project selection and search stay
-	 * here. A chosen file is opened on the editor.
+	 * The header is {@link ProjectSelector}, {@link File.Nav},
+	 * the editor save button, and the document toggle.
+	 * The editor is {@link SourceView}. A rendered file shows
+	 * the active {@link DocView} in that column instead. The project
+	 * list is an overlay on that column. Project selection and
+	 * search stay here. A chosen file is opened on the editor.
 	 * {@link SourceView.file_changed} updates the file button.
 	 * {@link SourceView.find} and {@link SourceView.find_again} drive
 	 * this search bar.
@@ -56,6 +57,7 @@ namespace OLLMcoder
 		public File.Nav files { get; private set; }
 
 		public SourceView editor { get; private set; }
+		private DocView doc;
 		private Gtk.SearchEntry search_entry;
 		private Gtk.Label search_results_label;
 		private Gtk.Button search_next_button;
@@ -102,17 +104,40 @@ namespace OLLMcoder
 			this.editor.save_button.add_css_class("flat");
 			this.editor.save_button.valign = Gtk.Align.CENTER;
 			header.append(this.editor.save_button);
+			var showing_doc = false;
+			var md_button = new Gtk.Button() {
+				icon_name = "document-print-symbolic",
+				tooltip_text = "Change to markdown",
+				hexpand = false,
+				valign = Gtk.Align.CENTER,
+				visible = false,
+			};
+			md_button.add_css_class("flat");
+			md_button.clicked.connect(() => {
+				if (showing_doc) {
+					showing_doc = false;
+					md_button.icon_name = "document-print-symbolic";
+					md_button.tooltip_text = "Change to markdown";
+					this.doc.visible = false;
+					this.editor.visible = true;
+					return;
+				}
+				var file = this.editor.current_file;
+				if (file == null) {
+					md_button.visible = false;
+					return;
+				}
+				showing_doc = true;
+				md_button.icon_name = "format-justify-left-symbolic";
+				md_button.tooltip_text = "Change to source view";
+				this.doc.show_file(file, false);
+				this.editor.visible = false;
+				this.doc.visible = true;
+			});
+			header.append(md_button);
 			this.files.notify["visible"].connect(() => {
 				spacer.visible = !this.files.visible;
 			});
-			var history = new Gtk.Button.from_icon_name("task-due") {
-				tooltip_text = "History",
-				hexpand = false,
-				valign = Gtk.Align.CENTER,
-				sensitive = false,
-			};
-			history.add_css_class("flat");
-			header.append(history);
 			this.projects.opened.connect(() => {
 				if (form == Form.PHONE) {
 					return;
@@ -215,6 +240,11 @@ namespace OLLMcoder
 				hexpand = true,
 				vexpand = true,
 			};
+			var markdown = new MarkdownView() {
+				visible = false,
+			};
+			this.doc = markdown;
+			editor_column.append(markdown);
 			editor_column.append(this.editor);
 			editor_column.append(search_bar);
 			var editor_layer = new Gtk.Overlay() {
@@ -264,6 +294,24 @@ namespace OLLMcoder
 				this.search_entry.text = "";
 				this.update_search_results();
 				search_bar.visible = true;
+				var is_markdown = file.language.down() == "markdown" ||
+					file.path_basename.down().has_suffix(".md") ||
+					file.path_basename.down().has_suffix(".markdown");
+				md_button.visible = is_markdown;
+				if (!is_markdown) {
+					showing_doc = false;
+					md_button.icon_name = "document-print-symbolic";
+					md_button.tooltip_text = "Change to markdown";
+					this.doc.visible = false;
+					this.editor.visible = true;
+					return;
+				}
+				showing_doc = true;
+				md_button.icon_name = "format-justify-left-symbolic";
+				md_button.tooltip_text = "Change to source view";
+				this.doc.show_file(file, true);
+				this.editor.visible = false;
+				this.doc.visible = true;
 			});
 			this.editor.find.connect(() => {
 				this.search_entry.grab_focus();
@@ -285,7 +333,11 @@ namespace OLLMcoder
 		 */
 		private void perform_search(string search_text)
 		{
-			if (this.editor.current_buffer == null) {
+			var search_buffer = this.editor.current_buffer;
+			if (this.doc.visible && this.editor.current_file != null) {
+				search_buffer = this.editor.current_file.buffer as GtkSource.Buffer;
+			}
+			if (search_buffer == null) {
 				this.search_context = null;
 				this.update_search_results();
 				return;
@@ -294,7 +346,7 @@ namespace OLLMcoder
 			search_settings.case_sensitive = this.case_sensitive_checkbox.active;
 			search_settings.regex_enabled = this.regex_checkbox.active;
 			search_settings.wrap_around = false;
-			this.search_context = new GtkSource.SearchContext(this.editor.current_buffer, search_settings);
+			this.search_context = new GtkSource.SearchContext(search_buffer, search_settings);
 			this.search_context.set_highlight(true);
 			var txt = search_text;
 			if (this.multiline_checkbox.active) {
@@ -339,6 +391,15 @@ namespace OLLMcoder
 		 */
 		private void forward_search()
 		{
+			if (this.doc.visible) {
+				var txt = this.search_entry.text;
+				if (this.multiline_checkbox.active) {
+					txt = txt.replace("\\n", "\n");
+				}
+				this.doc.show_match(txt, true,
+					this.case_sensitive_checkbox.active, this.regex_checkbox.active);
+				return;
+			}
 			if (this.editor.current_buffer == null || this.search_context == null) {
 				return;
 			}
@@ -363,6 +424,15 @@ namespace OLLMcoder
 		 */
 		private void backward_search()
 		{
+			if (this.doc.visible) {
+				var txt = this.search_entry.text;
+				if (this.multiline_checkbox.active) {
+					txt = txt.replace("\\n", "\n");
+				}
+				this.doc.show_match(txt, false,
+					this.case_sensitive_checkbox.active, this.regex_checkbox.active);
+				return;
+			}
 			if (this.editor.current_buffer == null || this.search_context == null) {
 				return;
 			}

@@ -243,11 +243,18 @@ namespace OLLMapp
 						return;
 
 					case "Banner.show":
-						this.banner_queue.add(notif.message);
+						var text = notif.message;
+						if (notif.object_type == "SearchFault" && notif.args.size >= 3) {
+							var detail = notif.args.get(2).get_string();
+							text = ((OLLMchat.Settings.SearchFault) notif.args.get(0).get_int()).text(
+								(OLLMchat.Settings.SearchSlot) notif.args.get(1).get_int(),
+								detail != null ? detail : "", this.app.config);
+						}
+						this.banner_queue.add(text);
 						if (this.tool_error_banner.revealed) {
 							return;
 						}
-						this.tool_error_banner.title = notif.message;
+						this.tool_error_banner.title = text;
 						this.tool_error_banner.revealed = true;
 						return;
 

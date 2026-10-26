@@ -32,6 +32,8 @@
  * === UI Components ===
  * 
  *  * SourceView: GTK SourceView widget wrapper for displaying and editing code
+ *  * DocView: Rendered view of one open file
+ *  * MarkdownView: Read-only markdown preview of one document
  *  * FileDropdown: Dropdown widget for selecting files
  *  * ProjectDropdown: Dropdown widget for selecting projects
  *  * SearchableDropdown: Base class for searchable dropdown widgets

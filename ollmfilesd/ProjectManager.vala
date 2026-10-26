@@ -334,10 +334,36 @@ namespace OLLMfilesd
 				yield this.vector_scan.open_vector_db ();
 			}
 			if (this.vector_db == null || this.vector_db.dimension == 0) {
-				this.notification(new OLLMrpc.Notification() {
-					method = "Banner.show",
-					message = "Codebase search model is unavailable. Update the tool model in Settings."
-				});
+				if (this.vector_scan.tool_fault != OLLMchat.Settings.SearchFault.NONE) {
+					this.notification(new OLLMrpc.Notification() {
+						method = "Banner.show",
+						object_type = "SearchFault",
+						args = OLLMrpc.args("iis",
+							(int) this.vector_scan.tool_fault,
+							(int) OLLMchat.Settings.SearchSlot.NONE,
+							"")
+					});
+				}
+				if (this.vector_scan.embed_fault != OLLMchat.Settings.SearchFault.NONE) {
+					this.notification(new OLLMrpc.Notification() {
+						method = "Banner.show",
+						object_type = "SearchFault",
+						args = OLLMrpc.args("iis",
+							(int) this.vector_scan.embed_fault,
+							(int) OLLMchat.Settings.SearchSlot.EMBED,
+							this.vector_scan.embed_detail)
+					});
+				}
+				if (this.vector_scan.analysis_fault != OLLMchat.Settings.SearchFault.NONE) {
+					this.notification(new OLLMrpc.Notification() {
+						method = "Banner.show",
+						object_type = "SearchFault",
+						args = OLLMrpc.args("iis",
+							(int) this.vector_scan.analysis_fault,
+							(int) OLLMchat.Settings.SearchSlot.ANALYSIS,
+							this.vector_scan.analysis_detail)
+					});
+				}
 			}
 			this.vector_scan.queue_project (project);
 

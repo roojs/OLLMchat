@@ -23,22 +23,33 @@ namespace OLLMvector2
 		internal Index? index = null;
 		private string filename;
 
-		public static async bool check_required_models_available (OLLMchat.Settings.Config2 config)
-		{
+		/**
+		 * Tool-level codebase-search fault, or NONE when the tool is
+		 * configured and enabled.
+		 *
+		 * Embed and analysis failures stay on those
+		 * {@link OLLMchat.Settings.ModelUsage} objects. Banner text
+		 * is not built here.
+		 *
+		 * @param config Application config
+		 * @return NONE when both required models were checked
+		 */
+		public static async OLLMchat.Settings.SearchFault check_required_models_available(
+			OLLMchat.Settings.Config2 config
+		) {
 			if (!config.tools.has_key ("codebase_search")) {
-				return false;
+				return OLLMchat.Settings.SearchFault.MISSING;
 			}
 			var tool_config = config.tools.get ("codebase_search") as VectorToolConfig;
-			if (tool_config == null || !tool_config.enabled) {
-				return false;
+			if (tool_config == null) {
+				return OLLMchat.Settings.SearchFault.UNREADABLE;
 			}
-			if (!(yield tool_config.embed.verify_model (config))) {
-				return false;
+			if (!tool_config.enabled) {
+				return OLLMchat.Settings.SearchFault.DISABLED;
 			}
-			if (!(yield tool_config.analysis.verify_model (config))) {
-				return false;
-			}
-			return true;
+			yield tool_config.embed.verify_model (config);
+			yield tool_config.analysis.verify_model (config);
+			return OLLMchat.Settings.SearchFault.NONE;
 		}
 
 		public Database (OLLMchat.Settings.Config2 config, string filename, int dimension) throws GLib.Error

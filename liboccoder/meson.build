@@ -28,6 +28,8 @@ occoder_src = files([
   'SourceView.vala',
   'SelectorPull.vala',
   'ProjectSelector.vala',
+  'DocView.vala',
+  'MarkdownView.vala',
   'CoderView.vala',
   'Folder/TreeStore.vala',
   'Folder/Tree.vala',
@@ -87,7 +89,7 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'liboctools'
 ])
 
-occoder_lib_deps = [occoder_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ocmarkdown_vapi_dep, ocrpc_vapi_dep]
+occoder_lib_deps = [occoder_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ocmarkdown_vapi_dep, ocmarkdowngtk_vapi_dep, ocrpc_vapi_dep]
 occoder_vala_args = [
   '--pkg=sqlite3',
   '--pkg=ocsqlite',
@@ -100,10 +102,12 @@ occoder_vala_args = [
   '--pkg=ollmchat',
   '--pkg=ollamaweb',
   '--pkg=ocmarkdown',
+  '--pkg=ocmarkdowngtk',
   '--pkg=ocrpc',
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
   '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -112,6 +116,7 @@ occoder_vala_args = [
   '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--girdir', meson.current_build_dir() / '..' / 'libocfiles',
   '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--girdir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
 ]
 
@@ -125,7 +130,8 @@ if is_android_cross
     include_directories: [
       include_directories('..' / 'libollmchat'),
       include_directories('..' / 'libollamaweb'),
-      include_directories('..' / 'libocfiles')     # For C headers (build directory)
+      include_directories('..' / 'libocfiles'),     # For C headers (build directory)
+      include_directories('..' / 'libocmarkdowngtk')
     ],
     vala_args: occoder_vala_args,
     install: true
@@ -141,7 +147,8 @@ else
     include_directories: [
       include_directories('..' / 'libollmchat'),
       include_directories('..' / 'libollamaweb'),
-      include_directories('..' / 'libocfiles')     # For C headers (build directory)
+      include_directories('..' / 'libocfiles'),     # For C headers (build directory)
+      include_directories('..' / 'libocmarkdowngtk')
     ],
     vala_args: occoder_vala_args,
     install: true
@@ -157,6 +164,7 @@ occoder_vapi_gen_pkgs = [
   '--pkg', 'ollmchat',
   '--pkg', 'ollamaweb',
   '--pkg', 'ocmarkdown',
+  '--pkg', 'ocmarkdowngtk',
   '--pkg', 'gtk4',
   '--pkg', 'libadwaita-1',
   '--pkg', 'gtksourceview-5',
@@ -177,6 +185,7 @@ occoder_vapi_vapidirs = [
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   '--vapidir', meson.current_build_dir(),
   '--vapidir', '/usr/share/vala/vapi',
 ]
@@ -185,7 +194,7 @@ if is_android_cross
   occoder_vapi_gen_pkgs += ['--define', 'ANDROID']
 endif
 
-occoder_vapi_depends = [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ollamaweb_vapi, ocmarkdown_vapi, ocrpc_vapi]
+occoder_vapi_depends = [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ollamaweb_vapi, ocmarkdown_vapi, ocmarkdowngtk_vapi, ocrpc_vapi]
 
 # Manually generate occoder.vapi with correct command line order
 occoder_vapi = custom_target('occoder-vapi',
@@ -223,6 +232,7 @@ if g_ir_compiler.found()
       '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
       '--includedir', meson.current_build_dir() / '..' / 'libocfiles',
       '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
+      '--includedir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
       '--includedir', meson.current_build_dir() / '..' / 'libollmchat',
       '--includedir', '/usr/share/gir-1.0',
     ],

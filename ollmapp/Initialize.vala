@@ -231,41 +231,52 @@ namespace OLLMapp
 		 * Iterates through all tool configs that implement
 		 * RequiresModelsInterface, collects required models via
 		 * required_models(), and verifies they are on the server.
-		 * Missing models emit a Banner.show notification; init continues.
+		 * Missing models emit a Banner.show notification carrying a
+		 * {@link OLLMchat.Settings.SearchFault}. The banner renders
+		 * the text. Init continues.
 		 *
 		 * @param config The Config2 instance
 		 * @return always true after the check
 		 */
 		private async bool ensure_required_models(OLLMchat.Settings.Config2 config) throws GLib.Error
 		{
-			var required_models = new Gee.ArrayList<OLLMchat.Settings.ModelUsage>();
-			
-			// Collect required models from all tool configs that implement RequiresModelsInterface
 			foreach (var tool_config_entry in config.tools.entries) {
-				var tool_config = tool_config_entry.value;
-				
-				if (tool_config is OLLMchat.Settings.RequiresModelsInterface) {
-					var requires_models = tool_config as OLLMchat.Settings.RequiresModelsInterface;
-					required_models.add_all(requires_models.required_models());
-				}
-			}
-			
-			if (required_models.size == 0) {
-				return true;  // No required models
-			}
-			
-			foreach (var model_usage in required_models) {
-				if (yield model_usage.verify_model(config)) {
+				if (!(tool_config_entry.value is OLLMchat.Settings.RequiresModelsInterface)) {
 					continue;
 				}
-				this.window.notification(new OLLMrpc.Notification() {
-					method = "Banner.show",
-					message = "Required tool model not available: "
-						+ model_usage.model
-						+ ". Update the tool model in Settings."
-				});
+				var requires_models = tool_config_entry.value as OLLMchat.Settings.RequiresModelsInterface;
+				foreach (var model_usage in requires_models.required_models()) {
+					if (yield model_usage.verify_model(config)) {
+						continue;
+					}
+					var slot = OLLMchat.Settings.SearchSlot.NONE;
+					var embed_prop = tool_config_entry.value.get_class().find_property("embed");
+					if (embed_prop != null &&
+						embed_prop.value_type.is_a(typeof(OLLMchat.Settings.ModelUsage))) {
+						var held = Value(embed_prop.value_type);
+						((GLib.Object) tool_config_entry.value).get_property("embed", ref held);
+						if (held.get_object() == model_usage) {
+							slot = OLLMchat.Settings.SearchSlot.EMBED;
+						}
+					}
+					var analysis_prop = tool_config_entry.value.get_class().find_property("analysis");
+					if (slot == OLLMchat.Settings.SearchSlot.NONE &&
+						analysis_prop != null &&
+						analysis_prop.value_type.is_a(typeof(OLLMchat.Settings.ModelUsage))) {
+						var held = Value(analysis_prop.value_type);
+						((GLib.Object) tool_config_entry.value).get_property("analysis", ref held);
+						if (held.get_object() == model_usage) {
+							slot = OLLMchat.Settings.SearchSlot.ANALYSIS;
+						}
+					}
+					this.window.notification(new OLLMrpc.Notification() {
+						method = "Banner.show",
+						object_type = "SearchFault",
+						args = OLLMrpc.args("iis",
+							(int) model_usage.fault, (int) slot, model_usage.detail)
+					});
+				}
 			}
-			
 			return true;
 		}
 		
