@@ -16,11 +16,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder
 {
 	/**
 	 * Phone and tablet pull-over shared by {@link ProjectSelector}
-	 * and {@link FilePullout}.
+	 * and {@link File.Pullout}.
 	 *
 	 * Back arrow, title, the current selection, a page stack, and
 	 * search at the bottom. The phone file page adds a close button
@@ -35,7 +35,7 @@ namespace OLLMapp
 	 * cover.add_overlay(pull);
 	 * }}}
 	 */
-	class SelectorPull : Gtk.Box
+	public class SelectorPull : Gtk.Box
 	{
 		/**
 		 * Which page search applies to: ''project'' or ''file''.

@@ -18,970 +18,807 @@
 
 namespace OLLMcoder
 {
-	/**
-	 * Source view component with code editor.
-	 * 
-	 * Provides a code editor with project and file selection dropdowns.
-	 * Manages buffer switching, language detection, and state persistence.
-	 * 
-	 * FIXME: Error handling and user interaction
-	 * ===========================================
-	 * Currently, many operations that can fail (file reading, database operations, etc.)
-	 * silently fail or only log warnings. We need proper error handling with user
-	 * interaction (dialogs, notifications) for:
-	 * - File read/write failures
-	 * - Database operation failures
-	 * - File system errors
-	 * - Buffer modification conflicts
-	 * - Session restoration failures
-	 * 
-	 * Operations like refresh_file(), restore_active_state(), and file loading should
-	 * provide user feedback and allow recovery/retry options.
-	 */
-	public class SourceView : Gtk.Box
-	{
-		public OLLMfiles.ProjectManager manager { get; private set; }
-		private ProjectDropdown project_dropdown;
-		private FileDropdown file_dropdown;
-		private Gtk.Button save_button;
-		private Approvals? approvals = null;
-		private OLLMcoder.Diff.ReviewBar review_bar;
-		private Gtk.TextTagTable diff_tag_table {
-				 get; set; default = new Gtk.TextTagTable(); }
-		private GtkSource.Buffer? diff_buffer = null;
-		private GtkSource.Buffer? pre_diff_buffer = null;
-		private Gee.ArrayList<int> diff_baseline {  get; set; default = new Gee.ArrayList<int>(); }
-		private Gee.ArrayList<int> diff_remove_at { get; set; default = new Gee.ArrayList<int>(); }
-		private Gee.ArrayList<int> diff_remove_n { get; set; default = new Gee.ArrayList<int>(); }
-		private GtkSource.GutterRendererText baseline_gutter {
-			get; set; default = new GtkSource.GutterRendererText();
-		}
-		private bool diff_active = false;
-		private GtkSource.View source_view;
-		private Gtk.ScrolledWindow scrolled_window;
-		private Gtk.CssProvider font_css { get; set; default = new Gtk.CssProvider(); }
-		private double source_font_px = 14;
-		private double pinch_origin = 14;
-		// ANDROID ONLY
-		private Adw.ToastOverlay phone_toast;
-		private Gtk.GestureLongPress phone_hold;
-		private Gtk.GestureClick phone_tap;
-		private bool phone_watch = false;
-		
 		/**
-		* Timeout source for debouncing scroll position saves.
-		*/
-		private uint scroll_save_timeout_id = 0;
-		
-		/**
-		* Search-related components.
-		*/
-		private Gtk.Box search_bar;
-		private Gtk.SearchEntry search_entry;
-		private Gtk.Label search_results_label;
-		private Gtk.Button search_next_button;
-		private Gtk.Button search_back_button;
-		private GtkSource.SearchContext? search_context = null;
-		private int last_search_end = 0;
-		private Gtk.CheckButton case_sensitive_checkbox;
-		private Gtk.CheckButton regex_checkbox;
-		private Gtk.CheckButton multiline_checkbox;
-			
-		/**
-		 * Currently active file.
-		 */
-		public OLLMfiles.File? current_file { get; private set; default = null; }
-		
-		/**
-		 * Currently active project (folder with is_project = true).
-		 */
-		public OLLMfiles.Folder? current_project {
-			get { return this.manager.active_project; }
-		}
-		
-		/**
-		 * Current buffer.
-		 */
-		public GtkSource.Buffer? current_buffer {
-			get { return this.source_view.buffer as GtkSource.Buffer; }
-		}
-		
-		/**
-		 * Signal handler ID for delete_id notification on current file.
-		 * Used to disconnect the handler when switching files.
-		 */
-		private ulong? delete_id_handler_id = null;
-		
-		/**
-		 * Constructor.
+		 * Editor buffer, gutter, diff, and review bar for the test app.
+		 *
+		 * Project and file selection stay on {@link CoderView}. This editor
+		 * emits {@link file_changed} when the open file changes. It does not
+		 * open projects or build a project dropdown.
+		 * Manages buffer switching, language detection, and state persistence.
 		 * 
-		 * @param manager The ProjectManager instance (required)
+		 * FIXME: Error handling and user interaction
+		 * ===========================================
+		 * Currently, many operations that can fail (file reading, database operations, etc.)
+		 * silently fail or only log warnings. We need proper error handling with user
+		 * interaction (dialogs, notifications) for:
+		 * - File read/write failures
+		 * - Database operation failures
+		 * - File system errors
+		 * - Buffer modification conflicts
+		 * - Session restoration failures
+		 * 
+		 * Operations like refresh_file(), restore_active_state(), and file loading should
+		 * provide user feedback and allow recovery/retry options.
 		 */
-		public SourceView(OLLMfiles.ProjectManager manager)
+	public class SourceView : Gtk.Box
 		{
-			Object(orientation: Gtk.Orientation.VERTICAL);
-			this.manager = manager;
+			public OLLMfiles.ProjectManager manager { get; private set; }
+			/**
+			 * Save the open file. Packed by {@link CoderView} on the
+			 * top header, next to the file name. Disabled until a file
+			 * is open.
+			 */
+			public Gtk.Button save_button { get; private set; }
+			private OLLMcoder.Diff.ReviewBar review_bar;
+			private Gtk.TextTagTable diff_tag_table {
+					 get; set; default = new Gtk.TextTagTable(); 
+			}
+			private GtkSource.Buffer? diff_buffer = null;
+			private GtkSource.Buffer? pre_diff_buffer = null;
+			private Gee.ArrayList<int> diff_baseline {  get; set; default = new Gee.ArrayList<int>(); }
+			private Gee.ArrayList<int> diff_remove_at { get; set; default = new Gee.ArrayList<int>(); }
+			private Gee.ArrayList<int> diff_remove_n { get; set; default = new Gee.ArrayList<int>(); }
+			private GtkSource.GutterRendererText baseline_gutter {
+				get; set; default = new GtkSource.GutterRendererText();
+			}
+			private bool diff_active = false;
+			public GtkSource.View source_view { get; private set; }
+			private Gtk.ScrolledWindow scrolled_window;
+			private Gtk.CssProvider font_css { get; set; default = new Gtk.CssProvider(); }
+			private double source_font_px = 14;
+			private double pinch_origin = 14;
+			// ANDROID ONLY
+			private Adw.ToastOverlay phone_toast;
+			private Gtk.GestureLongPress phone_hold;
+			private Gtk.GestureClick phone_tap;
+			private bool phone_watch = false;
 		
-			// Create header bar with dropdowns
-			var header_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-				margin_start = 5,
-				margin_end = 5,
-				margin_top = 0,
-				margin_bottom = 0
-			};
+			/**
+			* Timeout source for debouncing scroll position saves.
+			*/
+			private uint scroll_save_timeout_id = 0;
+
+			/**
+			 * Currently active file.
+			 */
+			public OLLMfiles.File? current_file { get; private set; default = null; }
+
+			/**
+			 * Emitted when the open file changes.
+			 *
+			 * {@link CoderView} owns project and file selection and listens
+			 * here. The editor does not activate a project.
+			 *
+			 * @param file File now shown
+			 */
+			public signal void file_changed(OLLMfiles.File file);
+
+			/**
+			 * Emitted for Ctrl+F.
+			 */
+			public signal void find();
+
+			/**
+			 * Emitted for Ctrl+G.
+			 *
+			 * @param back true for Ctrl+Shift+G
+			 */
+			public signal void find_again(bool back);
+
+			/**
+			 * Current buffer.
+			 */
+			public GtkSource.Buffer? current_buffer {
+				get { return this.source_view.buffer as GtkSource.Buffer; }
+			}
+		
+			/**
+			 * Signal handler ID for delete_id notification on current file.
+			 * Used to disconnect the handler when switching files.
+			 */
+			private ulong? delete_id_handler_id = null;
+		
+			/**
+			 * Constructor.
+			 * 
+			 * @param manager The ProjectManager instance (required)
+			 */
+			public SourceView(OLLMfiles.ProjectManager manager)
+			{
+				Object(orientation: Gtk.Orientation.VERTICAL);
+				this.manager = manager;
 			
-			// Project dropdown (left-aligned)
-			this.project_dropdown = new ProjectDropdown(this.manager);
-			this.project_dropdown.project_selected.connect(this.on_project_selected);
-			// When active project is set elsewhere (e.g. session restore), sync dropdown via existing apply_manager_state
-			this.manager.active_project_changed.connect((project) => this.apply_manager_state.begin());
-			header_bar.append(this.project_dropdown);
-			
-			// File dropdown (next to project)
-			this.file_dropdown = new FileDropdown();
-			this.file_dropdown.file_selected.connect(this.on_file_selected);
-			// Hide file dropdown initially (no project selected)
-			this.file_dropdown.visible = false;
-			header_bar.append(this.file_dropdown);
-			this.manager.notification.connect((notif) => {
-				if (notif.method != "event.project.invalidate_cache"
-					|| this.manager.active_project == null
-					|| notif.message != this.manager.active_project.path) {
-					return;
-				}
-				this.file_dropdown.refresh.begin();
-				if (this.current_file == null) {
-					return;
-				}
-				var file = this.current_file;
-				file.check_changed.begin((obj, res) => {
-					if (file.check_changed.end(res) == OLLMfiles.FileUpdateStatus.NO_CHANGE
-						|| this.current_file != file
-						|| file.buffer.is_modified) {
+				this.manager.notification.connect((notif) => {
+					if (notif.method != "event.project.invalidate_cache"
+						|| this.manager.active_project == null
+						|| notif.message != this.manager.active_project.path) {
 						return;
 					}
-					this.save_current_file_state();
-					file.read.begin((read_obj, read_res) => {
-						file.read.end(read_res);
-						if (this.current_file != file) {
+					if (this.current_file == null) {
+						return;
+					}
+					var file = this.current_file;
+					file.check_changed.begin((obj, res) => {
+						if (file.check_changed.end(res) == OLLMfiles.FileUpdateStatus.NO_CHANGE
+							|| this.current_file != file
+							|| file.buffer.is_modified) {
 							return;
 						}
-						if (this.diff_active) {
-							this.clear_diff();
-						}
-						this.source_view.set_buffer(file.buffer as GtkSource.Buffer);
-						if (this.manager.review_files.file_map.has_key(file.path)) {
-							this.show_pending_diff.begin(file);
-							return;
-						}
-						this.restore_cursor_position(file);
-						this.restore_scroll_position(file);
+						this.save_current_file_state();
+						file.read.begin((read_obj, read_res) => {
+							file.read.end(read_res);
+							if (this.current_file != file) {
+								return;
+							}
+							if (this.diff_active) {
+								this.clear_diff();
+							}
+							this.source_view.set_buffer(file.buffer as GtkSource.Buffer);
+							if (this.manager.review_files.file_map.has_key(file.path)) {
+								this.show_pending_diff.begin(file);
+								return;
+							}
+							this.restore_cursor_position(file);
+							this.restore_scroll_position(file);
+						});
 					});
 				});
-			});
 			
-			// Spacer to push save button to the right
-			var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-				hexpand = true
-			};
-			header_bar.append(spacer);
-			
-			// Save button (right-aligned)
-			this.save_button = new Gtk.Button.from_icon_name("media-floppy") {
-				tooltip_text = "Save file",
-				hexpand = false,
-				sensitive = false  // Disabled until file is open
-			};
-			this.save_button.clicked.connect(() => {
-				this.save_file.begin();
-			});
-			header_bar.append(this.save_button);
-			this.manager.review_files.refreshed.connect(() => {
-				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
-				rows.add_all(this.manager.review_files.file_map.values);
-				this.review_bar.sync_pending(rows, this.current_file);
-				if (this.review_bar.queue.size < 1) {
-					return;
-				}
-				if (this.current_file != null
-					&& this.manager.review_files.file_map.has_key(this.current_file.path)) {
-					this.show_pending_diff.begin(this.current_file);
-					return;
-				}
-				var first = this.review_bar.queue.get(0).path;
-				var cached = this.manager.file_cache.get(first) as OLLMfiles.File;
-				if (cached != null) {
-					this.open_file.begin(cached);
-					return;
-				}
-				if (this.manager.active_project == null) {
-					return;
-				}
-				this.manager.active_project.fetch_file.begin(first, (obj, res) => {
-					var file = this.manager.active_project.fetch_file.end(res);
-					if (file == null) {
+				this.save_button = new Gtk.Button.from_icon_name("media-floppy") {
+					tooltip_text = "Save file",
+					hexpand = false,
+					sensitive = false
+				};
+				this.save_button.clicked.connect(() => {
+					this.save_file.begin();
+				});
+
+				this.manager.review_files.refreshed.connect(() => {
+					var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+					rows.add_all(this.manager.review_files.file_map.values);
+					this.review_bar.sync_pending(rows, this.current_file);
+					if (this.review_bar.queue.size < 1) {
 						return;
 					}
 					if (this.current_file != null
 						&& this.manager.review_files.file_map.has_key(this.current_file.path)) {
+						this.show_pending_diff.begin(this.current_file);
 						return;
 					}
-					this.open_file.begin(file);
+					var first = this.review_bar.queue.get(0).path;
+					var cached = this.manager.file_cache.get(first) as OLLMfiles.File;
+					if (cached != null) {
+						this.open_file.begin(cached);
+						return;
+					}
+					if (this.manager.active_project == null) {
+						return;
+					}
+					this.manager.active_project.fetch_file.begin(first, (obj, res) => {
+						var file = this.manager.active_project.fetch_file.end(res);
+						if (file == null) {
+							return;
+						}
+						if (this.current_file != null
+							&& this.manager.review_files.file_map.has_key(this.current_file.path)) {
+							return;
+						}
+						this.open_file.begin(file);
+					});
 				});
-			});
 			
-			this.append(header_bar);
+				// Create ScrolledWindow for code editor
+				this.scrolled_window = new Gtk.ScrolledWindow() {
+					hexpand = true,
+					vexpand = true
+				};
 			
-			// Create ScrolledWindow for code editor
-			this.scrolled_window = new Gtk.ScrolledWindow() {
-				hexpand = true,
-				vexpand = true
-			};
-			
-			// Create SourceView
-			this.source_view = new GtkSource.View() {
-				editable = true,
-				cursor_visible = true,
-				show_line_numbers = true,
-				highlight_current_line = true,
-				show_line_marks = true,
-				wrap_mode = Gtk.WrapMode.NONE,
-				hexpand = true,
-				vexpand = true
-			};
-			// Add CSS class for monospace font styling
-			this.source_view.add_css_class("source-view");
-			this.font_css.load_from_string(".source-view { font-size: 14px; }");
-			Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),
-				this.font_css, Gtk.STYLE_PROVIDER_PRIORITY_USER);
-			var pinch = new Gtk.GestureZoom();
-			pinch.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-			pinch.begin.connect((sequence) => {
-				this.pinch_origin = this.source_font_px;
-			});
-			pinch.scale_changed.connect((scale) => {
-				this.source_font_px = (this.pinch_origin * scale).clamp(8.0, 64.0);
-				this.font_css.load_from_string(".source-view { font-size: %dpx; }".printf(
-					(int) (this.source_font_px + 0.5)));
-			});
-			this.source_view.add_controller(pinch);
-			var font_wheel = new Gtk.EventControllerScroll(
-				Gtk.EventControllerScrollFlags.VERTICAL | Gtk.EventControllerScrollFlags.DISCRETE);
-			font_wheel.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-			font_wheel.scroll.connect((dx, dy) => {
-				if ((font_wheel.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK) == 0 
-					|| dy == 0) {
-					return false;
-				}
-				this.source_font_px = (this.source_font_px - dy * 2).clamp(8.0, 64.0);
-				this.font_css.load_from_string(".source-view { font-size: %dpx; }".printf(
-					(int) (this.source_font_px + 0.5)));
-				return true;
-			});
-			this.scrolled_window.add_controller(font_wheel);
-			this.diff_tag_table.add(new Gtk.TextTag("diff-add") {
-				paragraph_background_rgba = Gdk.RGBA() {
-					red = 0.75f,
-					green = 0.95f,
-					blue = 0.75f,
-					alpha = 1.0f
-				}
-			});
-			this.diff_tag_table.add(new Gtk.TextTag("diff-remove") {
-				paragraph_background_rgba = Gdk.RGBA() {
-					red = 0.95f,
-					green = 0.75f,
-					blue = 0.75f,
-					alpha = 1.0f
-				},
-				editable = false
-			});
-			this.baseline_gutter.xalign = 1.0f;
-			this.baseline_gutter.xpad = 4;
-			this.baseline_gutter.query_data.connect((lines, line) => {
-				if (!this.diff_active || (int) line >= this.diff_baseline.size
-					|| this.diff_baseline.get((int) line) <= 0) {
-					this.baseline_gutter.set_text("", -1);
-					return;
-				}
-				this.baseline_gutter.set_text(this.diff_baseline.get((int) line).to_string(), -1);
-			});
-			this.source_view.get_gutter(Gtk.TextWindowType.LEFT).insert(this.baseline_gutter, -40);
-			
-			// Enable whitespace display
-			this.source_view.get_space_drawer().set_matrix(null);
-			this.source_view.get_space_drawer().set_types_for_locations(
-				GtkSource.SpaceLocationFlags.ALL,
-				GtkSource.SpaceTypeFlags.ALL
-			);
-			this.source_view.get_space_drawer().set_enable_matrix(true);
-			// Set tab width to 4 spaces (fixed)
-			this.source_view.tab_width = 4;
-			
-			this.scrolled_window.set_child(this.source_view);
-			// Hide sourceview initially until a file is opened
-			this.scrolled_window.visible = false;
-			this.review_bar = new OLLMcoder.Diff.ReviewBar(this);
-			this.review_bar.visible = false;
-			this.review_bar.responses(new Gee.ArrayList<OLLMcoder.Diff.ReviewResponse>());
-			var editor_overlay = new Gtk.Overlay() {
-				vexpand = true,
-				hexpand = true,
-			};
-			editor_overlay.set_child(this.scrolled_window);
-			editor_overlay.add_overlay(this.review_bar.review_overlay);
-#if ANDROID
-			this.source_view.editable = false;
-			this.source_view.cursor_visible = false;
-			this.source_view.focus_on_click = false;
-			this.source_view.focusable = false;
-			this.source_view.can_focus = false;
-			this.phone_toast = new Adw.ToastOverlay() {
-				vexpand = true,
-				hexpand = true
-			};
-			this.phone_toast.set_child(editor_overlay);
-			this.append(this.phone_toast);
-			this.phone_hold = new Gtk.GestureLongPress();
-			this.phone_hold.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-			this.phone_hold.begin.connect((sequence) => {
-				if (this.source_view.editable || this.diff_active) {
-					this.phone_hold.set_state(Gtk.EventSequenceState.DENIED);
-					return;
-				}
-				if (this.current_file != null && this.current_file.delete_id > 0) {
-					this.phone_hold.set_state(Gtk.EventSequenceState.DENIED);
-				}
-			});
-			this.phone_hold.pressed.connect((x, y) => {
-				if (this.source_view.editable || this.diff_active) {
-					return;
-				}
-				if (this.current_file != null && this.current_file.delete_id > 0) {
-					return;
-				}
-				var bx = 0;
-				var by = 0;
-				this.source_view.window_to_buffer_coords(
-					Gtk.TextWindowType.WIDGET, (int) x, (int) y, out bx, out by);
-				Gtk.TextIter at;
-				if (this.source_view.get_iter_at_location(out at, bx, by)) {
-					this.source_view.buffer.place_cursor(at);
-				}
-				this.source_view.focusable = true;
-				this.source_view.focus_on_click = true;
-				this.source_view.can_focus = true;
-				this.source_view.editable = true;
-				this.source_view.cursor_visible = true;
-				this.source_view.grab_focus();
-			});
-			this.source_view.add_controller(this.phone_hold);
-			this.phone_tap = new Gtk.GestureClick();
-			this.phone_tap.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-			this.phone_tap.begin.connect((sequence) => {
-				if (!this.source_view.editable) {
-					return;
-				}
-				this.phone_tap.set_state(Gtk.EventSequenceState.DENIED);
-			});
-			this.source_view.add_controller(this.phone_tap);
-			this.map.connect(() => {
-				if (this.source_view.editable || this.diff_active) {
-					return;
-				}
-				if (this.current_file == null || this.current_file.delete_id > 0) {
-					return;
-				}
-				this.phone_toast.add_toast(new Adw.Toast("Long hold to start editing") {
-					timeout = 3
+				// Create SourceView
+				this.source_view = new GtkSource.View() {
+					editable = true,
+					cursor_visible = true,
+					show_line_numbers = true,
+					highlight_current_line = true,
+					show_line_marks = true,
+					wrap_mode = Gtk.WrapMode.NONE,
+					hexpand = true,
+					vexpand = true
+				};
+				// Add CSS class for monospace font styling
+				this.source_view.add_css_class("source-view");
+				this.font_css.load_from_string(".source-view { font-size: 14px; }");
+				Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),
+					this.font_css, Gtk.STYLE_PROVIDER_PRIORITY_USER);
+				var pinch = new Gtk.GestureZoom();
+				pinch.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+				pinch.begin.connect((sequence) => {
+					this.pinch_origin = this.source_font_px;
 				});
-			});
-			this.map.connect(() => {
-				if (this.phone_watch) {
-					return;
-				}
-				this.phone_watch = true;
-				var root = (Gtk.Widget) this.get_root();
-				var watch = new Gtk.EventControllerLegacy();
-				watch.propagation_phase = Gtk.PropagationPhase.BUBBLE;
-				watch.event.connect((event) => {
-					switch (event.get_event_type()) {
-					case Gdk.EventType.BUTTON_RELEASE:
-					case Gdk.EventType.TOUCH_END:
-						break;
-					default:
+				pinch.scale_changed.connect((scale) => {
+					this.source_font_px = (this.pinch_origin * scale).clamp(8.0, 64.0);
+					this.font_css.load_from_string(".source-view { font-size: %dpx; }".printf(
+						(int) (this.source_font_px + 0.5)));
+				});
+				this.source_view.add_controller(pinch);
+				var font_wheel = new Gtk.EventControllerScroll(
+					Gtk.EventControllerScrollFlags.VERTICAL | Gtk.EventControllerScrollFlags.DISCRETE);
+				font_wheel.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+				font_wheel.scroll.connect((dx, dy) => {
+					if ((font_wheel.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK) == 0 
+						|| dy == 0) {
 						return false;
 					}
+					this.source_font_px = (this.source_font_px - dy * 2).clamp(8.0, 64.0);
+					this.font_css.load_from_string(".source-view { font-size: %dpx; }".printf(
+						(int) (this.source_font_px + 0.5)));
+					return true;
+				});
+				this.scrolled_window.add_controller(font_wheel);
+				this.diff_tag_table.add(new Gtk.TextTag("diff-add") {
+					paragraph_background_rgba = Gdk.RGBA() {
+						red = 0.75f,
+						green = 0.95f,
+						blue = 0.75f,
+						alpha = 1.0f
+					}
+				});
+				this.diff_tag_table.add(new Gtk.TextTag("diff-remove") {
+					paragraph_background_rgba = Gdk.RGBA() {
+						red = 0.95f,
+						green = 0.75f,
+						blue = 0.75f,
+						alpha = 1.0f
+					},
+					editable = false
+				});
+				this.baseline_gutter.xalign = 1.0f;
+				this.baseline_gutter.xpad = 4;
+				this.baseline_gutter.query_data.connect((lines, line) => {
+					if (!this.diff_active || (int) line >= this.diff_baseline.size
+						|| this.diff_baseline.get((int) line) <= 0) {
+						this.baseline_gutter.set_text("", -1);
+						return;
+					}
+					this.baseline_gutter.set_text(this.diff_baseline.get((int) line).to_string(), -1);
+				});
+				this.source_view.get_gutter(Gtk.TextWindowType.LEFT).insert(this.baseline_gutter, -40);
+			
+				// Enable whitespace display
+				this.source_view.get_space_drawer().set_matrix(null);
+				this.source_view.get_space_drawer().set_types_for_locations(
+					GtkSource.SpaceLocationFlags.ALL,
+					GtkSource.SpaceTypeFlags.ALL
+				);
+				this.source_view.get_space_drawer().set_enable_matrix(true);
+				// Set tab width to 4 spaces (fixed)
+				this.source_view.tab_width = 4;
+			
+				this.scrolled_window.set_child(this.source_view);
+				// Hide sourceview initially until a file is opened
+				this.scrolled_window.visible = false;
+				this.review_bar = new OLLMcoder.Diff.ReviewBar(this);
+				this.review_bar.visible = false;
+				this.review_bar.responses(new Gee.ArrayList<OLLMcoder.Diff.ReviewResponse>());
+				var editor_overlay = new Gtk.Overlay() {
+					vexpand = true,
+					hexpand = true,
+				};
+				editor_overlay.set_child(this.scrolled_window);
+				editor_overlay.add_overlay(this.review_bar.review_overlay);
+	#if ANDROID
+				this.source_view.editable = false;
+				this.source_view.cursor_visible = false;
+				this.source_view.focus_on_click = false;
+				this.source_view.focusable = false;
+				this.source_view.can_focus = false;
+				this.phone_toast = new Adw.ToastOverlay() {
+					vexpand = true,
+					hexpand = true
+				};
+				this.phone_toast.set_child(editor_overlay);
+				this.append(this.phone_toast);
+				this.phone_hold = new Gtk.GestureLongPress();
+				this.phone_hold.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+				this.phone_hold.begin.connect((sequence) => {
+					if (this.source_view.editable || this.diff_active) {
+						this.phone_hold.set_state(Gtk.EventSequenceState.DENIED);
+						return;
+					}
+					if (this.current_file != null && this.current_file.delete_id > 0) {
+						this.phone_hold.set_state(Gtk.EventSequenceState.DENIED);
+					}
+				});
+				this.phone_hold.pressed.connect((x, y) => {
+					if (this.source_view.editable || this.diff_active) {
+						return;
+					}
+					if (this.current_file != null && this.current_file.delete_id > 0) {
+						return;
+					}
+					var bx = 0;
+					var by = 0;
+					this.source_view.window_to_buffer_coords(
+						Gtk.TextWindowType.WIDGET, (int) x, (int) y, out bx, out by);
+					Gtk.TextIter at;
+					if (this.source_view.get_iter_at_location(out at, bx, by)) {
+						this.source_view.buffer.place_cursor(at);
+					}
+					this.source_view.focusable = true;
+					this.source_view.focus_on_click = true;
+					this.source_view.can_focus = true;
+					this.source_view.editable = true;
+					this.source_view.cursor_visible = true;
+					this.source_view.grab_focus();
+				});
+				this.source_view.add_controller(this.phone_hold);
+				this.phone_tap = new Gtk.GestureClick();
+				this.phone_tap.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+				this.phone_tap.begin.connect((sequence) => {
 					if (!this.source_view.editable) {
-						return false;
+						return;
 					}
-					var x = 0.0;
-					var y = 0.0;
-					event.get_position(out x, out y);
-					var picked = root.pick(x, y, Gtk.PickFlags.DEFAULT);
-					for (var w = picked; w != null; w = w.get_parent()) {
-						if (w == this.source_view || w == this.scrolled_window) {
+					this.phone_tap.set_state(Gtk.EventSequenceState.DENIED);
+				});
+				this.source_view.add_controller(this.phone_tap);
+				this.map.connect(() => {
+					if (this.source_view.editable || this.diff_active) {
+						return;
+					}
+					if (this.current_file == null || this.current_file.delete_id > 0) {
+						return;
+					}
+					this.phone_toast.add_toast(new Adw.Toast("Long hold to start editing") {
+						timeout = 3
+					});
+				});
+				this.map.connect(() => {
+					if (this.phone_watch) {
+						return;
+					}
+					this.phone_watch = true;
+					var root = (Gtk.Widget) this.get_root();
+					var watch = new Gtk.EventControllerLegacy();
+					watch.propagation_phase = Gtk.PropagationPhase.BUBBLE;
+					watch.event.connect((event) => {
+						switch (event.get_event_type()) {
+							case Gdk.EventType.BUTTON_RELEASE:
+							case Gdk.EventType.TOUCH_END:
+								break;
+
+							default:
+								return false;
+						}
+						if (!this.source_view.editable) {
 							return false;
 						}
+						var x = 0.0;
+						var y = 0.0;
+						event.get_position(out x, out y);
+						var picked = root.pick(x, y, Gtk.PickFlags.DEFAULT);
+						for (var w = picked; w != null; w = w.get_parent()) {
+							if (w == this.source_view || w == this.scrolled_window) {
+								return false;
+							}
+						}
+						this.source_view.editable = false;
+						this.source_view.cursor_visible = false;
+						this.source_view.focus_on_click = false;
+						this.source_view.focusable = false;
+						this.source_view.can_focus = false;
+						((Gtk.Root) root).set_focus(null);
+						this.phone_toast.add_toast(new Adw.Toast("View mode. Long hold to edit.") {
+							timeout = 3
+						});
+						return false;
+					});
+					root.add_controller(watch);
+				});
+	#else
+				this.append(editor_overlay);
+	#endif
+				this.append(this.review_bar);
+				this.review_bar.file_index_changed.connect((index) => {
+					if (index < 0 || index >= this.review_bar.queue.size) {
+						return;
 					}
+					var path = this.review_bar.queue.get(index).path;
+					if (this.current_file != null && this.current_file.path == path) {
+						return;
+					}
+					var cached = this.manager.file_cache.get(path) as OLLMfiles.File;
+					if (cached != null) {
+						this.open_file.begin(cached);
+						return;
+					}
+					if (this.manager.active_project == null) {
+						return;
+					}
+					this.manager.active_project.fetch_file.begin(path, (obj, res) => {
+						var file = this.manager.active_project.fetch_file.end(res);
+						if (file == null) {
+							return;
+						}
+						if (this.current_file != null && this.current_file.path == path) {
+							return;
+						}
+						this.open_file.begin(file);
+					});
+				});
+			
+				// Connect to buffer modified signal
+				var source_buffer = this.source_view.buffer as GtkSource.Buffer;
+				source_buffer.notify["modified"].connect(() => {
+					if (this.current_file != null) {
+						this.current_file.is_unsaved = source_buffer.get_modified();
+					}
+				});
+			
+				// TODO: Clipboard feature needs proper design - see TODO.md
+				// Connect to copy-clipboard signal to store file reference metadata
+				// this.source_view.copy_clipboard.connect(() => {
+				// 	this.on_copy_clipboard();
+				// });
+			
+				// Connect to scroll events to track scroll position
+				var vadjustment = this.scrolled_window.vadjustment;
+				if (vadjustment != null) {
+					vadjustment.value_changed.connect(() => {
+						this.on_scroll_changed();
+					});
+				}
+			
+				// Add keyboard shortcuts
+				var controller = new Gtk.EventControllerKey();
+				controller.key_pressed.connect((keyval, keycode, state) => {
+					var ctrl = (state & Gdk.ModifierType.CONTROL_MASK) != 0;
+					var shift = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
+				
+					if (ctrl && keyval == Gdk.Key.s) {
+						this.save_file.begin();
+						return true;
+					}
+				
+					if (ctrl && keyval == Gdk.Key.f) {
+						this.find();
+						return true;
+					}
+					if (ctrl && keyval == Gdk.Key.g) {
+						this.find_again(shift);
+						return true;
+					}
+					return false;
+				});
+				this.add_controller(controller);
+		
+			
+				// Editor state restoration should be called from view switching code
+				// after projects are loaded from database
+			}
+		
+			/**
+			 * Open/switch to a file, optionally navigate to a specific line.
+			 * 
+			 * @param file The file to open
+			 * @param line_number Line to navigate to (0-based); use -1 to restore saved cursor/scroll
+			 */
+			public async void open_file(OLLMfiles.File file, int line_number = -1)
+			{
+				// Leave diff before saving state (save reads source_view.buffer)
+				if (this.diff_active) {
+					this.clear_diff();
+				}
+				// Save current file state if switching away
+				if (this.current_file != null && this.current_file != file) {
+					this.save_current_file_state();
+					// Disconnect delete_id signal handler from previous file
+					this.disconnect_delete_id_handler();
+				}
+			
+				// Notify manager to activate file
+				this.manager.activate_file(file);
+			
+				// Ensure buffer exists and is a GtkSource.Buffer (GtkSourceFileBuffer extends it)
+				this.manager.buffer_provider.create_buffer(file);
+			
+				// Get GtkSource.Buffer (GtkSourceFileBuffer extends it)
+				var gtk_buffer = file.buffer as GtkSource.Buffer;
+			 
+			
+				// Load file content asynchronously if buffer hasn't been loaded
+				if (!file.buffer.is_loaded) {
+					try {
+						yield file.read();
+					} catch (Error e) {
+						GLib.warning("Failed to read file %s: %s", file.path, e.message);
+						gtk_buffer.text = "";
+					}
+					GLib.debug("file read path=%s loaded=%s chars=%d",
+						file.path, file.buffer.is_loaded.to_string(),
+						gtk_buffer.text.length);
+				}
+			
+				// Switch view to file's buffer (GtkSourceFileBuffer IS a GtkSource.Buffer)
+				this.source_view.set_buffer(gtk_buffer);
+				this.current_file = file;
+				this.file_changed(file);
+			
+				// Apply detected indentation settings to configure editor behavior
+				var gtk_source_buffer = file.buffer as OLLMcoder.GtkSourceFileBuffer;
+				if (gtk_source_buffer != null) {
+					// Configure whether Tab inserts spaces or tabs based on detected file style
+					// insert_spaces_instead_of_tabs: true = insert spaces, false = insert tabs
+					this.source_view.insert_spaces_instead_of_tabs = 
+						!gtk_source_buffer.uses_tabs;
+				
+					// Set indent width to match detected indent_size (for auto-indentation)
+					// If using tabs, indent_width should match tab_width (4), otherwise use indent_size
+					this.source_view.indent_width = gtk_source_buffer.uses_tabs ? 4 :
+						 gtk_source_buffer.indent_size;
+				}
+			
+				// Connect to delete_id signal to monitor file deletion
+				// Disconnect any existing handler first
+				this.disconnect_delete_id_handler();
+				// Connect to notify::delete_id signal
+				this.delete_id_handler_id = file.notify["delete-id"].connect(() => {
+					if (file.delete_id > 0) {
+						this.handle_file_deleted(file);
+					}
+				});
+			
+				this.scrolled_window.visible = true;
+			
+				// Check if file is already deleted
+				if (file.delete_id > 0) {
+					this.handle_file_deleted(file);
+				} else {
+					// Remove deleted CSS class if it was set
+					this.source_view.remove_css_class("file-deleted");
+				
+					// Enable save button when file is open
+					this.save_button.sensitive = true;
+
+					// Phone stays in view mode until a long-press. Desktop edits.
+	#if ANDROID
 					this.source_view.editable = false;
 					this.source_view.cursor_visible = false;
 					this.source_view.focus_on_click = false;
 					this.source_view.focusable = false;
 					this.source_view.can_focus = false;
-					((Gtk.Root) root).set_focus(null);
-					this.phone_toast.add_toast(new Adw.Toast("View mode. Long hold to edit.") {
-						timeout = 3
-					});
-					return false;
-				});
-				root.add_controller(watch);
-			});
-#else
-			this.append(editor_overlay);
-#endif
-			this.append(this.review_bar);
-			this.review_bar.file_index_changed.connect((index) => {
-				if (index < 0 || index >= this.review_bar.queue.size) {
-					return;
-				}
-				var path = this.review_bar.queue.get(index).path;
-				if (this.current_file != null && this.current_file.path == path) {
-					return;
-				}
-				var cached = this.manager.file_cache.get(path) as OLLMfiles.File;
-				if (cached != null) {
-					this.open_file.begin(cached);
-					return;
-				}
-				if (this.manager.active_project == null) {
-					return;
-				}
-				this.manager.active_project.fetch_file.begin(path, (obj, res) => {
-					var file = this.manager.active_project.fetch_file.end(res);
-					if (file == null) {
-						return;
+					if (this.source_view.has_focus) {
+						((Gtk.Root) this.get_root()).set_focus(null);
 					}
-					if (this.current_file != null && this.current_file.path == path) {
-						return;
+					if (this.get_mapped()) {
+						this.phone_toast.add_toast(new Adw.Toast("Long hold to start editing") {
+							timeout = 3
+						});
 					}
-					this.open_file.begin(file);
-				});
-			});
-			
-			// Create search footer bar (will be hidden initially)
-			this.create_search_bar();
-			
-			// Connect to buffer modified signal
-			var source_buffer = this.source_view.buffer as GtkSource.Buffer;
-			source_buffer.notify["modified"].connect(() => {
-				if (this.current_file != null) {
-					this.current_file.is_unsaved = source_buffer.get_modified();
-				}
-			});
-			
-			// TODO: Clipboard feature needs proper design - see TODO.md
-			// Connect to copy-clipboard signal to store file reference metadata
-			// this.source_view.copy_clipboard.connect(() => {
-			// 	this.on_copy_clipboard();
-			// });
-			
-			// Connect to scroll events to track scroll position
-			var vadjustment = this.scrolled_window.vadjustment;
-			if (vadjustment != null) {
-				vadjustment.value_changed.connect(() => {
-					this.on_scroll_changed();
-				});
-			}
-			
-			// Add scroll controller to prevent background scrolling when dropdown popups are visible
-			var scroll_blocker = new Gtk.EventControllerScroll(
-				Gtk.EventControllerScrollFlags.BOTH_AXES |
-				Gtk.EventControllerScrollFlags.DISCRETE |
-				Gtk.EventControllerScrollFlags.KINETIC
-			);
-			scroll_blocker.scroll.connect((dx, dy) => {
-				// If any dropdown popup is visible, stop scroll events from reaching the source view
-				if (this.project_dropdown.popup.visible || this.file_dropdown.popup.visible) {
-					return true;
-				}
-				return false;
-			});
-			scroll_blocker.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-			this.add_controller(scroll_blocker);
-			
-			// Add keyboard shortcuts
-			var controller = new Gtk.EventControllerKey();
-			controller.key_pressed.connect((keyval, keycode, state) => {
-				var ctrl = (state & Gdk.ModifierType.CONTROL_MASK) != 0;
-				var shift = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
-				
-				if (ctrl && keyval == Gdk.Key.s) {
-					this.save_file.begin();
-					return true;
-				}
-				
-				if (ctrl && keyval == Gdk.Key.f) {
-					// Focus search entry
-					this.search_entry.grab_focus();
-					this.search_entry.select_region(0, -1);
-					return true;
-				}
-				
-				if (ctrl && keyval == Gdk.Key.g) {
-					if (shift) {
-						// Ctrl+Shift+G: backward search
-						this.backward_search(true);
-					} else {
-						// Ctrl+G: forward search
-						this.forward_search(true);
-					}
-					return true;
-				}
-				
-				return false;
-			});
-			this.add_controller(controller);
-		
-			
-			// Editor state restoration should be called from view switching code
-			// after projects are loaded from database
-		}
-		
-		/**
-		 * Apply manager state to UI.
-		 * 
-		 * Reads active project and file from manager properties and applies them to the UI.
-		 * This method should only restore UI state - all data loading happens before calling this.
-		 * 
-		 * Uses manager.active_project and manager.active_file properties.
-		 */
-		public async void apply_manager_state()
-		{
-			// Only apply UI state from manager properties - all data is already loaded
-			// Use manager's active_project and active_file properties
-			
-			if (this.manager.active_project == null) {
-				this.file_dropdown.visible = false;
-				return;
-			}
+	#else
+					this.source_view.editable = true;
+	#endif
 
-			// Check if we're already on the same project - if so, don't change active file
-			bool same_project = (this.project_dropdown.selected_project != null && 
-								this.project_dropdown.selected_project.path == this.manager.active_project.path);
+					var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+					rows.add_all(this.manager.review_files.file_map.values);
+					this.review_bar.sync_pending(rows, file);
+					yield this.show_pending_diff(file);
+				}
 			
-			// Project is already activated by restore_active_state(), just update UI
-			// Update file dropdown's project and show it (matches on_project_selected when user picks a project)
-			yield this.file_dropdown.update_project(this.manager.active_project);
-			this.file_dropdown.visible = true;
-
-			// Update project dropdown placeholder only if it's different (avoid unnecessary updates)
-			// Note: on_selected() already handles clearing entry and setting placeholder,
-			// so we only need to update if it's different to avoid duplicate work
-			var expected_placeholder = this.manager.active_project.path_basename;
-			if (this.project_dropdown.placeholder_text != expected_placeholder) {
-				this.project_dropdown.placeholder_text = expected_placeholder;
-			}
-
-			// If we're switching to the same project, don't change the active file
-			if (same_project) {
-				return;
-			}
-
-			if (this.manager.active_file == null) {
-				return;
-			}
-
-			// Open file (will restore cursor/scroll position from file.cursor_line, etc.)
-			yield this.open_file(this.manager.active_file);
-		}
-		
-		/**
-		 * Handle project selection change.
-		 */
-		private void on_project_selected(OLLMfiles.Folder? project)
-		{
-			if (project == null) {
-				// Hide file dropdown when no project is selected
-				this.file_dropdown.visible = false;
-				return;
-			}
-			
-			// Show file dropdown when project is selected
-			this.file_dropdown.visible = true;
-			
-			// Lock file dropdown during project change
-			this.file_dropdown.sensitive = false;
-			this.file_dropdown.add_css_class("loading");
-			this.open_project.begin(project, (obj, res) => {
-				this.open_project.end(res);
-				// Unlock file dropdown after project change completes
-				this.file_dropdown.sensitive = true;
-				this.file_dropdown.remove_css_class("loading");
-				// Switch focus to file dropdown entry after project is opened
 				GLib.Idle.add(() => {
-					// Access the entry through a method or make it accessible
-					// For now, just grab focus on the file dropdown widget
-					this.file_dropdown.grab_focus();
+					if (this.current_file != file) {
+						return false;
+					}
+					if (line_number > -1) {
+						this.navigate_to_line(line_number);
+						return false;
+					}
+					this.restore_cursor_position(file);
+					this.restore_scroll_position(file);
 					return false;
 				});
-			});
-		}
-		
-		/**
-		 * Handle file selection change.
-		 */
-		private void on_file_selected(OLLMfiles.File? file)
-		{
-			if (file == null) {
-				// Disconnect delete_id signal handler when no file is selected
-				this.disconnect_delete_id_handler();
-				
-				// Set default placeholder when no file is selected
-				this.file_dropdown.placeholder_text = "Select file...";
-				// Hide sourceview, search bar and disable save button when no file
-				this.scrolled_window.visible = false;
-				this.search_bar.visible = false;
-				this.save_button.sensitive = false;
-				return;
-			}
 			
-			// If file hasn't changed, no need to do anything
-			if (this.current_file != null && this.current_file.path == file.path) {
-				return;
-			}
+				// Update last_viewed timestamp when file is actually opened (saved to database)
+				var now = new DateTime.now_local();
+				file.last_viewed = now.to_unix();
+				// V2: last_modified comes from daemon metadata — no local disk read
+				this.manager.on_file_metadata_change(file);
 			
-			// Lock source view during file load
-			this.source_view.editable = false;
-			this.source_view.add_css_class("loading");
-			this.file_dropdown.placeholder_text = "Loading..";
+				// Update placeholder text with file basename
+				// Note: selected_file is now read-only and set when dialog closes
+			}
 
-			
-			this.open_file.begin(file, -1, (obj, res) => {
-				this.open_file.end(res);
-#if ANDROID
-				this.source_view.editable = false;
-				this.source_view.cursor_visible = false;
-				this.source_view.focus_on_click = false;
-				this.source_view.focusable = false;
-				this.source_view.can_focus = false;
-#else
-				this.source_view.editable = true;
-#endif
-				this.source_view.remove_css_class("loading");
-			});
-		}
-		
-		/**
-		 * Open/switch to a file, optionally navigate to a specific line.
-		 * 
-		 * @param file The file to open
-		 * @param line_number Line to navigate to (0-based); use -1 to restore saved cursor/scroll
-		 */
-		public async void open_file(OLLMfiles.File file, int line_number = -1)
-		{
-			// Leave diff before saving state (save reads source_view.buffer)
-			if (this.diff_active) {
-				this.clear_diff();
-			}
-			// Save current file state if switching away
-			if (this.current_file != null && this.current_file != file) {
-				this.save_current_file_state();
-				// Disconnect delete_id signal handler from previous file
-				this.disconnect_delete_id_handler();
-			}
-			
-			// Notify manager to activate file
-			this.manager.activate_file(file);
-			
-			// Ensure buffer exists and is a GtkSource.Buffer (GtkSourceFileBuffer extends it)
-			this.manager.buffer_provider.create_buffer(file);
-			
-			// Get GtkSource.Buffer (GtkSourceFileBuffer extends it)
-			var gtk_buffer = file.buffer as GtkSource.Buffer;
-			 
-			
-			// Load file content asynchronously if buffer hasn't been loaded
-			if (!file.buffer.is_loaded) {
-				try {
-					yield file.read();
-				} catch (Error e) {
-					GLib.warning("Failed to read file %s: %s", file.path, e.message);
-					gtk_buffer.text = "";
+			/**
+			 * Show inline unified diff from a caller-owned {@link OLLMfiles.Diff.Differ}.
+			 *
+			 * Builds interleaved equal / removed / added rows. Green and red come from
+			 * buffer tags; removed lines are non-editable but selectable/copyable.
+			 * The gutter shows the new file's line numbers. Removed lines are blank.
+			 * Does not write disk.
+			 * Caller restores with {@link clear_diff}.
+			 *
+			 * @param differ already constructed (text1 = V_backup, text2 = V_disk)
+			 */
+			public void show_diff(OLLMfiles.Diff.Differ differ)
+			{
+				if (this.diff_active) {
+					this.clear_diff();
 				}
-				GLib.debug("file read path=%s loaded=%s chars=%d",
-					file.path, file.buffer.is_loaded.to_string(),
-					gtk_buffer.text.length);
-			}
-			
-			// Switch view to file's buffer (GtkSourceFileBuffer IS a GtkSource.Buffer)
-			this.source_view.set_buffer(gtk_buffer);
-			this.current_file = file;
-			
-			// Apply detected indentation settings to configure editor behavior
-			var gtk_source_buffer = file.buffer as GtkSourceFileBuffer;
-			if (gtk_source_buffer != null) {
-				// Configure whether Tab inserts spaces or tabs based on detected file style
-				// insert_spaces_instead_of_tabs: true = insert spaces, false = insert tabs
-				this.source_view.insert_spaces_instead_of_tabs = 
-					!gtk_source_buffer.uses_tabs;
-				
-				// Set indent width to match detected indent_size (for auto-indentation)
-				// If using tabs, indent_width should match tab_width (4), otherwise use indent_size
-				this.source_view.indent_width = gtk_source_buffer.uses_tabs ? 4 :
-					 gtk_source_buffer.indent_size;
-			}
-			
-			// Connect to delete_id signal to monitor file deletion
-			// Disconnect any existing handler first
-			this.disconnect_delete_id_handler();
-			// Connect to notify::delete_id signal
-			this.delete_id_handler_id = file.notify["delete-id"].connect(() => {
-				if (file.delete_id > 0) {
-					this.handle_file_deleted(file);
+				differ.diff();
+				var display = new Gee.ArrayList<string>();
+				var kinds = new Gee.ArrayList<int>();
+				this.diff_baseline.clear();
+				this.diff_remove_at.clear();
+				this.diff_remove_n.clear();
+				var old_i = 1, new_i = 1;
+				foreach (var patch in differ.patches) {
+					while (old_i < patch.old_line_start && new_i < patch.new_line_start
+						&& old_i <= differ.lines1.length && new_i <= differ.lines2.length) {
+						display.add(differ.lines2[new_i - 1]);
+						this.diff_baseline.add(new_i);
+						kinds.add(0);
+						old_i++;
+						new_i++;
+					}
+					if (patch.old_line_start > patch.old_line_end) {
+						old_i = patch.old_line_start;
+					} else {
+						for (var ln = patch.old_line_start; ln <= patch.old_line_end; ln++) {
+							display.add(differ.lines1[ln - 1]);
+							this.diff_baseline.add(0);
+							kinds.add(2);
+						}
+						this.diff_remove_at.add(patch.new_line_start);
+						this.diff_remove_n.add(patch.old_line_end - patch.old_line_start + 1);
+						old_i = patch.old_line_end + 1;
+					}
+					if (patch.new_line_start > patch.new_line_end) {
+						new_i = patch.new_line_start;
+						continue;
+					}
+					for (var ln = patch.new_line_start; ln <= patch.new_line_end; ln++) {
+						display.add(differ.lines2[ln - 1]);
+						this.diff_baseline.add(ln);
+						kinds.add(1);
+					}
+					new_i = patch.new_line_end + 1;
 				}
-			});
-			
-			// Show the editor when a file is open. The phone search bar stays
-			// hidden until search is designed; desktop still shows it.
-			this.scrolled_window.visible = true;
-#if !ANDROID
-			this.search_bar.visible = true;
-#endif
-			
-			// Check if file is already deleted
-			if (file.delete_id > 0) {
-				this.handle_file_deleted(file);
-			} else {
-				// Remove deleted CSS class if it was set
-				this.source_view.remove_css_class("file-deleted");
-				
-				// Enable save button when file is open
-				this.save_button.sensitive = true;
-
-				// Phone stays in view mode until a long-press. Desktop edits.
-#if ANDROID
-				this.source_view.editable = false;
-				this.source_view.cursor_visible = false;
-				this.source_view.focus_on_click = false;
-				this.source_view.focusable = false;
-				this.source_view.can_focus = false;
-				if (this.source_view.has_focus) {
-					((Gtk.Root) this.get_root()).set_focus(null);
-				}
-				if (this.get_mapped()) {
-					this.phone_toast.add_toast(new Adw.Toast("Long hold to start editing") {
-						timeout = 3
-					});
-				}
-#else
-				this.source_view.editable = true;
-#endif
-
-				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
-				rows.add_all(this.manager.review_files.file_map.values);
-				this.review_bar.sync_pending(rows, file);
-				yield this.show_pending_diff(file);
-			}
-			
-			// Reset search context when switching files
-			this.search_context = null;
-			this.last_search_end = 0;
-			if (this.search_entry != null) {
-				this.search_entry.text = "";
-			}
-			this.update_search_results();
-
-			GLib.Idle.add(() => {
-				if (this.current_file != file) {
-					return false;
-				}
-				if (line_number > -1) {
-					this.navigate_to_line(line_number);
-					return false;
-				}
-				this.restore_cursor_position(file);
-				this.restore_scroll_position(file);
-				return false;
-			});
-			
-			// Update last_viewed timestamp when file is actually opened (saved to database)
-			var now = new DateTime.now_local();
-			file.last_viewed = now.to_unix();
-			// V2: last_modified comes from daemon metadata — no local disk read
-			this.manager.on_file_metadata_change(file);
-			
-			// Update placeholder text with file basename
-			// Note: selected_file is now read-only and set when dialog closes
-			this.file_dropdown.placeholder_text = Path.get_basename(file.path);
-		}
-
-		/**
-		 * Show inline unified diff from a caller-owned {@link OLLMfiles.Diff.Differ}.
-		 *
-		 * Builds interleaved equal / removed / added rows. Green and red come from
-		 * buffer tags; removed lines are non-editable but selectable/copyable.
-		 * The gutter shows the new file's line numbers. Removed lines are blank.
-		 * Does not write disk.
-		 * Caller restores with {@link clear_diff}.
-		 *
-		 * @param differ already constructed (text1 = V_backup, text2 = V_disk)
-		 * @deprecated Client diff. Pending review uses {@link show_pending_diff}.
-		 */
-		public void show_diff(OLLMfiles.Diff.Differ differ)
-		{
-			if (this.diff_active) {
-				this.clear_diff();
-			}
-			differ.diff();
-			var display = new Gee.ArrayList<string>();
-			var kinds = new Gee.ArrayList<int>();
-			this.diff_baseline.clear();
-			this.diff_remove_at.clear();
-			this.diff_remove_n.clear();
-			var old_i = 1, new_i = 1;
-			foreach (var patch in differ.patches) {
-				while (old_i < patch.old_line_start && new_i < patch.new_line_start
-					&& old_i <= differ.lines1.length && new_i <= differ.lines2.length) {
+				while (old_i <= differ.lines1.length && new_i <= differ.lines2.length) {
 					display.add(differ.lines2[new_i - 1]);
 					this.diff_baseline.add(new_i);
 					kinds.add(0);
 					old_i++;
 					new_i++;
 				}
-				if (patch.old_line_start > patch.old_line_end) {
-					old_i = patch.old_line_start;
-				} else {
-					for (var ln = patch.old_line_start; ln <= patch.old_line_end; ln++) {
-						display.add(differ.lines1[ln - 1]);
-						this.diff_baseline.add(0);
-						kinds.add(2);
+				this.diff_buffer = new GtkSource.Buffer(this.diff_tag_table);
+				this.diff_buffer.set_text(string.joinv("\n", display.to_array()), -1);
+				var add_tag = this.diff_tag_table.lookup("diff-add");
+				var remove_tag = this.diff_tag_table.lookup("diff-remove");
+				for (var i = 0; i < kinds.size; i++) {
+					if (kinds.get(i) == 0) {
+						continue;
 					}
-					this.diff_remove_at.add(patch.new_line_start);
-					this.diff_remove_n.add(patch.old_line_end - patch.old_line_start + 1);
-					old_i = patch.old_line_end + 1;
+					Gtk.TextIter iter;
+					this.diff_buffer.get_iter_at_line(out iter, i);
+					var line_end = iter;
+					if (!line_end.ends_line()) {
+						line_end.forward_to_line_end();
+					}
+					if (!line_end.is_end()) {
+						line_end.forward_char();
+					}
+					this.diff_buffer.apply_tag(kinds.get(i) == 1 ? add_tag : remove_tag, iter, line_end);
 				}
-				if (patch.new_line_start > patch.new_line_end) {
-					new_i = patch.new_line_start;
-					continue;
-				}
-				for (var ln = patch.new_line_start; ln <= patch.new_line_end; ln++) {
-					display.add(differ.lines2[ln - 1]);
-					this.diff_baseline.add(ln);
-					kinds.add(1);
-				}
-				new_i = patch.new_line_end + 1;
+				this.pre_diff_buffer = this.source_view.buffer as GtkSource.Buffer;
+				this.source_view.set_buffer(this.diff_buffer);
+				this.source_view.show_line_numbers = false;
+				this.diff_active = true;
+				this.scrolled_window.visible = true;
 			}
-			while (old_i <= differ.lines1.length && new_i <= differ.lines2.length) {
-				display.add(differ.lines2[new_i - 1]);
-				this.diff_baseline.add(new_i);
-				kinds.add(0);
-				old_i++;
-				new_i++;
-			}
-			this.diff_buffer = new GtkSource.Buffer(this.diff_tag_table);
-			this.diff_buffer.set_text(string.joinv("\n", display.to_array()), -1);
-			var add_tag = this.diff_tag_table.lookup("diff-add");
-			var remove_tag = this.diff_tag_table.lookup("diff-remove");
-			for (var i = 0; i < kinds.size; i++) {
-				if (kinds.get(i) == 0) {
-					continue;
-				}
-				Gtk.TextIter iter;
-				this.diff_buffer.get_iter_at_line(out iter, i);
-				var line_end = iter;
-				if (!line_end.ends_line()) {
-					line_end.forward_to_line_end();
-				}
-				if (!line_end.is_end()) {
-					line_end.forward_char();
-				}
-				this.diff_buffer.apply_tag(kinds.get(i) == 1 ? add_tag : remove_tag, iter, line_end);
-			}
-			this.pre_diff_buffer = this.source_view.buffer as GtkSource.Buffer;
-			this.source_view.set_buffer(this.diff_buffer);
-			this.source_view.show_line_numbers = false;
-			this.diff_active = true;
-			this.scrolled_window.visible = true;
-		}
 
-		/**
-		 * Leave diff mode and restore the previous buffer.
-		 */
-		public void clear_diff()
-		{
-			if (!this.diff_active) {
-				return;
+			/**
+			 * Leave diff mode and restore the previous buffer.
+			 */
+			public void clear_diff()
+			{
+				if (!this.diff_active) {
+					return;
+				}
+				if (this.pre_diff_buffer != null) {
+					this.source_view.set_buffer(this.pre_diff_buffer);
+				}
+				this.diff_buffer = null;
+				this.pre_diff_buffer = null;
+				this.diff_baseline.clear();
+				this.diff_remove_at.clear();
+				this.diff_remove_n.clear();
+				this.source_view.show_line_numbers = true;
+				this.diff_active = false;
 			}
-			if (this.pre_diff_buffer != null) {
-				this.source_view.set_buffer(this.pre_diff_buffer);
-			}
-			this.diff_buffer = null;
-			this.pre_diff_buffer = null;
-			this.diff_baseline.clear();
-			this.diff_remove_at.clear();
-			this.diff_remove_n.clear();
-			this.source_view.show_line_numbers = true;
-			this.diff_active = false;
-		}
 
-		/**
-		 * If ''file'' is pending approval, load diff items and paint them.
-		 *
-		 * Calls ''FileHistory.parts''. Does not read the backup.
-		 *
-		 * @param file open project file (buffer already holds V_disk)
-		 */
-		public async void show_pending_diff(OLLMfiles.File file)
-		{
-			if (!this.manager.review_files.file_map.has_key(file.path)) {
-				return;
-			}
-			var row = this.manager.review_files.file_map.get(file.path);
-			OLLMrpc.Response response;
-			try {
-				response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-					method = "FileHistory.parts",
-					args = OLLMrpc.args("x", row.approve_id)
-				});
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to load diff parts for %s: %s", file.path, e.message);
-				return;
-			}
-			if (this.current_file != file) {
-				return;
-			}
-			if (response.error != null) {
-				GLib.warning("Failed to load diff parts for %s: %s", file.path, response.error.message);
-				return;
-			}
-			if (response.retval.type() == GLib.Type.INVALID) {
+			/**
+			 * If ''file'' is pending approval, load diff items and paint them.
+			 *
+			 * Calls ''FileHistory.parts''. Does not read the backup.
+			 *
+			 * @param file open project file (buffer already holds V_disk)
+			 */
+			public async void show_pending_diff(OLLMfiles.File file)
+			{
+				if (!this.manager.review_files.file_map.has_key(file.path)) {
+					return;
+				}
+				var row = this.manager.review_files.file_map.get(file.path);
+				OLLMrpc.Response response;
+				try {
+					response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+						method = "FileHistory.parts",
+						args = OLLMrpc.args("x", row.approve_id)
+					});
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to load diff parts for %s: %s", file.path, e.message);
+					return;
+				}
+				if (this.current_file != file) {
+					return;
+				}
+				if (response.error != null) {
+					GLib.warning("Failed to load diff parts for %s: %s", file.path, response.error.message);
+					return;
+				}
+				if (response.retval.type() == GLib.Type.INVALID) {
+					if (this.diff_active) {
+						this.clear_diff();
+					}
+					return;
+				}
 				if (this.diff_active) {
 					this.clear_diff();
 				}
-				return;
-			}
-			if (this.diff_active) {
-				this.clear_diff();
-			}
-			var parts = (Gee.ArrayList<OLLMfiles.FileDiffPart>) response.retval.get_object();
-			var editor_lines = (file.buffer as GtkSource.Buffer).text.split("\n");
-			var display = new Gee.ArrayList<string>();
-			var kinds = new Gee.ArrayList<int>();
-			this.diff_baseline.clear();
-			this.diff_remove_at.clear();
-			this.diff_remove_n.clear();
-			var new_i = 1;
-			foreach (var part in parts) {
-				var add_count = part.new_line_end < part.new_line_start ? 0 : part.new_line_end - part.new_line_start + 1;
-				var remove_count = part.old_line_end < part.old_line_start ? 0 : part.old_line_end - part.old_line_start + 1;
-				while (new_i < part.new_line_start && new_i <= editor_lines.length) {
-					display.add(editor_lines[new_i - 1]);
-					this.diff_baseline.add(new_i);
-					kinds.add(0);
-					new_i++;
-				}
-				if (part.accepted != 0) {
+				var parts = (Gee.ArrayList<OLLMfiles.FileDiffPart>) response.retval.get_object();
+				var editor_lines = (file.buffer as GtkSource.Buffer).text.split("\n");
+				var display = new Gee.ArrayList<string>();
+				var kinds = new Gee.ArrayList<int>();
+				this.diff_baseline.clear();
+				this.diff_remove_at.clear();
+				this.diff_remove_n.clear();
+				var new_i = 1;
+				foreach (var part in parts) {
+					var add_count = part.new_line_end < part.new_line_start
+						? 0 : part.new_line_end - part.new_line_start + 1;
+					var remove_count = part.old_line_end < part.old_line_start
+						? 0 : part.old_line_end - part.old_line_start + 1;
+					while (new_i < part.new_line_start && new_i <= editor_lines.length) {
+						display.add(editor_lines[new_i - 1]);
+						this.diff_baseline.add(new_i);
+						kinds.add(0);
+						new_i++;
+					}
+					if (part.accepted != 0) {
+						if (add_count == 0) {
+							if (part.new_line_start > new_i) {
+								new_i = part.new_line_start;
+							}
+							continue;
+						}
+						for (var ln = part.new_line_start;
+							ln < part.new_line_start + add_count && ln <= editor_lines.length;
+							ln++) {
+							display.add(editor_lines[ln - 1]);
+							this.diff_baseline.add(ln);
+							kinds.add(0);
+						}
+						new_i = part.new_line_start + add_count;
+						continue;
+					}
+					if (remove_count > 0 && part.hunk_remove != "") {
+						this.diff_remove_at.add(part.new_line_start);
+						this.diff_remove_n.add(remove_count);
+						var removed = part.hunk_remove.split("\n");
+						for (var r = 0; r < remove_count && r < removed.length; r++) {
+							display.add(removed[r]);
+							this.diff_baseline.add(0);
+							kinds.add(2);
+						}
+					}
 					if (add_count == 0) {
 						if (part.new_line_start > new_i) {
 							new_i = part.new_line_start;
@@ -993,636 +830,342 @@ namespace OLLMcoder
 						ln++) {
 						display.add(editor_lines[ln - 1]);
 						this.diff_baseline.add(ln);
-						kinds.add(0);
+						kinds.add(1);
 					}
 					new_i = part.new_line_start + add_count;
-					continue;
 				}
-				if (remove_count > 0 && part.hunk_remove != "") {
-					this.diff_remove_at.add(part.new_line_start);
-					this.diff_remove_n.add(remove_count);
-					var removed = part.hunk_remove.split("\n");
-					for (var r = 0; r < remove_count && r < removed.length; r++) {
-						display.add(removed[r]);
-						this.diff_baseline.add(0);
-						kinds.add(2);
+				while (new_i <= editor_lines.length) {
+					display.add(editor_lines[new_i - 1]);
+					this.diff_baseline.add(new_i);
+					kinds.add(0);
+					new_i++;
+				}
+				this.diff_buffer = new GtkSource.Buffer(this.diff_tag_table);
+				this.diff_buffer.set_text(string.joinv("\n", display.to_array()), -1);
+				var add_tag = this.diff_tag_table.lookup("diff-add");
+				var remove_tag = this.diff_tag_table.lookup("diff-remove");
+				for (var i = 0; i < kinds.size; i++) {
+					if (kinds.get(i) == 0) {
+						continue;
 					}
-				}
-				if (add_count == 0) {
-					if (part.new_line_start > new_i) {
-						new_i = part.new_line_start;
+					Gtk.TextIter iter;
+					this.diff_buffer.get_iter_at_line(out iter, i);
+					var line_end = iter;
+					if (!line_end.ends_line()) {
+						line_end.forward_to_line_end();
 					}
-					continue;
-				}
-				for (var ln = part.new_line_start; ln < part.new_line_start + add_count && ln <= editor_lines.length; ln++) {
-					display.add(editor_lines[ln - 1]);
-					this.diff_baseline.add(ln);
-					kinds.add(1);
-				}
-				new_i = part.new_line_start + add_count;
-			}
-			while (new_i <= editor_lines.length) {
-				display.add(editor_lines[new_i - 1]);
-				this.diff_baseline.add(new_i);
-				kinds.add(0);
-				new_i++;
-			}
-			this.diff_buffer = new GtkSource.Buffer(this.diff_tag_table);
-			this.diff_buffer.set_text(string.joinv("\n", display.to_array()), -1);
-			var add_tag = this.diff_tag_table.lookup("diff-add");
-			var remove_tag = this.diff_tag_table.lookup("diff-remove");
-			for (var i = 0; i < kinds.size; i++) {
-				if (kinds.get(i) == 0) {
-					continue;
-				}
-				Gtk.TextIter iter;
-				this.diff_buffer.get_iter_at_line(out iter, i);
-				var line_end = iter;
-				if (!line_end.ends_line()) {
-					line_end.forward_to_line_end();
-				}
-				if (!line_end.is_end()) {
-					line_end.forward_char();
-				}
-				this.diff_buffer.apply_tag(kinds.get(i) == 1 ? add_tag : remove_tag, iter, line_end);
-			}
-			this.pre_diff_buffer = this.source_view.buffer as GtkSource.Buffer;
-			this.source_view.set_buffer(this.diff_buffer);
-			this.source_view.show_line_numbers = false;
-			this.diff_active = true;
-			this.scrolled_window.visible = true;
-			this.review_bar.update_diff(parts, this.review_bar.file_index);
-		}
-		
-		/**
-		 * Open/switch to a project.
-		 * 
-		 * @param project The project to open
-		 */
-		public async void open_project(OLLMfiles.Folder project)
-		{
-			yield this.manager.activate_project(project);
-
-			yield this.file_dropdown.update_project(project);
-
-			this.project_dropdown.placeholder_text = project.path_basename;
-
-			var active_file = this.manager.active_file;
-			if (active_file != null && !active_file.path.has_prefix(project.path + "/")) {
-				active_file = null;
-			}
-			this.on_file_selected(active_file);
-		}
-		
-		/**
-		 * Navigate to a specific line in the current file.
-		 * 
-		 * @param line_number The line number to navigate to (0-based)
-		 */
-		public void navigate_to_line(int line_number)
-		{
-			var buffer = this.source_view.buffer;
-			var display_line = line_number;
-			if (this.diff_active) {
-				var extras = 0;
-				var disk = line_number + 1;
-				// walk diff's should be ok as long as there are not too many
-				for (var i = 0; i < this.diff_remove_at.size; i++) {
-					if (this.diff_remove_at.get(i) > disk) {
-						break;
+					if (!line_end.is_end()) {
+						line_end.forward_char();
 					}
-					extras += this.diff_remove_n.get(i);
+					this.diff_buffer.apply_tag(
+						kinds.get(i) == 1 ? add_tag : remove_tag, iter, line_end);
 				}
-				display_line = line_number + extras;
+				this.pre_diff_buffer = this.source_view.buffer as GtkSource.Buffer;
+				this.source_view.set_buffer(this.diff_buffer);
+				this.source_view.show_line_numbers = false;
+				this.diff_active = true;
+				this.scrolled_window.visible = true;
+				this.review_bar.update_diff(parts, this.review_bar.file_index);
 			}
-			Gtk.TextIter iter;
-			if (!buffer.get_iter_at_line(out iter, display_line)) {
-				return;
-			}
-			buffer.place_cursor(iter);
-			this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.5);
-		}
 		
-		/**
-		 * Refresh current file from disk (if no unsaved changes).
-		 * 
-		 * FIXME: This should prompt the user about unsaved changes and handle errors
-		 * with user interaction (dialogs, notifications).
-		 */
-		public async void refresh_file()
-		{
-			if (this.current_file == null || this.current_file.buffer == null) {
-				return;
-			}
-			
-			var buffer = this.current_file.buffer as GtkSource.Buffer;
-			if (buffer == null) {
-				return;
-			}
-			
-			if (buffer.get_modified()) {
-				// FIXME: Prompt user about unsaved changes
-				GLib.error("File has unsaved changes, not reloading");
-				return;
-			}
-			
-			try {
-				yield this.current_file.buffer.read_async();
-			} catch (Error e) {
-				// FIXME: Show error dialog to user
-				GLib.warning("Failed to reload file %s: %s", this.current_file.path, e.message);
-			}
-		}
-		
-		/**
-		 * Save current file state (cursor position and scroll position).
-		 */
-		private void save_current_file_state()
-		{
-			if (this.current_file == null) {
-				return;
-			}
-			
-			// Cancel any pending scroll save timeout
-			if (this.scroll_save_timeout_id != 0) {
-				GLib.Source.remove(this.scroll_save_timeout_id);
-				this.scroll_save_timeout_id = 0;
-			}
-			
-			var buffer = this.source_view.buffer;
-			// Save cursor position
-			Gtk.TextIter cursor_iter;
-			buffer.get_iter_at_mark(out cursor_iter, buffer.get_insert());
-			this.current_file.cursor_line = cursor_iter.get_line();
-			this.current_file.cursor_offset = cursor_iter.get_line_offset();
-			
-			// Save scroll position (first visible line)
-			this.save_scroll_position();
-			
-			// Update last_viewed timestamp
-			var now = new DateTime.now_local();
-			this.current_file.last_viewed = now.to_unix();
-			
-			// Notify manager to save to database (metadata-only change - cursor/scroll position)
-			this.manager.on_file_metadata_change(this.current_file);
-		}
-		
-		/**
-		 * Save scroll position (first visible line) to current file.
-		 */
-		private void save_scroll_position()
-		{
-			if (this.current_file == null) {
-				return;
-			}
-			
-			// Get visible rectangle
-			Gdk.Rectangle visible_rect;
-			this.source_view.get_visible_rect(out visible_rect);
-			
-			// Get iter at top of visible area
-			Gtk.TextIter top_iter;
-			if (this.source_view.get_iter_at_location(out top_iter, visible_rect.x, visible_rect.y)) {
-				// Get line number of first visible line
-				this.current_file.scroll_position = top_iter.get_line();
-			}
-		}
-		
-		/**
-		 * Handle scroll change event.
-		 * Rate-limited: only saves scroll position after scrolling stops (500ms delay).
-		 */
-		private void on_scroll_changed()
-		{
-			if (this.current_file == null) {
-				return;
-			}
-			
-			// Cancel existing timeout if any
-			if (this.scroll_save_timeout_id != 0) {
-				GLib.Source.remove(this.scroll_save_timeout_id);
-			}
-			
-			// Set up new timeout to save scroll position after scrolling stops
-			this.scroll_save_timeout_id = GLib.Timeout.add(500, () => {
-				// Save scroll position and update database (metadata-only change)
-				this.save_scroll_position();
-				this.manager.on_file_metadata_change(this.current_file);
-				this.scroll_save_timeout_id = 0;
-				return false; // Only run once
-			});
-		}
-		
-		/**
-		 * Restore cursor position from file state and scroll it into view.
-		 */
-		private void restore_cursor_position(OLLMfiles.File file)
-		{
-			var buffer = this.source_view.buffer;
-			
-			// Restore cursor position and scroll into view
-			if (file.cursor_line < 0 || file.cursor_offset < 0) {
-				return;
-			}
-			// Use navigate_to_line to handle line navigation and scrolling
-			this.navigate_to_line(file.cursor_line);
-			if (this.diff_active) {
-				return;
-			}
-			// Then adjust the offset (character position within the line)
-			Gtk.TextIter iter;
-			if (!buffer.get_iter_at_line_offset(out iter, file.cursor_line, file.cursor_offset)) {
-				return;
-			}
-			buffer.place_cursor(iter);
-		}
-		
-		/**
-		 * Restore scroll position from file state.
-		 */
-		private void restore_scroll_position(OLLMfiles.File file)
-		{
-			var scroll_line = file.scroll_position > 0 ? file.scroll_position : 0;
-			GLib.Idle.add(() => {
-				if (this.current_file != file) {
-					return false;
-				}
+			/**
+			 * Navigate to a specific line in the current file.
+			 * 
+			 * @param line_number The line number to navigate to (0-based)
+			 */
+			public void navigate_to_line(int line_number)
+			{
 				var buffer = this.source_view.buffer;
-				Gtk.TextIter iter;
-				if (!buffer.get_iter_at_line(out iter, scroll_line)) {
-					return false;
-				}
-				this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.0);
-				return false;
-			});
-		}
-		
-		/**
-		 * Create search footer bar with search entry, results label, and navigation buttons.
-		 */
-		private void create_search_bar()
-		{
-			this.search_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
-				margin_start = 5,
-				margin_end = 5,
-				margin_top = 5,
-				margin_bottom = 5,
-				vexpand = false
-			};
-			
-			// Search entry
-			this.search_entry = new Gtk.SearchEntry() {
-				hexpand = true,
-				placeholder_text = "Search...",
-				search_delay = 300
-			};
-			this.search_entry.search_changed.connect(() => {
-				this.perform_search(this.search_entry.text);
-			});
-			
-			// Handle Enter key in search entry
-			var search_entry_controller = new Gtk.EventControllerKey();
-			search_entry_controller.key_pressed.connect((keyval, keycode, state) => {
-				if (keyval == Gdk.Key.Return && this.search_entry.text.length > 0) {
-					this.forward_search(true);
-					return true;
-				}
-				if (keyval == Gdk.Key.g && (state & Gdk.ModifierType.CONTROL_MASK) != 0) {
-					this.forward_search(true);
-					return true;
-				}
-				return false;
-			});
-			this.search_entry.add_controller(search_entry_controller);
-			
-			// Results label
-			this.search_results_label = new Gtk.Label("No Results") {
-				margin_start = 4,
-				margin_end = 4
-			};
-			
-			// Next button
-			this.search_next_button = new Gtk.Button.from_icon_name("go-down") {
-				tooltip_text = "Next match",
-				sensitive = false
-			};
-			this.search_next_button.clicked.connect(() => {
-				this.forward_search(true);
-			});
-			
-			// Back button
-			this.search_back_button = new Gtk.Button.from_icon_name("go-up") {
-				tooltip_text = "Previous match",
-				sensitive = false
-			};
-			this.search_back_button.clicked.connect(() => {
-				this.backward_search(true);
-			});
-			
-			// Settings menu button
-			var settings_menu_button = new Gtk.MenuButton() {
-				icon_name = "emblem-system",
-				tooltip_text = "Search settings",
-				always_show_arrow = true
-			};
-			
-			// Create settings popover
-			var settings_popover = new Gtk.Popover();
-			var settings_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
-				margin_start = 10,
-				margin_end = 10,
-				margin_top = 10,
-				margin_bottom = 10
-			};
-			
-			this.case_sensitive_checkbox = new Gtk.CheckButton.with_label("Case Sensitive");
-			this.case_sensitive_checkbox.toggled.connect(() => {
-				this.update_search_settings();
-			});
-			
-			this.regex_checkbox = new Gtk.CheckButton.with_label("Regex");
-			this.regex_checkbox.toggled.connect(() => {
-				this.update_search_settings();
-			});
-			
-			this.multiline_checkbox = new Gtk.CheckButton.with_label("Multi-line (add \\n)");
-			this.multiline_checkbox.toggled.connect(() => {
-				this.update_search_settings();
-			});
-			
-			settings_box.append(this.case_sensitive_checkbox);
-			settings_box.append(this.regex_checkbox);
-			settings_box.append(this.multiline_checkbox);
-			settings_popover.set_child(settings_box);
-			settings_menu_button.popover = settings_popover;
-			
-			// Add all widgets to search bar
-			this.search_bar.append(this.search_entry);
-			this.search_bar.append(this.search_results_label);
-			this.search_bar.append(this.search_next_button);
-			this.search_bar.append(this.search_back_button);
-			this.search_bar.append(settings_menu_button);
-			
-			// Hide search bar initially (same as sourceview)
-			this.search_bar.visible = false;
-			this.append(this.search_bar);
-		}
-		
-		/**
-		 * Perform search with given text.
-		 */
-		private void perform_search(string search_text)
-		{
-			if (this.current_buffer == null) {
-				this.search_context = null;
-				this.update_search_results();
-				return;
-			}
-			
-			// Create search settings
-			var search_settings = new GtkSource.SearchSettings();
-			search_settings.case_sensitive = this.case_sensitive_checkbox.active;
-			search_settings.regex_enabled = this.regex_checkbox.active;
-			search_settings.wrap_around = false;
-			
-			// Create search context
-			this.search_context = new GtkSource.SearchContext(this.current_buffer, search_settings);
-			this.search_context.set_highlight(true);
-			
-			// Process multiline option
-			var txt = search_text;
-			if (this.multiline_checkbox.active) {
-				txt = search_text.replace("\\n", "\n");
-			}
-			
-			search_settings.set_search_text(txt);
-			
-			// Reset search position
-			this.last_search_end = 0;
-			
-			// Update results display
-			this.update_search_results();
-		}
-		
-		/**
-		 * Update search settings for current search context.
-		 */
-		private void update_search_settings()
-		{
-			if (this.search_context == null) {
-				return;
-			}
-			
-			// Re-perform search with new settings
-			this.perform_search(this.search_entry.text);
-		}
-		
-		/**
-		 * Update search results label and button states.
-		 */
-		private void update_search_results()
-		{
-			if (this.search_context == null) {
-				this.search_results_label.label = "No Results";
-				this.search_next_button.sensitive = false;
-				this.search_back_button.sensitive = false;
-				return;
-			}
-			
-			var count = this.search_context.get_occurrences_count();
-			if (count < 0) {
-				this.search_results_label.label = "??? Matches";
-				this.search_next_button.sensitive = false;
-				this.search_back_button.sensitive = false;
-				return;
-			}
-			
-			if (count > 0) {
-				this.search_results_label.label = "%d Matches".printf(count);
-				this.search_next_button.sensitive = true;
-				this.search_back_button.sensitive = true;
-			} else {
-				this.search_results_label.label = "No Matches";
-				this.search_next_button.sensitive = false;
-				this.search_back_button.sensitive = false;
-			}
-		}
-		
-		/**
-		 * Perform forward search (find next match).
-		 */
-		private void forward_search(bool change_focus)
-		{
-			if (this.current_buffer == null) {
-				return;
-			}
-			
-			Gtk.TextIter beg, st, en;
-			bool has_wrapped_around;
-			this.current_buffer.get_iter_at_offset(out beg, this.last_search_end);
-			
-			if (!this.search_context.forward(beg, out st, out en, out has_wrapped_around)) {
-				// No match found, reset to start
-				this.last_search_end = 0;
-				return;
-			}
-			
-			if (has_wrapped_around) {
-				// Don't wrap around, just stop
-				return;
-			}
-			
-			this.last_search_end = en.get_offset();
-			if (change_focus) {
-				this.source_view.grab_focus();
-			}
-			this.current_buffer.place_cursor(st);
-			this.source_view.scroll_to_iter(st, 0.1, true, 0.0, 0.5);
-		}
-		
-		/**
-		 * Perform backward search (find previous match).
-		 */
-		private void backward_search(bool change_focus)
-		{
-			if (this.current_buffer == null) {
-				return;
-			}
-			
-			Gtk.TextIter beg, st, en;
-			bool has_wrapped_around;
-			this.current_buffer.get_iter_at_offset(out beg, this.last_search_end - 1);
-			
-			if (!this.search_context.backward(beg, out st, out en, out has_wrapped_around)) {
-				// No match found, reset to end
-				Gtk.TextIter end_iter;
-				this.current_buffer.get_end_iter(out end_iter);
-				this.last_search_end = end_iter.get_offset();
-				return;
-			}
-			
-			this.last_search_end = en.get_offset();
-			if (change_focus) {
-				this.source_view.grab_focus();
-			}
-			this.current_buffer.place_cursor(st);
-			this.source_view.scroll_to_iter(st, 0.1, true, 0.0, 0.5);
-		}
-		
-		// TODO: Clipboard feature needs proper design - see TODO.md
-		// /**
-		//  * Handle copy-clipboard signal to store file reference metadata.
-		//  */
-		// private void on_copy_clipboard()
-		// {
-		// 	if (this.current_file == null) {
-		// 		return;
-		// 	}
-		// 	
-		// 	var buffer = this.source_view.buffer as GtkSource.Buffer;
-		// 	if (buffer == null) {
-		// 		return;
-		// 	}
-		// 	
-		// 	// Get selection bounds
-		// 	Gtk.TextIter start_iter, end_iter;
-		// 	if (!buffer.get_selection_bounds(out start_iter, out end_iter)) {
-		// 		// No selection, don't store metadata
-		// 		return;
-		// 	}
-		// 	
-		// 	// Get line numbers (0-based)
-		// 	int start_line = start_iter.get_line();
-		// 	int end_line = end_iter.get_line();
-		// 	
-		// 	// Get selected text
-		// 	string? selected_text = buffer.get_text(start_iter, end_iter, false);
-		// 	
-		// 	// Store metadata for later retrieval on paste
-		// 	// Use static method directly since we're in the same library and have File object
-		// 	OLLMcoder.ClipboardMetadata.store_file(this.current_file, start_line, end_line, selected_text);
-		// }
-		
-		/**
-		 * Save current file to disk.
-		 */
-		public async void save_file()
-		{
-			if (this.current_file == null || this.current_file.buffer == null) {
-				return;
-			}
-			
-			// FIXME: User interaction needed - show warning dialog when trying to save deleted file
-			// Currently silently returns, but should warn user that file is deleted and cannot be saved.
-			// Could show a dialog like "File has been deleted and cannot be saved. Would you like to restore it?"
-			// or at minimum show a notification/warning message to the user.
-			if (this.current_file.delete_id > 0) {
-				GLib.warning("Cannot save file %s: file has been deleted (delete_id=%lld)", 
-					this.current_file.path, this.current_file.delete_id);
-				// TODO: Show user-visible warning/notification dialog
-				return;
-			}
-			
-			// Sync buffer to file
-			try {
-				yield this.current_file.buffer.sync_to_file();
-				this.current_file.is_unsaved = false;
-				
-				this.save_current_file_state();
-			} catch (Error e) {
-				GLib.warning("Failed to save file %s: %s", this.current_file.path, e.message);
-			}
-		}
-		
-		/**
-		 * Disconnect delete_id signal handler.
-		 */
-		private void disconnect_delete_id_handler()
-		{
-			if (this.delete_id_handler_id == null || this.current_file == null) {
-				return;
-			}
-			this.current_file.disconnect(this.delete_id_handler_id);
-			this.delete_id_handler_id = null;
-		}
-		
-		/**
-		 * Handle file deletion in editor.
-		 * 
-		 * Called when delete_id > 0 is detected on the current file.
-		 * Clears buffer contents, shows "file deleted" indicator, and disables editing.
-		 * 
-		 * @param file The deleted file
-		 */
-		private void handle_file_deleted(OLLMfiles.File file)
-		{
-			// Clear buffer contents
-			if (file.buffer != null) {
-				file.buffer.clear.begin((obj, res) => {
-					try {
-						file.buffer.clear.end(res);
-					} catch (Error e) {
-						GLib.warning("Failed to clear buffer for deleted file %s: %s", file.path, e.message);
+				var display_line = line_number;
+				if (this.diff_active) {
+					var extras = 0;
+					var disk = line_number + 1;
+					// walk diff's should be ok as long as there are not too many
+					for (var i = 0; i < this.diff_remove_at.size; i++) {
+						if (this.diff_remove_at.get(i) > disk) {
+							break;
+						}
+						extras += this.diff_remove_n.get(i);
 					}
+					display_line = line_number + extras;
+				}
+				Gtk.TextIter iter;
+				if (!buffer.get_iter_at_line(out iter, display_line)) {
+					return;
+				}
+				buffer.place_cursor(iter);
+				this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.5);
+			}
+		
+			/**
+			 * Refresh current file from disk (if no unsaved changes).
+			 * 
+			 * FIXME: This should prompt the user about unsaved changes and handle errors
+			 * with user interaction (dialogs, notifications).
+			 */
+			public async void refresh_file()
+			{
+				if (this.current_file == null || this.current_file.buffer == null) {
+					return;
+				}
+			
+				var buffer = this.current_file.buffer as GtkSource.Buffer;
+				if (buffer == null) {
+					return;
+				}
+			
+				if (buffer.get_modified()) {
+					// FIXME: Prompt user about unsaved changes
+					GLib.error("File has unsaved changes, not reloading");
+					return;
+				}
+			
+				try {
+					yield this.current_file.buffer.read_async();
+				} catch (Error e) {
+					// FIXME: Show error dialog to user
+					GLib.warning("Failed to reload file %s: %s", this.current_file.path, e.message);
+				}
+			}
+		
+			/**
+			 * Save current file state (cursor position and scroll position).
+			 */
+			private void save_current_file_state()
+			{
+				if (this.current_file == null) {
+					return;
+				}
+			
+				// Cancel any pending scroll save timeout
+				if (this.scroll_save_timeout_id != 0) {
+					GLib.Source.remove(this.scroll_save_timeout_id);
+					this.scroll_save_timeout_id = 0;
+				}
+			
+				var buffer = this.source_view.buffer;
+				// Save cursor position
+				Gtk.TextIter cursor_iter;
+				buffer.get_iter_at_mark(out cursor_iter, buffer.get_insert());
+				this.current_file.cursor_line = cursor_iter.get_line();
+				this.current_file.cursor_offset = cursor_iter.get_line_offset();
+			
+				// Save scroll position (first visible line)
+				this.save_scroll_position();
+			
+				// Update last_viewed timestamp
+				var now = new DateTime.now_local();
+				this.current_file.last_viewed = now.to_unix();
+			
+				// Notify manager to save to database (metadata-only change - cursor/scroll position)
+				this.manager.on_file_metadata_change(this.current_file);
+			}
+		
+			/**
+			 * Save scroll position (first visible line) to current file.
+			 */
+			private void save_scroll_position()
+			{
+				if (this.current_file == null) {
+					return;
+				}
+			
+				// Get visible rectangle
+				Gdk.Rectangle visible_rect;
+				this.source_view.get_visible_rect(out visible_rect);
+			
+				// Get iter at top of visible area
+				Gtk.TextIter top_iter;
+				if (this.source_view.get_iter_at_location(out top_iter, visible_rect.x, visible_rect.y)) {
+					// Get line number of first visible line
+					this.current_file.scroll_position = top_iter.get_line();
+				}
+			}
+		
+			/**
+			 * Handle scroll change event.
+			 * Rate-limited: only saves scroll position after scrolling stops (500ms delay).
+			 */
+			private void on_scroll_changed()
+			{
+				if (this.current_file == null) {
+					return;
+				}
+			
+				// Cancel existing timeout if any
+				if (this.scroll_save_timeout_id != 0) {
+					GLib.Source.remove(this.scroll_save_timeout_id);
+				}
+			
+				// Set up new timeout to save scroll position after scrolling stops
+				this.scroll_save_timeout_id = GLib.Timeout.add(500, () => {
+					// Save scroll position and update database (metadata-only change)
+					this.save_scroll_position();
+					this.manager.on_file_metadata_change(this.current_file);
+					this.scroll_save_timeout_id = 0;
+					return false; // Only run once
 				});
 			}
-			
-			// Show "file deleted" indicator in placeholder
-			this.file_dropdown.placeholder_text = Path.get_basename(file.path) + " (deleted)";
-			
-			// Disable editing
-			this.source_view.editable = false;
-			
-			// Disable save button
-			this.save_button.sensitive = false;
-			
-			// Add CSS class to indicate deleted state (for potential styling)
-			this.source_view.add_css_class("file-deleted");
-			
-			// Note: Future enhancement - when sourceview can handle diffs, show the original file
-			// content as red deleted (like a diff view showing deleted lines)
-			// Can access deletion info via: file.delete_id -> FileHistory record
-		}
 		
-	}
+			/**
+			 * Restore cursor position from file state and scroll it into view.
+			 */
+			private void restore_cursor_position(OLLMfiles.File file)
+			{
+				var buffer = this.source_view.buffer;
+			
+				// Restore cursor position and scroll into view
+				if (file.cursor_line < 0 || file.cursor_offset < 0) {
+					return;
+				}
+				// Use navigate_to_line to handle line navigation and scrolling
+				this.navigate_to_line(file.cursor_line);
+				if (this.diff_active) {
+					return;
+				}
+				// Then adjust the offset (character position within the line)
+				Gtk.TextIter iter;
+				if (!buffer.get_iter_at_line_offset(out iter, file.cursor_line, file.cursor_offset)) {
+					return;
+				}
+				buffer.place_cursor(iter);
+			}
+		
+			/**
+			 * Restore scroll position from file state.
+			 */
+			private void restore_scroll_position(OLLMfiles.File file)
+			{
+				var scroll_line = file.scroll_position > 0 ? file.scroll_position : 0;
+				GLib.Idle.add(() => {
+					if (this.current_file != file) {
+						return false;
+					}
+					var buffer = this.source_view.buffer;
+					Gtk.TextIter iter;
+					if (!buffer.get_iter_at_line(out iter, scroll_line)) {
+						return false;
+					}
+					this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.0);
+					return false;
+				});
+			}
+		
+			// TODO: Clipboard feature needs proper design - see TODO.md
+			// /**
+			//  * Handle copy-clipboard signal to store file reference metadata.
+			//  */
+			// private void on_copy_clipboard()
+			// {
+			// 	if (this.current_file == null) {
+			// 		return;
+			// 	}
+			// 	
+			// 	var buffer = this.source_view.buffer as GtkSource.Buffer;
+			// 	if (buffer == null) {
+			// 		return;
+			// 	}
+			// 	
+			// 	// Get selection bounds
+			// 	Gtk.TextIter start_iter, end_iter;
+			// 	if (!buffer.get_selection_bounds(out start_iter, out end_iter)) {
+			// 		// No selection, don't store metadata
+			// 		return;
+			// 	}
+			// 	
+			// 	// Get line numbers (0-based)
+			// 	int start_line = start_iter.get_line();
+			// 	int end_line = end_iter.get_line();
+			// 	
+			// 	// Get selected text
+			// 	string? selected_text = buffer.get_text(start_iter, end_iter, false);
+			// 	
+			// 	// Store metadata for later retrieval on paste
+			// 	// Use static method directly since we're in the same library and have File object
+			// 	OLLMcoder.ClipboardMetadata.store_file(this.current_file, start_line, end_line, selected_text);
+			// }
+		
+			/**
+			 * Save current file to disk.
+			 */
+			public async void save_file()
+			{
+				if (this.current_file == null || this.current_file.buffer == null) {
+					return;
+				}
+			
+				// FIXME: User interaction needed - show warning dialog when trying to save deleted file
+				// Currently silently returns, but should warn user that file is deleted and cannot be saved.
+				// Could show a dialog like "File has been deleted and cannot be saved. Would you like to restore it?"
+				// or at minimum show a notification/warning message to the user.
+				if (this.current_file.delete_id > 0) {
+					GLib.warning("Cannot save file %s: file has been deleted (delete_id=%lld)", 
+						this.current_file.path, this.current_file.delete_id);
+					// TODO: Show user-visible warning/notification dialog
+					return;
+				}
+			
+				// Sync buffer to file
+				var file = this.current_file;
+				try {
+					yield file.buffer.sync_to_file();
+				} catch (Error e) {
+					GLib.warning("Failed to save file %s: %s", file.path, e.message);
+					return;
+				}
+				file.is_unsaved = false;
+				this.save_current_file_state();
+				yield this.show_pending_diff(file);
+			}
+		
+			/**
+			 * Disconnect delete_id signal handler.
+			 */
+			private void disconnect_delete_id_handler()
+			{
+				if (this.delete_id_handler_id == null || this.current_file == null) {
+					return;
+				}
+				this.current_file.disconnect(this.delete_id_handler_id);
+				this.delete_id_handler_id = null;
+			}
+		
+			/**
+			 * Handle file deletion in editor.
+			 * 
+			 * Called when delete_id > 0 is detected on the current file.
+			 * Clears buffer contents, shows "file deleted" indicator, and disables editing.
+			 * 
+			 * @param file The deleted file
+			 */
+			private void handle_file_deleted(OLLMfiles.File file)
+			{
+				// Clear buffer contents
+				if (file.buffer != null) {
+					file.buffer.clear.begin((obj, res) => {
+						try {
+							file.buffer.clear.end(res);
+						} catch (Error e) {
+							GLib.warning("Failed to clear buffer for deleted file %s: %s", file.path, e.message);
+						}
+					});
+				}
+			
+				// Show "file deleted" indicator in placeholder
+			
+				// Disable editing
+				this.source_view.editable = false;
+			
+				// Disable save button
+				this.save_button.sensitive = false;
+			
+				// Add CSS class to indicate deleted state (for potential styling)
+				this.source_view.add_css_class("file-deleted");
+			
+				// Note: Future enhancement - when sourceview can handle diffs, show the original file
+				// content as red deleted (like a diff view showing deleted lines)
+				// Can access deletion info via: file.delete_id -> FileHistory record
+			}
+		
+		}
 }

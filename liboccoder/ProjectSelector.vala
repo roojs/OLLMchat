@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder
 {
 	/**
 	 * Project selector. Replaces {@link OLLMcoder.ProjectDropdown}.
@@ -37,7 +37,7 @@ namespace OLLMapp
 	 * row.append(projects);
 	 * }}}
 	 */
-	class ProjectSelector : Gtk.Box
+	public class ProjectSelector : Gtk.Box
 	{
 		/**
 		 * Emitted when the desktop list is about to open.
@@ -71,7 +71,7 @@ namespace OLLMapp
 		private OLLMfiles.ProjectManager manager;
 		private Form form = Form.DESKTOP;
 		private SelectorPull selector;
-		private Gtk.Label label;
+		public Gtk.Label label { get; private set; }
 
 		/**
 		 * Resting project button. A click opens the list. A click

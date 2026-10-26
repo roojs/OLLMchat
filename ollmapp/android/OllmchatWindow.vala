@@ -523,7 +523,8 @@ namespace OLLMapp
 					new OLLMtools.ReadFile.Read(this.project_manager));
 			}
 			if (!this.history_manager.agent_factories.has_key("agent-pi")) {
-				var agent_pi = new OLLMcoder.AgentPi.Factory(this.project_manager);
+				var agent_pi = new OLLMcoder.AgentPi.Factory(this.project_manager,
+					this.is_tablet ? OLLMcoder.Form.TABLET : OLLMcoder.Form.PHONE);
 				this.history_manager.agent_factories.set(agent_pi.name, agent_pi);
 			}
 

@@ -32,7 +32,8 @@ namespace OLLMcoder.Skill
 		public Manager skill_manager { get; private set; }
 		public string skill_name { get; private set; }
 
-		private OLLMcoder.SourceView? widget = null;
+		private OLLMcoder.Form form;
+		private OLLMcoder.CoderView? widget = null;
 		private OLLMcoder.Task.ProgressView? progress_view = null;
 		/**
 		 * Set after {@link #initialize_widget} completes its first run (including
@@ -41,10 +42,22 @@ namespace OLLMcoder.Skill
 		 */
 		private bool done_init = false;
 
-		public Factory(OLLMfiles.ProjectManager project_manager,
-			 Gee.ArrayList<string> skills_directories, string skill_name = "")
-		{
+		/**
+		 * Build the skill factory for one application layout.
+		 *
+		 * @param project_manager Shared project and file manager
+		 * @param skills_directories Directories containing skills
+		 * @param form Layout selected by the application
+		 * @param skill_name Initial skill name, or empty for task creator
+		 */
+		public Factory(
+			OLLMfiles.ProjectManager project_manager,
+			Gee.ArrayList<string> skills_directories,
+			OLLMcoder.Form form,
+			string skill_name = ""
+		) {
 			this.project_manager = project_manager;
+			this.form = form;
 			this.skill_manager = new Manager(skills_directories);
 			this.skill_name = skill_name != "" ? skill_name : "task_creator";
 		}
@@ -82,7 +95,8 @@ namespace OLLMcoder.Skill
 			if (this.widget == null) {
 				this.progress_view = new OLLMcoder.Task.ProgressView();
 				((Gtk.Box) host.above_input_widget()).append(this.progress_view);
-				this.widget = new OLLMcoder.SourceView(this.project_manager);
+				this.widget = new OLLMcoder.CoderView(
+					this.project_manager, this.form);
 			}
 			this.progress_view.set_runner(
 				(OLLMcoder.Skill.Runner) host.session_agent());
@@ -119,12 +133,21 @@ namespace OLLMcoder.Skill
 			});
 			try {
 				var win_cfg = host.window_config();
-				yield this.widget.manager.rpc_load_projects_from_db();
-				yield this.widget.manager.restore_active_state(
+				yield this.project_manager.rpc_load_projects_from_db();
+				yield this.project_manager.restore_active_state(
 					win_cfg.project,
 					win_cfg.file
 				);
-				yield this.widget.apply_manager_state();
+				if (this.project_manager.active_project != null) {
+					this.widget.projects.label.label =
+						this.project_manager.active_project.path_basename;
+					this.widget.projects.button.tooltip_text =
+						this.project_manager.active_project.path;
+					this.widget.files.project = this.project_manager.active_project;
+				}
+				if (this.project_manager.active_file != null) {
+					yield this.widget.editor.open_file(this.project_manager.active_file);
+				}
 			} catch (GLib.Error e) {
 				GLib.critical ("initialize Skills Agent widget: %s", e.message);
 				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {

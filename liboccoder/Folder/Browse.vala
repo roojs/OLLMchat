@@ -16,12 +16,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder.Folder
 {
 	/**
 	 * One folder level. Not a tree.
 	 *
-	 * Child folders come from {@link FolderTree}. Empty and ignored
+	 * Child folders come from {@link Tree}. Empty and ignored
 	 * folders stay hidden while that tree's ghost is on, which is how
 	 * it starts. Pass true for ''load_files'' to list the files in
 	 * that folder under the folders. Phone does. Tablet does not, and
@@ -30,11 +30,11 @@ namespace OLLMapp
 	 * == Example ==
 	 *
 	 * {{{
-	 * var browse = new FolderBrowse(tree, files, project, true);
+	 * var browse = new Browse(tree, files, project, true);
 	 * browse.refresh_folder(project);
 	 * }}}
 	 */
-	class FolderBrowse : Gtk.Box
+	class Browse : Gtk.Box
 	{
 		/**
 		 * A folder row was opened. The caller shows that level.
@@ -68,8 +68,8 @@ namespace OLLMapp
 		 */
 		public string query { get; set; default = ""; }
 
-		private FolderTree tree;
-		private FileList file_list;
+		private Tree tree;
+		private File.List file_list;
 		private Gtk.ListBox folders;
 		private GLib.ListModel folder_model;
 		private Gtk.CustomFilter file_query;
@@ -89,9 +89,9 @@ namespace OLLMapp
 		 * @param project Project the relative path is measured from
 		 * @param load_files When true, files of the open folder are listed
 		 */
-		public FolderBrowse(
-			FolderTree tree,
-			FileList file_list,
+		public Browse(
+			Tree tree,
+			File.List file_list,
 			OLLMfiles.Folder project,
 			bool load_files
 		) {

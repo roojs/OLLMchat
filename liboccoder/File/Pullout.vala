@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder.File
 {
 	/**
 	 * Phone file page on {@link SelectorPull}.
@@ -25,16 +25,16 @@ namespace OLLMapp
 	 * left arrow and the back key go up one directory. An X closes
 	 * the page. Tree and Recent sit above the title. Search stays
 	 * at the bottom of the pull-over. Tablet files are
-	 * {@link FileOverlay}.
+	 * {@link Overlay}.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * var files = new FilePullout(manager, Form.PHONE, selector);
+	 * var files = new Pullout(manager, Form.PHONE, selector);
 	 * cover.add_overlay(selector);
 	 * }}}
 	 */
-	class FilePullout : FileNav
+	public class Pullout : Nav
 	{
 		/**
 		 * Phone pull-over. Tablet files are not on this page.
@@ -43,7 +43,7 @@ namespace OLLMapp
 
 		private Gtk.ListBox list;
 		private GLib.ListStore files; // suspect
-		private FolderBrowse browse;
+		private Folder.Browse browse;
 		private Gtk.Box tree_box;
 		private Gtk.ScrolledWindow recent_scroll;
 		private Gtk.Stack filters;
@@ -60,12 +60,12 @@ namespace OLLMapp
 		 * @param form Phone
 		 * @param selector Phone pull-over
 		 */
-		public FilePullout(OLLMfiles.ProjectManager manager, Form form, SelectorPull selector)
+		public Pullout(OLLMfiles.ProjectManager manager, Form form, SelectorPull selector)
 		{
 			base(manager, form);
 			this.selector = selector;
 			this.level = this.project;
-			this.browse = new FolderBrowse(this.folder_tree, this.file_list, this.project, true);
+			this.browse = new Folder.Browse(this.folder_tree, this.file_list, this.project, true);
 			this.browse.selected.connect((folder) => {
 				this.refresh_folder(folder);
 				if (this.search_open) {
@@ -325,7 +325,7 @@ namespace OLLMapp
 
 		/**
 		 * Refresh the phone page to one folder. The title and the
-		 * place line follow that folder. {@link FolderBrowse} shows
+		 * place line follow that folder. {@link Folder.Browse} shows
 		 * the level. The arrow is hidden at the project root.
 		 *
 		 * @param folder Folder now shown

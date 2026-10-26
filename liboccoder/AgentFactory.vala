@@ -39,7 +39,8 @@ namespace OLLMcoder
 		/**
 		 * Cached widget instance (lazy initialization).
 		 */
-		private OLLMcoder.SourceView? widget = null;
+		private Form form;
+		private CoderView? widget = null;
 		
 		/**
 		 * Constructor.
@@ -48,10 +49,12 @@ namespace OLLMcoder
 		 * The shell property is public and can be overridden after construction if needed.
 		 * 
 		 * @param project_manager The ProjectManager instance (required)
+		 * @param form Layout selected by the application
 		 */
-		public AgentFactory(OLLMfiles.ProjectManager project_manager)
+		public AgentFactory(OLLMfiles.ProjectManager project_manager, Form form)
 		{
 			this.project_manager = project_manager;
+			this.form = form;
 			this.shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash";
 		}
 		
@@ -455,7 +458,7 @@ namespace OLLMcoder
 		{
 			var host = (OLLMchat.ChatDesktopInterface) window;
 			if (this.widget == null) {
-				this.widget = new OLLMcoder.SourceView(this.project_manager);
+				this.widget = new CoderView(this.project_manager, this.form);
 				yield this.initialize_widget(host);
 			}
 			var widget_id = this.name + "-widget";
@@ -480,12 +483,21 @@ namespace OLLMcoder
 			});
 			try {
 				var win_cfg = host.window_config();
-				yield this.widget.manager.rpc_load_projects_from_db();
-				yield this.widget.manager.restore_active_state(
+				yield this.project_manager.rpc_load_projects_from_db();
+				yield this.project_manager.restore_active_state(
 					win_cfg.project,
 					win_cfg.file
 				);
-				yield this.widget.apply_manager_state();
+				if (this.project_manager.active_project != null) {
+					this.widget.projects.label.label =
+						this.project_manager.active_project.path_basename;
+					this.widget.projects.button.tooltip_text =
+						this.project_manager.active_project.path;
+					this.widget.files.project = this.project_manager.active_project;
+				}
+				if (this.project_manager.active_file != null) {
+					yield this.widget.editor.open_file(this.project_manager.active_file);
+				}
 			} catch (GLib.Error e) {
 				GLib.critical ("initialize AgentFactory widget: %s", e.message);
 				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {

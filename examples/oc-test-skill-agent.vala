@@ -425,7 +425,8 @@ Examples:
 		var skills_dirs = new Gee.ArrayList<string>();
 		skills_dirs.add(GLib.Path.build_filename(
 			GLib.Environment.get_home_dir(), "gitlive", "OLLMchat", "resources", "skills"));
-		var factory = new OLLMcoder.Skill.Factory(project_manager, skills_dirs, "");
+		var factory = new OLLMcoder.Skill.Factory(
+			project_manager, skills_dirs, OLLMcoder.Form.DESKTOP, "");
 		var history_manager = new OLLMchat.History.Manager(this);
 		var session = new OLLMchat.History.EmptySession(history_manager);
 		if (opt_model != null && opt_model != "") {

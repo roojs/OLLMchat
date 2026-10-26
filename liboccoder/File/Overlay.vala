@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder.File
 {
 	/**
 	 * Desktop file sheet. Covers the editor.
@@ -26,7 +26,7 @@ namespace OLLMapp
 	 * and a stop mark on the right. That mark closes the sheet. On
 	 * Recent the left buttons are hidden and that slot keeps its
 	 * width. A click turns the file button into the search entry.
-	 * Tablet uses the same sheet. The left pane is {@link FolderBrowse}
+	 * Tablet uses the same sheet. The left pane is {@link Folder.Browse}
 	 * with file loading off. The right pane stays the file list.
 	 * Tree and Recent sit above the folder location. On tablet that
 	 * location is each folder name as a plain button, with a slash
@@ -40,11 +40,11 @@ namespace OLLMapp
 	 * == Example ==
 	 *
 	 * {{{
-	 * var files = new FileOverlay(manager);
+	 * var files = new Overlay(manager);
 	 * editor_layer.add_overlay(files.list);
 	 * }}}
 	 */
-	class FileOverlay : FileNav
+	public class Overlay : Nav
 	{
 		/**
 		 * Desktop file sheet. Covers the editor. The host closes it
@@ -58,7 +58,7 @@ namespace OLLMapp
 		private Gtk.ListBox recent_list;
 		private GLib.ListStore recent_files;
 		private uint search_wait = 0;
-		private FolderBrowse browse;
+		private Folder.Browse browse;
 		private Gtk.Button up;
 		private Gtk.Box path_box;
 
@@ -102,9 +102,9 @@ namespace OLLMapp
 		 * Build the tabbed sheet that covers the editor.
 		 *
 		 * @param manager Connected manager. Rows come from the project.
-		 * @param form Desktop or tablet. Phone uses {@link FilePullout}.
+		 * @param form Desktop or tablet. Phone uses {@link Pullout}.
 		 */
-		public FileOverlay(OLLMfiles.ProjectManager manager, Form form = Form.DESKTOP)
+		public Overlay(OLLMfiles.ProjectManager manager, Form form = Form.DESKTOP)
 		{
 			base(manager, form);
 			this.entry = new Gtk.SearchEntry() {
@@ -170,7 +170,7 @@ namespace OLLMapp
 			var folders = (Gtk.Widget) this.folder_tree;
 			if (this.form == Form.TABLET) {
 				this.level = this.project;
-				this.browse = new FolderBrowse(this.folder_tree, this.file_list, this.project, false);
+				this.browse = new Folder.Browse(this.folder_tree, this.file_list, this.project, false);
 				this.up = new Gtk.Button.from_icon_name("go-previous-symbolic") {
 					tooltip_text = "Up",
 					can_focus = false,

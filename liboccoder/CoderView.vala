@@ -16,12 +16,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder
 {
 	/**
 	 * Coder screen: header, editor, and the search bar along the bottom.
 	 *
-	 * The header is {@link ProjectSelector}, {@link FileNav}, and
+	 * The header is {@link ProjectSelector}, {@link File.Nav}, and
 	 * the editor save button.
 	 * The editor is {@link SourceView}. The project list is an
 	 * overlay on that editor. Project selection and search stay
@@ -37,7 +37,7 @@ namespace OLLMapp
 	 * window.child = coder;
 	 * }}}
 	 */
-	class CoderView : Gtk.Box
+	public class CoderView : Gtk.Box
 	{
 		/**
 		 * Phone and tablet pull-over. Desktop still builds one; the
@@ -53,9 +53,9 @@ namespace OLLMapp
 		/**
 		 * Header file button and folder tree.
 		 */
-		public FileNav files { get; private set; }
+		public File.Nav files { get; private set; }
 
-		private SourceView editor;
+		public SourceView editor { get; private set; }
 		private Gtk.SearchEntry search_entry;
 		private Gtk.Label search_results_label;
 		private Gtk.Button search_next_button;
@@ -78,9 +78,9 @@ namespace OLLMapp
 			manager.buffer_provider = new OLLMcoder.BufferProvider();
 			this.selector = new SelectorPull(form);
 			this.projects = new ProjectSelector(manager, form, this.selector);
-			this.files = new FileOverlay(manager, form);
+			this.files = new File.Overlay(manager, form);
 			if (form == Form.PHONE) {
-				this.files = new FilePullout(manager, form, this.selector);
+				this.files = new File.Pullout(manager, form, this.selector);
 			}
 			this.editor = new SourceView(manager) {
 				hexpand = true,
@@ -117,7 +117,7 @@ namespace OLLMapp
 				if (form == Form.PHONE) {
 					return;
 				}
-				((FileOverlay) this.files).list.visible = false;
+				((File.Overlay) this.files).list.visible = false;
 			});
 			this.files.opened.connect(() => {
 				this.projects.list.visible = false;
@@ -225,7 +225,7 @@ namespace OLLMapp
 			editor_layer.add_overlay(this.projects.shade);
 			editor_layer.add_overlay(this.projects.list);
 			if (form == Form.DESKTOP) {
-				editor_layer.add_overlay(((FileOverlay) this.files).list);
+				editor_layer.add_overlay(((File.Overlay) this.files).list);
 			}
 			if (form == Form.TABLET) {
 				var column = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -239,7 +239,7 @@ namespace OLLMapp
 					vexpand = true,
 					child = column,
 				};
-				var sheet = ((FileOverlay) this.files).list;
+				var sheet = ((File.Overlay) this.files).list;
 				sheet.halign = Gtk.Align.FILL;
 				sheet.valign = Gtk.Align.FILL;
 				cover.add_overlay(sheet);

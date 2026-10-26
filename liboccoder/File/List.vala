@@ -16,18 +16,18 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder.File
 {
 	/**
 	 * File grid for one folder.
 	 *
-	 * Sits beside {@link FolderTree}. Three columns: name with a type
+	 * Sits beside {@link Folder.Tree}. Three columns: name with a type
 	 * icon, size, and modified time. The icon name comes from the
 	 * daemon MIME type. The theme draws that name at 48 pixels. A
 	 * name it does not have uses the generic icon for that type,
 	 * then ''text-x-generic''. The name column
 	 * starts in alphabetical order, ignoring case. The model is a
-	 * {@link FileListStore}. No folder selected shows
+	 * {@link ListStore}. No folder selected shows
 	 * ''Select a folder''. An empty reply shows ''No files''.
 	 * {@link kind} narrows that grid to documents or to code.
 	 * {@link query} is the desktop search text. Empty shows every
@@ -40,19 +40,19 @@ namespace OLLMapp
 	 * == Example ==
 	 *
 	 * {{{
-	 * var list = new FileList();
+	 * var list = new List();
 	 * list.load(folder);
 	 * list.file_activated.connect((file) => {
 	 *     selector.choose(file);
 	 * });
 	 * }}}
 	 */
-	class FileList : Gtk.Box
+	public class List : Gtk.Box
 	{
 		/**
 		 * Files for the folder currently shown.
 		 */
-		public FileListStore files { get; private set; default = new FileListStore(); }
+		public ListStore files { get; private set; default = new ListStore(); }
 
 		/**
 		 * A file row was activated. The file selector opens it.
@@ -89,12 +89,12 @@ namespace OLLMapp
 		private Gtk.ColumnViewColumn name_column;
 
 		/**
-		 * Type filter. {@link FileKind.ANY} shows every file in the
-		 * folder. {@link FileKind.DOCUMENT} shows markdown and plain
-		 * text. {@link FileKind.CODE} shows other text. A file that
+		 * Type filter. {@link Folder.FileKind.ANY} shows every file in the
+		 * folder. {@link Folder.FileKind.DOCUMENT} shows markdown and plain
+		 * text. {@link Folder.FileKind.CODE} shows other text. A file that
 		 * is not text stays hidden while either type is set.
 		 */
-		public FileKind kind { get; set; default = FileKind.ANY; }
+		public Folder.FileKind kind { get; set; default = Folder.FileKind.ANY; }
 
 		/**
 		 * Path filter from the desktop search entry. Empty shows
@@ -114,11 +114,11 @@ namespace OLLMapp
 		private bool showing_kept = false;
 
 		/**
-		 * Build the grid over an empty {@link FileListStore}.
+		 * Build the grid over an empty {@link ListStore}.
 		 *
 		 * @param single_click A tap activates a row. Tablet passes true.
 		 */
-		public FileList(bool single_click = false)
+		public List(bool single_click = false)
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0, hexpand: true, vexpand: true);
 			var name_factory = new Gtk.SignalListItemFactory();
@@ -226,7 +226,7 @@ namespace OLLMapp
 						return false;
 					}
 				}
-				if (this.kind == FileKind.ANY) {
+				if (this.kind == Folder.FileKind.ANY) {
 					return true;
 				}
 				var document = false;
@@ -246,9 +246,9 @@ namespace OLLMapp
 					}
 				}
 				switch (this.kind) {
-					case FileKind.DOCUMENT:
+					case Folder.FileKind.DOCUMENT:
 						return document;
-					case FileKind.CODE:
+					case Folder.FileKind.CODE:
 						return file.is_text && !document;
 					default:
 						return true;
@@ -423,7 +423,7 @@ namespace OLLMapp
 
 		/**
 		 * Show ''folder''. The header sort goes back to the file name
-		 * and the list opens at the top. {@link FileListStore.load}
+		 * and the list opens at the top. {@link ListStore.load}
 		 * fills the grid. The grid says Loading files until
 		 * that reply.
 		 *

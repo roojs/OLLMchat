@@ -16,16 +16,16 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder.Folder
 {
 	/**
 	 * Folder tree for the desktop file selector.
 	 *
-	 * Folders only. Files for the selected folder are a {@link FileList}
+	 * Folders only. Files for the selected folder are a {@link File.List}
 	 * beside this one. The list is a {@link Gtk.TreeListModel} over
-	 * {@link FolderTreeStore}. One filter and one name sorter are shared
+	 * {@link TreeStore}. One filter and one name sorter are shared
 	 * by the top list and every child segment. Names are alphabetical,
-	 * ignoring case. {@link FolderTreeStore.load} fills the list. While
+	 * ignoring case. {@link TreeStore.load} fills the list. While
 	 * that load is waiting on the file server, the folder names are
 	 * hidden and a spinner is shown across the top. The names are
 	 * already in order when they appear. A folder with one child folder
@@ -59,7 +59,7 @@ namespace OLLMapp
 	 * == Example ==
 	 *
 	 * {{{
-	 * var folders = new FolderTree();
+	 * var folders = new Tree();
 	 * folders.selected.connect((folder) => {
 	 *     files.load(folder);
 	 * });
@@ -80,13 +80,13 @@ namespace OLLMapp
 		CODE
 	}
 
-	class FolderTree : Gtk.Box
+	public class Tree : Gtk.Box
 	{
 		/**
 		 * Folder rows. The top store owns the path map and the flat list.
 		 */
-		public FolderTreeStore folders {
-			get; private set; default = new FolderTreeStore();
+		public TreeStore folders {
+			get; private set; default = new TreeStore();
 		}
 
 		/**
@@ -199,7 +199,7 @@ namespace OLLMapp
 		/**
 		 * Build the folder list with an empty store.
 		 */
-		public FolderTree()
+		public Tree()
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0, hexpand: true, vexpand: true);
 			this.ghost = new Gtk.Button() {

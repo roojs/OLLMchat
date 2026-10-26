@@ -105,9 +105,33 @@
 namespace OLLMcoder
 {
 	/**
-	 * Namespace documentation marker.
-	 * This file contains namespace-level documentation for OLLMcoder.
+	 * Layout of the project and file selectors.
+	 *
+	 * Desktop draws the lists on the editor. Phone and tablet
+	 * use {@link SelectorPull}.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var coder = new CoderView(manager, Form.PHONE);
+	 * }}}
 	 */
-	internal class NamespaceDoc {}
+	public enum Form {
+		DESKTOP,
+		PHONE,
+		TABLET
+	}
+
+	/**
+	 * Which file list a fetch fills.
+	 *
+	 * Recent is the desktop history list. Pullout is the
+	 * phone and tablet page.
+	 */
+	public enum Slot {
+		HISTORY,
+		PULLOUT
+	}
+
 }
 

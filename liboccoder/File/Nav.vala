@@ -16,27 +16,27 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder.File
 {
 	/**
 	 * File navigation shared by the desktop sheet and the pull-over.
 	 *
 	 * The resting control is a flat button with a file icon. It stays
-	 * hidden until a project is chosen. {@link FileOverlay} covers the
-	 * editor. {@link FilePullout} fills {@link SelectorPull}. Documents
+	 * hidden until a project is chosen. {@link Overlay} covers the
+	 * editor. {@link Pullout} fills {@link SelectorPull}. Documents
 	 * and code stay here and stay hidden. The one that is down hides
 	 * folders with none of that type, and turns the other off.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * var files = new FileOverlay(manager);
+	 * var files = new Overlay(manager);
 	 * projects.chosen.connect((folder) => {
 	 *     files.project = folder;
 	 * });
 	 * }}}
 	 */
-	class FileNav : Gtk.Box
+	public class Nav : Gtk.Box
 	{
 		/**
 		 * Emitted when the desktop sheet is about to open.
@@ -76,14 +76,14 @@ namespace OLLMapp
 
 		/**
 		 * Folder tree on the Tree tab. Rows arrive in
-		 * {@link FolderTree.folders}.
+		 * {@link Folder.Tree.folders}.
 		 */
-		public FolderTree folder_tree { get; private set; default = new FolderTree(); }
+		public Folder.Tree folder_tree { get; private set; default = new Folder.Tree(); }
 
 		/**
 		 * Files for the folder selected in {@link folder_tree}.
 		 */
-		public FileList file_list { get; private set; }
+		public List file_list { get; private set; }
 
 		/**
 		 * Documents type button. Hidden. Down shows document folders
@@ -141,7 +141,7 @@ namespace OLLMapp
 		 * @param manager Connected manager. Rows come from the project.
 		 * @param form Desktop, phone, or tablet
 		 */
-		public FileNav(OLLMfiles.ProjectManager manager, Form form)
+		public Nav(OLLMfiles.ProjectManager manager, Form form)
 		{
 			Object(
 				orientation: Gtk.Orientation.HORIZONTAL,
@@ -153,7 +153,7 @@ namespace OLLMapp
 				form: form,
 				project: new OLLMfiles.Folder(manager)
 			);
-			this.file_list = new FileList(this.form == Form.TABLET);
+			this.file_list = new List(this.form == Form.TABLET);
 			this.search_home = this.project;
 			this.label = new Gtk.Label("Select file") {
 				xalign = 0,
@@ -228,7 +228,7 @@ namespace OLLMapp
 					this.code.active = false;
 				}
 				type_sync = false;
-				this.folder_tree.kind = this.documents.active ? FileKind.DOCUMENT : FileKind.ANY;
+				this.folder_tree.kind = this.documents.active ? Folder.FileKind.DOCUMENT : Folder.FileKind.ANY;
 				this.file_list.kind = this.folder_tree.kind;
 			});
 			this.code.toggled.connect(() => {
@@ -240,7 +240,7 @@ namespace OLLMapp
 					this.documents.active = false;
 				}
 				type_sync = false;
-				this.folder_tree.kind = this.code.active ? FileKind.CODE : FileKind.ANY;
+				this.folder_tree.kind = this.code.active ? Folder.FileKind.CODE : Folder.FileKind.ANY;
 				this.file_list.kind = this.folder_tree.kind;
 			});
 			this.notify["project"].connect(() => {

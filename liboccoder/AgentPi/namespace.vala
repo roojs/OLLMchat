@@ -31,7 +31,8 @@
  * === Register ===
  *
  * {{{
- * var factory = new OLLMcoder.AgentPi.Factory(project_manager);
+ * var factory = new OLLMcoder.AgentPi.Factory(
+ *     project_manager, OLLMcoder.Form.DESKTOP);
  * history_manager.agent_factories.set(factory.name, factory);
  * }}}
  */

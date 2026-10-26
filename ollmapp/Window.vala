@@ -629,11 +629,13 @@ namespace OLLMapp
 			}
 
 			// Register CodeAssistant agent
-			var code_assistant = new OLLMcoder.AgentFactory(this.project_manager);
+			var code_assistant = new OLLMcoder.AgentFactory(
+				this.project_manager, OLLMcoder.Form.DESKTOP);
 			this.history_manager.agent_factories.set(code_assistant.name, code_assistant);
 			code_assistant.register_config(app.config, this.history_manager.tools);
 
-			var agent_pi = new OLLMcoder.AgentPi.Factory(this.project_manager);
+			var agent_pi = new OLLMcoder.AgentPi.Factory(
+				this.project_manager, OLLMcoder.Form.DESKTOP);
 			this.history_manager.agent_factories.set(agent_pi.name, agent_pi);
 			agent_pi.register_config(app.config, this.history_manager.tools);
 
@@ -644,7 +646,8 @@ namespace OLLMapp
 				GLib.Path.build_filename(
 					GLib.Environment.get_home_dir(), "gitlive", "OLLMchat", "resources", "skills"));
 					
-			var skill_runner = new OLLMcoder.Skill.Factory(this.project_manager, skills_dirs, "");
+			var skill_runner = new OLLMcoder.Skill.Factory(
+				this.project_manager, skills_dirs, OLLMcoder.Form.DESKTOP, "");
 			this.history_manager.agent_factories.set(skill_runner.name, skill_runner);
 			skill_runner.register_config(app.config, this.history_manager.tools);
 

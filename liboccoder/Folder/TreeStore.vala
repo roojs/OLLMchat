@@ -16,13 +16,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder.Folder
 {
 	/**
 	 * Folder rows for the file-selector tree.
 	 *
 	 * The top store owns the path map and the flat list of every folder.
-	 * Each folder's children are another {@link FolderTreeStore} for that
+	 * Each folder's children are another {@link TreeStore} for that
 	 * segment only. The same {@link OLLMfiles.Folder} sits in the segment,
 	 * the path map, and the flat list. The same maps remember the index
 	 * of each folder in its segment and in the flat list, so remove does
@@ -38,18 +38,18 @@ namespace OLLMapp
 	 * == Example ==
 	 *
 	 * {{{
-	 * var store = new FolderTreeStore();
+	 * var store = new TreeStore();
 	 * var root = new OLLMfiles.Folder(manager);
 	 * root.path = "/src";
 	 * store.append(null, root);
 	 * }}}
 	 */
-	class FolderTreeStore : Object, GLib.ListModel
+	public class TreeStore : Object, GLib.ListModel
 	{
 		/**
 		 * Top store. A child segment points at the store that owns the maps.
 		 */
-		public FolderTreeStore root { get; private set; }
+		public TreeStore root { get; private set; }
 
 		private Gee.ArrayList<OLLMfiles.Folder> items = new Gee.ArrayList<OLLMfiles.Folder>();
 
@@ -77,8 +77,8 @@ namespace OLLMapp
 		/**
 		 * Path to the child segment for that folder. Owned by the top store.
 		 */
-		public Gee.HashMap<string, FolderTreeStore> segments {
-			get; private set; default = new Gee.HashMap<string, FolderTreeStore>();
+		public Gee.HashMap<string, TreeStore> segments {
+			get; private set; default = new Gee.HashMap<string, TreeStore>();
 		}
 
 		/**
@@ -119,9 +119,9 @@ namespace OLLMapp
 		private int load_epoch = 0;
 
 		/**
-		 * Top store. Child segments use {@link FolderTreeStore.child}.
+		 * Top store. Child segments use {@link TreeStore.child}.
 		 */
-		public FolderTreeStore()
+		public TreeStore()
 		{
 			Object();
 			this.root = this;
@@ -132,7 +132,7 @@ namespace OLLMapp
 		 *
 		 * @param root Top store that owns the path map and the flat list
 		 */
-		public FolderTreeStore.child(FolderTreeStore root)
+		public TreeStore.child(TreeStore root)
 		{
 			Object();
 			this.root = root;
@@ -200,7 +200,7 @@ namespace OLLMapp
 				}
 				segment = this.segments.get(parent.path);
 			}
-			this.segments.set(folder.path, new FolderTreeStore.child(this));
+			this.segments.set(folder.path, new TreeStore.child(this));
 			this.path_map.set(folder.path, folder);
 			this.id_map.set((int) folder.id, folder);
 			this.flat_at.set(folder.path, this.flat.size);

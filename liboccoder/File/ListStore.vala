@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMcoder.File
 {
 	/**
 	 * Files for the folder selected in the file selector.
@@ -31,11 +31,11 @@ namespace OLLMapp
 	 * == Example ==
 	 *
 	 * {{{
-	 * var store = new FileListStore();
+	 * var store = new ListStore();
 	 * yield store.load(folder);
 	 * }}}
 	 */
-	class FileListStore : Object, GLib.ListModel
+	public class ListStore : Object, GLib.ListModel
 	{
 		/**
 		 * Rows from the last reply. This list is the model. It is not

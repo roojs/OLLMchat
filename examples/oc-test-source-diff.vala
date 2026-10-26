@@ -55,8 +55,8 @@ namespace OLLMapp
 		private Gtk.Label add_active_swatch;
 		private Gtk.Label remove_active_swatch;
 		private Gtk.Box selector_row;
-		private SelectorPull selector_pull;
-		private CoderView coder;
+		private OLLMcoder.SelectorPull selector_pull;
+		private OLLMcoder.CoderView coder;
 		private OLLMfiles.ProjectManager project_manager;
 		private bool has_selector = false;
 		private bool show_pull = false;
@@ -326,7 +326,7 @@ namespace OLLMapp
 					command_line.printerr("type button started down\n");
 					command_line.set_exit_status(1);
 				}
-				if (this.coder.files.folder_tree.kind != FileKind.ANY) {
+				if (this.coder.files.folder_tree.kind != OLLMcoder.Folder.FileKind.ANY) {
 					command_line.printerr("kind started as %s\n",
 						this.coder.files.folder_tree.kind.to_string());
 					command_line.set_exit_status(1);
@@ -451,8 +451,8 @@ namespace OLLMapp
 						this.coder.files.code.active.to_string());
 					command_line.set_exit_status(1);
 				}
-				if (this.coder.files.folder_tree.kind != FileKind.CODE ||
-					this.coder.files.file_list.kind != FileKind.CODE) {
+				if (this.coder.files.folder_tree.kind != OLLMcoder.Folder.FileKind.CODE ||
+					this.coder.files.file_list.kind != OLLMcoder.Folder.FileKind.CODE) {
 					command_line.printerr("code kind %s %s\n",
 						this.coder.files.folder_tree.kind.to_string(),
 						this.coder.files.file_list.kind.to_string());
@@ -516,8 +516,8 @@ namespace OLLMapp
 						this.coder.files.code.active.to_string());
 					command_line.set_exit_status(1);
 				}
-				if (this.coder.files.folder_tree.kind != FileKind.DOCUMENT ||
-					this.coder.files.file_list.kind != FileKind.DOCUMENT) {
+				if (this.coder.files.folder_tree.kind != OLLMcoder.Folder.FileKind.DOCUMENT ||
+					this.coder.files.file_list.kind != OLLMcoder.Folder.FileKind.DOCUMENT) {
 					command_line.printerr("document kind %s %s\n",
 						this.coder.files.folder_tree.kind.to_string(),
 						this.coder.files.file_list.kind.to_string());
@@ -540,7 +540,7 @@ namespace OLLMapp
 				}
 				command_line.print("type=off shown=%u\n", cleared_n);
 				if (this.coder.files.documents.active || this.coder.files.code.active ||
-					this.coder.files.folder_tree.kind != FileKind.ANY) {
+					this.coder.files.folder_tree.kind != OLLMcoder.Folder.FileKind.ANY) {
 					command_line.printerr("type stayed down kind=%s\n",
 						this.coder.files.folder_tree.kind.to_string());
 					command_line.set_exit_status(1);
@@ -804,21 +804,21 @@ namespace OLLMapp
 				if (connected) {
 					yield manager.rpc_load_projects_from_db();
 				}
-				var form = Form.DESKTOP;
+				var form = OLLMcoder.Form.DESKTOP;
 				if (opt_phone) {
-					form = Form.PHONE;
+					form = OLLMcoder.Form.PHONE;
 				}
 				if (opt_tablet) {
-					form = Form.TABLET;
+					form = OLLMcoder.Form.TABLET;
 				}
-				this.show_pull = form != Form.DESKTOP;
+				this.show_pull = form != OLLMcoder.Form.DESKTOP;
 				if (this.pair_baselines.length == 0) {
-					var coder = new CoderView(manager, form);
+					var coder = new OLLMcoder.CoderView(manager, form);
 					this.selector_pull = coder.selector;
 					this.coder = coder;
 				}
 				if (this.pair_baselines.length > 0) {
-					this.selector_pull = new SelectorPull(form);
+					this.selector_pull = new OLLMcoder.SelectorPull(form);
 					this.selector_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 						valign = Gtk.Align.START,
 						margin_start = 6,
@@ -826,10 +826,10 @@ namespace OLLMapp
 						margin_top = 4,
 						margin_bottom = 4,
 					};
-					var projects = new ProjectSelector(manager, form, this.selector_pull);
-					var files = (FileNav) new FileOverlay(manager, form);
-					if (form == Form.PHONE) {
-						files = new FilePullout(manager, form, this.selector_pull);
+					var projects = new OLLMcoder.ProjectSelector(manager, form, this.selector_pull);
+					var files = (OLLMcoder.File.Nav) new OLLMcoder.File.Overlay(manager, form);
+					if (form == OLLMcoder.Form.PHONE) {
+						files = new OLLMcoder.File.Pullout(manager, form, this.selector_pull);
 					}
 					var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 						hexpand = true,
@@ -841,10 +841,10 @@ namespace OLLMapp
 						spacer.visible = !files.visible;
 					});
 					projects.opened.connect(() => {
-						if (form == Form.PHONE) {
+						if (form == OLLMcoder.Form.PHONE) {
 							return;
 						}
-						((FileOverlay) files).list.visible = false;
+						((OLLMcoder.File.Overlay) files).list.visible = false;
 					});
 					files.opened.connect(() => {
 						projects.list.visible = false;
@@ -1047,12 +1047,12 @@ namespace OLLMapp
 			this.editor_overlay.set_child(this.source_view);
 			this.editor_overlay.add_overlay(this.review_bar.review_overlay);
 			if (this.has_selector) {
-				var projects = (ProjectSelector) this.selector_row.get_first_child();
+				var projects = (OLLMcoder.ProjectSelector) this.selector_row.get_first_child();
 				this.editor_overlay.add_overlay(projects.shade);
 				this.editor_overlay.add_overlay(projects.list);
 				if (!this.show_pull) {
 					this.editor_overlay.add_overlay(
-						((FileOverlay) this.selector_row.get_last_child()).list);
+						((OLLMcoder.File.Overlay) this.selector_row.get_last_child()).list);
 				}
 			}
 			this.root_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {

@@ -38,14 +38,19 @@ namespace OLLMcoder.AgentPi
 
 		public OLLMfiles.ProjectManager project_manager { get; private set; }
 
-		private OLLMcoder.SourceView? widget = null;
+		private OLLMcoder.Form form;
+		private OLLMcoder.CoderView? widget = null;
 
 		/**
 		 * @param project_manager shared project/file manager for workspace UI
+		 * @param form Layout selected by the application
 		 */
-		public Factory(OLLMfiles.ProjectManager project_manager)
-		{
+		public Factory(
+			OLLMfiles.ProjectManager project_manager,
+			OLLMcoder.Form form
+		) {
 			this.project_manager = project_manager;
+			this.form = form;
 			var env_shell = GLib.Environment.get_variable("SHELL");
 			this.shell = env_shell != null && env_shell != "" ? env_shell : "/usr/bin/bash";
 		}
@@ -228,18 +233,28 @@ namespace OLLMcoder.AgentPi
 		{
 			var ui = (OLLMchat.ChatDesktopInterface) window;
 			if (this.widget == null) {
-				this.widget = new OLLMcoder.SourceView(this.project_manager);
+				this.widget = new OLLMcoder.CoderView(
+					this.project_manager, this.form);
 				ui.notification(new OLLMrpc.Notification() {
 					method = "client.project.load_start",
 				});
 				try {
 					var win_cfg = ui.window_config();
-					yield this.widget.manager.rpc_load_projects_from_db();
-					yield this.widget.manager.restore_active_state(
+					yield this.project_manager.rpc_load_projects_from_db();
+					yield this.project_manager.restore_active_state(
 						win_cfg.project,
 						win_cfg.file
 					);
-					yield this.widget.apply_manager_state();
+					if (this.project_manager.active_project != null) {
+						this.widget.projects.label.label =
+							this.project_manager.active_project.path_basename;
+						this.widget.projects.button.tooltip_text =
+							this.project_manager.active_project.path;
+						this.widget.files.project = this.project_manager.active_project;
+					}
+					if (this.project_manager.active_file != null) {
+						yield this.widget.editor.open_file(this.project_manager.active_file);
+					}
 			} catch (GLib.Error e) {
 				GLib.critical ("initialize Agent Pi widget: %s", e.message);
 				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
