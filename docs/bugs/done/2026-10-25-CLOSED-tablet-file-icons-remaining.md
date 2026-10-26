@@ -1,8 +1,8 @@
 # File icons still wrong on the tablet
 
-**Status:** ⏳ Applied in the tree. Not verified on the tablet. The running daemon still has the old symlink lookup until it is replaced, and the grid stays at 24 pixels until the source-diff app is rebuilt.
+**Status:** 🚫 CLOSED. Icons are good enough. Left as they are on 25 Oct.
 
-ℹ️ History of the earlier attempts is in `docs/bugs/2026-10-24-tablet-file-icons-broken.md`. Do not use that file as the spec.
+ℹ️ History of the earlier attempts is in `docs/bugs/done/2026-10-24-CLOSED-tablet-file-icons-broken.md`.
 
 ## Problem
 
@@ -203,4 +203,5 @@ In `detect_language`, after `extension_map.get` returns a language. Replaces `te
 ## Next
 
 - ✔️ 25 Oct. Applied in `FileList.vala`, `ollmfilesd/File.vala`, and `ollmfilesd/Folder.vala`.
-- ⏳ 💩 Replace `/usr/bin/ollmfilesd`, rescan so `Pman.Admin` attaches to the project row, and install a source-diff build. JavaScript should draw `text-x-script`. XHTML should draw `text-html`. Icons should be 48 pixels.
+- ✔️ 25 Oct. Source-diff APK installed on the Pixel Tablet (`emulator-5556`). Process `org.roojs.ollmchat.sourcediff` pid 28931 was still running 15 seconds after launch. Crash buffer empty.
+- 🚫 25 Oct. Closed by request. The remaining mismatches stay. The host daemon was not replaced.

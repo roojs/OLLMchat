@@ -170,7 +170,7 @@ namespace OLLMapp
 					break;
 			}
 			var face = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
-			face.append(new Gtk.Image.from_icon_name("text-x-generic-symbolic"));
+			face.append(new Gtk.Image.from_icon_name("text-x-generic"));
 			face.append(this.label);
 			this.button = new Gtk.Button() {
 				child = face,

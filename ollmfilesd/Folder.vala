@@ -392,7 +392,8 @@ namespace OLLMfilesd
 		 * A symlink to a file is kept. Each row is a copy of the
 		 * stored file. Nothing here reads the filesystem. A link is
 		 * opened by passing the solid folder's path. A path that is
-		 * a project uses that project.
+		 * a project uses that project. A project whose children are
+		 * not in memory is loaded from the database before the reply.
 		 *
 		 * @param request inbound RPC
 		 * @param path folder path
@@ -410,27 +411,38 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			var list = new Gee.ArrayList<GLib.Object>();
-			foreach (var child in folder.children.items) {
-				if (child.delete_id != 0) {
-					continue;
+			GLib.SourceFunc reply = () => {
+				var list = new Gee.ArrayList<GLib.Object>();
+				foreach (var child in folder.children.items) {
+					if (child.delete_id != 0) {
+						continue;
+					}
+					if (child.base_type != "f" && child.base_type != "fa") {
+						continue;
+					}
+					if (child.points_to is Folder) {
+						continue;
+					}
+					var row = new File(this.manager);
+					row.copy_from((File) child, {
+						"manager", "buffer", "parent", "points-to"
+					});
+					list.add(row);
 				}
-				if (child.base_type != "f" && child.base_type != "fa") {
-					continue;
-				}
-				if (child.points_to is Folder) {
-					continue;
-				}
-				var row = new File(this.manager);
-				row.copy_from((File) child, {
-					"manager", "buffer", "parent", "points-to"
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("o", list),
+					msg = list.size.to_string()
 				});
-				list.add(row);
+				return false;
+			};
+			if (folder.children.items.size > 0 || folder.id <= 0) {
+				reply();
+				return;
 			}
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				retval = OLLMrpc.val("o", list),
-				msg = list.size.to_string()
+			folder.load_files_from_db.begin((obj, res) => {
+				folder.load_files_from_db.end(res);
+				reply();
 			});
 		}
 
@@ -1166,9 +1178,15 @@ namespace OLLMfilesd
 				if (new_item.points_to.id == 0) {
 					new_item.points_to.saveToDB(this.manager.db, null, false);
 					new_item.points_to_id = new_item.points_to.id;
-					if (new_item.points_to is Folder) {
-						yield ((Folder) new_item.points_to).load_files_from_db();
-					}
+				}
+				/* A link into a project retargets points_to at that
+				 * project. The project row already has an id, so the
+				 * save above does not run, and its children are still
+				 * empty until they are loaded.
+				 */
+				if (new_item.points_to is Folder &&
+					((Folder) new_item.points_to).children.items.size == 0) {
+					yield ((Folder) new_item.points_to).load_files_from_db();
 				}
 				new_item.mime_type = new_item.points_to.mime_type;
 			}

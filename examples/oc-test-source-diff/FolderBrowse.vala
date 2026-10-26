@@ -75,6 +75,13 @@ namespace OLLMapp
 		private Gtk.CustomFilter file_query;
 
 		/**
+		 * Placeholder under the folders. ''Loading files'' while that
+		 * folder's files are on the way. ''No files'' after an empty
+		 * reply. Phone only. The tablet file grid has its own label.
+		 */
+		private Gtk.Label file_note;
+
+		/**
 		 * Build one folder level.
 		 *
 		 * @param tree Folder store and the ghost filter
@@ -147,15 +154,22 @@ namespace OLLMapp
 				selection_mode = Gtk.SelectionMode.NONE,
 			};
 			file_box.bind_model(file_sorted, (item) => {
-				return this.list_box_factory((OLLMfiles.FileBase) item, "text-x-generic-symbolic");
+				return this.list_box_factory((OLLMfiles.FileBase) item);
 			});
-			file_box.set_placeholder(new Gtk.Label("No files") {
+			this.file_note = new Gtk.Label("No files") {
 				xalign = 0,
 				halign = Gtk.Align.START,
 				margin_start = 12,
 				margin_top = 8,
 				margin_bottom = 8,
 				css_classes = { "dim-label" },
+			};
+			file_box.set_placeholder(this.file_note);
+			this.file_list.files.notify["empty"].connect(() => {
+				if (!this.file_list.files.empty) {
+					return;
+				}
+				this.file_note.label = "No files";
 			});
 			file_box.row_activated.connect((line) => {
 				var file = (OLLMfiles.File) file_sorted.get_item((uint) line.get_index());
@@ -214,6 +228,7 @@ namespace OLLMapp
 			this.folders.bind_model(null, null);
 			if (!this.tree.folders.segments.has_key(folder.path)) {
 				if (this.load_files) {
+					this.file_note.label = "Loading files";
 					this.file_list.files.load.begin(folder);
 				}
 				return;
@@ -222,7 +237,7 @@ namespace OLLMapp
 			var shown = new Gtk.FilterListModel(segment, this.tree.filter);
 			this.folder_model = segment;
 			this.folders.bind_model(segment, (item) => {
-				return this.list_box_factory((OLLMfiles.FileBase) item, "folder-symbolic");
+				return this.list_box_factory((OLLMfiles.FileBase) item);
 			});
 			this.folders.visible = shown.get_n_items() > 0;
 			shown.items_changed.connect(() => {
@@ -231,24 +246,27 @@ namespace OLLMapp
 			if (!this.load_files) {
 				return;
 			}
+			this.file_note.label = "Loading files";
 			this.file_list.files.load.begin(folder);
 		}
 
 		/**
-		 * List box factory for a folder or file. The caller picks the
-		 * icon, so the folder list and the file list can diverge
-		 * later. A link keeps that icon. Its name has a link mark
-		 * before it. The second line is the path relative to the project,
-		 * including the item name. A link uses the target path, so
-		 * the line shows where it points. That line is absent at the
-		 * project root. A long path drops the item name first, then
-		 * keeps the first folder.
+		 * List box row for a folder or a file.
+		 *
+		 * A folder draws the coloured ''folder'' icon. A file draws
+		 * the icon for its MIME type, then the generic icon for that
+		 * type, then ''text-x-generic''. Both are 32 pixels. A link
+		 * keeps that icon. Its name has a link mark before it. The
+		 * second line is the path relative to the project, including
+		 * the item name. A link uses the target path, so the line
+		 * shows where it points. That line is absent at the project
+		 * root. A long path drops the item name first, then keeps
+		 * the first folder.
 		 *
 		 * @param item Folder or file for this list box
-		 * @param icon_name Icon chosen by that list
 		 * @return The list box child
 		 */
-		public Gtk.Widget list_box_factory(OLLMfiles.FileBase item, string icon_name)
+		public Gtk.Widget list_box_factory(OLLMfiles.FileBase item)
 		{
 			var line = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
 				margin_start = 12,
@@ -256,8 +274,21 @@ namespace OLLMapp
 				margin_top = 8,
 				margin_bottom = 8,
 			};
-			line.append(new Gtk.Image.from_icon_name(icon_name) {
+			var icon = "folder";
+			if (item is OLLMfiles.File) {
+				var file = (OLLMfiles.File) item;
+				icon = file.icon_name;
+				if (!Gtk.IconTheme.get_for_display(this.get_display()).has_icon(icon)) {
+					var generic = GLib.ContentType.get_generic_icon_name(file.mime_type);
+					icon = generic != null ? generic : "text-x-generic";
+				}
+				if (!Gtk.IconTheme.get_for_display(this.get_display()).has_icon(icon)) {
+					icon = "text-x-generic";
+				}
+			}
+			line.append(new Gtk.Image.from_icon_name(icon) {
 				valign = Gtk.Align.CENTER,
+				pixel_size = 32,
 			});
 			var column = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) {
 				hexpand = true,

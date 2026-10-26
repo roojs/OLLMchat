@@ -1,6 +1,6 @@
 # Folder sheet takes minutes to leave "Loading folders"
 
-**Status:** ⏳ Paused. 🔷 Intermittent, not critical. Leave it.
+**Status:** 🚫 CLOSED. Left for now. The sheet can sit on "Loading folders".
 
 ## Problem
 
@@ -51,5 +51,5 @@
 
 ## Next
 
-- ⏳ Nothing until this is picked up again.
+- 🚫 25 Oct. Closed for the time being.
 - ℹ️ Separate, not this stall: `FileAlias.new_from_info` calls `get_size()` on a `GFileInfo` from `get_target_info`, which does not request `STANDARD_SIZE`. That is the journal critical during the scan.

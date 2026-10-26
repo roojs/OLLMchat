@@ -1,6 +1,6 @@
 # File icons are broken on the tablet
 
-**Status:** ℹ️ Superseded. The remaining issues and the rejected proposal are in `docs/bugs/2026-10-25-tablet-file-icons-remaining.md`. This file is the history only.
+**Status:** 🚫 CLOSED. History only. Closed with the follow-up on 25 Oct. That log is `docs/bugs/done/2026-10-25-CLOSED-tablet-file-icons-remaining.md`.
 
 ## Problem
 
@@ -272,3 +272,4 @@ The other symbolic mime files from that same directory are added with the same t
 ```
 
 - 🚫 25 Oct. Applied, then removed. The icon-name rewrite, the 48-pixel size, the `.bjs` MIME override, and the link-target lookup are not acceptable. The fences above are the rejected proposals. The grid is back to 24 pixels and a single `text-x-generic` fallback. The daemon files are back to the scan that keeps `mime-type`.
+- 🚫 25 Oct. Closed with the follow-up. Do not continue from this file.

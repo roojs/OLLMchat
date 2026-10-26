@@ -121,7 +121,11 @@ namespace OLLMapp
 				ellipsize = this.form == Form.PHONE ? Pango.EllipsizeMode.END : Pango.EllipsizeMode.NONE,
 			};
 			var face = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
-			face.append(new Gtk.Image.from_icon_name("folder-symbolic"));
+			var project_icon = "folder-symbolic";
+			if (this.form != Form.DESKTOP) {
+				project_icon = "folder";
+			}
+			face.append(new Gtk.Image.from_icon_name(project_icon));
 			face.append(this.label);
 			this.button = new Gtk.Button() {
 				child = face,

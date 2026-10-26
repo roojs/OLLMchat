@@ -84,7 +84,7 @@ namespace OLLMapp
 			};
 			this.list.bind_model(this.files, (item) => {
 				var file = (OLLMfiles.File) item;
-				return this.browse.list_box_factory(file, "text-x-generic-symbolic");
+				return this.browse.list_box_factory(file);
 			});
 			this.list_note = new Gtk.Label("No files") {
 				xalign = 0,
@@ -183,11 +183,38 @@ namespace OLLMapp
 				hexpand = true,
 			});
 			this.selector.prepend(this.file_bar);
+			var loading_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
+				visible = false,
+				halign = Gtk.Align.CENTER,
+				valign = Gtk.Align.CENTER,
+				can_target = false,
+			};
+			var spinner = new Gtk.Spinner() {
+				width_request = 16,
+				height_request = 16,
+				valign = Gtk.Align.CENTER,
+			};
+			loading_row.append(spinner);
+			loading_row.append(new Gtk.Label("Loading folders") {
+				halign = Gtk.Align.START,
+				valign = Gtk.Align.CENTER,
+			});
+			var body = new Gtk.Overlay() {
+				hexpand = true,
+				vexpand = true,
+				child = this.filters,
+			};
+			body.add_overlay(loading_row);
+			this.folder_tree.folders.notify["loading"].connect(() => {
+				spinner.spinning = this.folder_tree.folders.loading;
+				loading_row.visible = this.folder_tree.folders.loading;
+				this.filters.opacity = this.folder_tree.folders.loading ? 0 : 1;
+			});
 			var page = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = true,
 			};
-			page.append(this.filters);
+			page.append(body);
 			this.selector.pages.add_named(page, "file");
 			this.selector.pages.notify["visible-child-name"].connect(() => {
 				this.file_bar.visible = this.selector.pages.visible_child_name == "file";

@@ -6,7 +6,7 @@
 
 - 🔷 25 Oct, Pixel Tablet `emulator-5556`, source-diff app. A few folder browses, then Pman.Admin. The right-hand file pane stays on loading.
 - 🔷 Expected: the file list for that folder appears.
-- ℹ️ Separate from `docs/bugs/2026-10-24-folder-load-slow.md`. That stall is the tablet applying a large `fetch_children` reply. This one never gets a reply.
+- ℹ️ Separate from `docs/bugs/done/2026-10-24-CLOSED-folder-load-slow.md`. That stall is the tablet applying a large `fetch_children` reply. This one never gets a reply.
 
 ## Evidence
 
