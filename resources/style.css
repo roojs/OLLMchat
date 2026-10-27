@@ -188,8 +188,6 @@ separator.horizontal.oc-table-body-sep {
 .tool-frame .tool-output text {
   font-family: monospace;
   font-size: 0.9em;
-  background-color: #000000;
-  color: #ffffff;
 }
 
 .tool-frame.root {

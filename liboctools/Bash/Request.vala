@@ -75,16 +75,6 @@ namespace OLLMtools.Bash
 		private bool child_active = false;
 		private OLLMbwrap.Bubble bubble;
 		private bool bubble_active = false;
-			
-		/**
-		 * Default constructor.
-		 */
-		public Request()
-		{
-			if (Request.bash_lease == null) {
-				Request.bash_lease = new Gee.HashMap<int, Request>();
-			}
-		}
 
 		public override void stop()
 		{
@@ -584,6 +574,9 @@ $(reap)";
 		 */
 		private void arm_bash_listener(OLLMfiles.ProjectManager project_manager, uint64 lease)
 		{
+			if (Request.bash_lease == null) {
+				Request.bash_lease = new Gee.HashMap<int, Request>();
+			}
 			Request.bash_lease.set((int) lease, this);
 			if (Request.bash_listening) {
 				return;

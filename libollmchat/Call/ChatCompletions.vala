@@ -257,6 +257,56 @@ namespace OLLMchat.Call
 			this.cancellable = cancellable;
 			this.messages = messages;
 
+			if (this.agent != null) {
+				/* Longer than system + one user: frame is the last message. */
+				var body = "";
+				if (this.messages.size > 2) {
+					body = this.messages.get(this.messages.size - 1).content;
+				}
+				if (this.messages.size <= 2) {
+					string[] system_parts = {};
+					string[] user_parts = {};
+					foreach (var msg in this.messages) {
+						if (msg.role == "system") {
+							if (msg.content == "") {
+								continue;
+							}
+							system_parts += msg.content;
+							continue;
+						}
+						if (msg.role != "user" || msg.content == "") {
+							continue;
+						}
+						user_parts += msg.content;
+					}
+					body = string.joinv("\n\n", system_parts);
+					if (system_parts.length > 0 && user_parts.length > 0) {
+						body += "\n\n---\n\n---\n\n";
+					}
+					if (user_parts.length > 0) {
+						body += string.joinv("\n\n", user_parts);
+					}
+				}
+				if (body != "") {
+					this.agent.session.manager.message_added(
+						new Message(
+							"ui",
+							Message.fenced(
+								"markdown.oc-frame-info.oc-frame-sending.collapsed Sending message",
+								body)),
+						this.agent.session);
+					this.agent.session.manager.message_added(
+						new Message(
+							"ui-waiting",
+							"waiting for "
+							+ (this.agent.session.model_usage.model != ""
+								? this.agent.session.model_usage.display_name_with_size()
+								: "Unknown model")
+							+ " to reply"),
+						this.agent.session);
+				}
+			}
+
 			if (this.stream) {
 				if (this.connection == null) {
 					throw new OllmError.INVALID_ARGUMENT("Connection is null");

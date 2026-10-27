@@ -1,6 +1,6 @@
 # Agent Pi bash and read calls failed
 
-**Status:** ✔️ edits applied; not re-run in Agent Pi
+**Status:** ✅ issues 2 and 3 are done. ✔️ issues 4 and 5 applied — rebuild the chat app before checking them
 
 Agent Pi was asked to fold `FileConnectionAdd` into the source-diff test. It tried to list that folder and read the file. The commands and the path were fine. Two things in the harness stopped it.
 
@@ -66,7 +66,9 @@ Keep a real message when the call sent one. When the message is empty, use the d
 			} finally {
 ```
 
-## Issue 2 — Reading a file with no line range is refused
+## ✅ Issue 2 — Reading a file with no line range is refused
+
+**Status:** ✅ Done. The check is in `liboctools/ReadFile/Request.vala`. The 17:03 read returned the file (7294 characters). Do not revisit.
 
 - 🔷 The model asked to read `examples/oc-test-source-diff/FileConnectionAdd.vala` and did not give a line range. That path is a symlink to `ollmapp/android/FileConnectionAdd.vala`.
 - 🔷 The tool says a line range is optional. The code treats "no line range" as a bad line number and answers `start_line must be >= 1`. The file had already been loaded.
@@ -99,13 +101,258 @@ Throw only when a line number was sent. Both defaults (`-1`) fall through and re
 				if ((this.start_line != -1 || this.end_line != -1) && this.start_line < 1) {
 ```
 
+## ✅ Issue 3 — bash crashes once live subscribe works
+
+**Status:** ✅ Done. `arm_bash_listener` creates `bash_lease` on first use. Bash runs. Do not revisit.
+
+- 🔷 After the daemon accepts `RPC-Live-Subscribe.rpc_signal`, the next bash call aborts.
+- 🔷 The abort is `gee_abstract_map_set: assertion 'self != NULL' failed` in `arm_bash_listener`.
+
+### Based on
+
+- ✔️ 16:13:06 chat log: `Sandbox-Bubble.rpc_create` and both `RPC-Live-Subscribe.rpc_signal` calls reply, then the process dies. The file daemon log has no `no handler` line for those two calls.
+- ✔️ The stack is `oll_mtools_bash_request_arm_bash_listener` at `Request.bash_lease.set`.
+- ✔️ `bash_lease` was created only inside `Request()`. `liboctools/Bash/Tool.vala` builds the request with `Json.gobject_deserialize`. That path uses `g_object_new` and does not run the creation method, so the map stays null. `RequestBase` already says requests are created that way.
+
+### `liboctools/Bash/Request.vala` — create the lease map on first use
+
+**Why:** `arm_bash_listener` runs on a deserialized request. The creation method never ran, so `bash_lease` is null. A field initializer does not work for this map. Create it the first time a lease is stored.
+
+**Where:** `arm_bash_listener`, before `bash_lease.set`. The field stays uninitialized.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+			Request.bash_lease.set((int) lease, this);
+```
+
+#### Replace with
+
+```vala
+			if (Request.bash_lease == null) {
+				Request.bash_lease = new Gee.HashMap<int, Request>();
+			}
+			Request.bash_lease.set((int) lease, this);
+```
+
+## ✔️ Issue 4 — code search returns `ERROR:` and nothing else
+
+- 🔷 `codebase_search` failed with no explanation. The chat showed `ERROR:`.
+- 🔷 The next outbound frame was titled `Sending message` and its body was that same `ERROR:`.
+
+### Based on
+
+- ✔️ 17:03:46 chat log. Query `Test source diff build configuration`. `Codebase.search` id=41 replies with an empty error. The tool result is `ERROR: ` (7 characters).
+- ✔️ Daemon log: `RPC dispatch: no handler for 'Codebase' (Codebase.search)`.
+- ✔️ The client calls `Codebase.search` (`liboctools/CodebaseSearch/Request.vala`). The daemon registers `rpc_search` (`ollmfilesd/Codebase.vala`). `Ffi.dispatch` returns false when that method name is missing, then the log names the class.
+- ✔️ `RequestBase.execute` returns `"ERROR: " + e.message`. The wire message is empty, so the model and the UI get `ERROR:` with nothing after it.
+- ✔️ `ChatCompletions.send` uses the last outbound message as the `Sending message` body once the list is longer than two messages. That last message was the tool result `ERROR: `.
+
+### `liboctools/CodebaseSearch/Request.vala` — call `Codebase.rpc_search`
+
+**Why:** The daemon registers `rpc_search`. The client calls `search`, so dispatch finds no handler and the wire message is empty.
+
+**Where:** `execute_request`, the `method` on the `Codebase` request. The class docblock names the same method.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+	 * parameters, calls ''Codebase.search'' on ''ollmfilesd'', and
+```
+
+```vala
+			// Step 2: Codebase.search on ollmfilesd (filter, FAISS, snippets — daemon-side)
+			var response = yield this.project_manager.rpc.call(new OLLMrpc.Request() {
+				method = "Codebase.search",
+```
+
+#### Replace with
+
+```vala
+	 * parameters, calls ''Codebase.rpc_search'' on ''ollmfilesd'', and
+```
+
+```vala
+			// Step 2: Codebase.rpc_search on ollmfilesd (filter, FAISS, snippets — daemon-side)
+			var response = yield this.project_manager.rpc.call(new OLLMrpc.Request() {
+				method = "Codebase.rpc_search",
+```
+
+### `libollmchat/Tool/RequestBase.vala` — `execute`: keep the code when the message is empty
+
+**Why:** This catch is what `codebase_search` returns. An empty wire message becomes `ERROR:` and that string is the next `Sending message` body.
+
+**Where:** `execute`, the `catch` around `execute_request()`.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+			} catch (Error e) {
+				GLib.debug("RequestBase.execute: Tool '%s' threw error: %s", this.tool.name, e.message);
+				return "ERROR: " + e.message;
+			}
+```
+
+#### Replace with
+
+```vala
+			} catch (Error e) {
+				GLib.debug("RequestBase.execute: Tool '%s' threw error: %s", this.tool.name, e.message);
+				if (e.message != "") {
+					return "ERROR: " + e.message;
+				}
+				return "ERROR: " + e.domain.to_string() + " " + e.code.to_string();
+			}
+```
+
+🚫 Do not replace the code with a generic "search failed" string.
+
+## ✔️ Issue 5 — bash output frame
+
+- 🔷 Bash runs. The live frame is still wrong.
+- 🔷 It is white, with a grey up arrow. Markdown boxes use `.oc-frame` plus a theme class, so they pick up the blue (or theme) fill and a matching arrow. This frame does not, so `frame.css` never paints it.
+- 🔷 The command is the title and a long command is cut with an ellipsis. The ellipsis can stay. Under the title it says `Running command in sandbox`.
+- 🔷 The output area is black with white text. It should use the frame colours.
+- 🔷 The output should show the full command.
+- 🔷 About 4 pixels of margin around the output.
+- 🔷 The expanded output is far too short.
+
+### Based on
+
+- ✔️ `ToolOutput` adds `tool-frame` only. `RenderSourceView` adds `oc-frame` and the theme class (`oc-frame-info` and the others). `frame.css` colours `.oc-frame`, its text, and its buttons from `--frame-bg` and `--frame-text-emphasis`.
+- ✔️ The arrow is `go-up-symbolic` on a plain `Gtk.Button`. Without `.oc-frame`, that button keeps the default grey.
+- ✔️ `.tool-output` in `resources/style.css` forces background `#000000` and text `#ffffff`, which covers the frame fill even after the class is added.
+- ✔️ The command is only the header label (`ellipsize` end). The text buffer starts empty. Open height is `min_content_height` 80, cap 280.
+
+### `libollmchatgtk/ToolOutput.vala` — paint it as a markdown frame
+
+**Why:** The classes are what `frame.css` matches. `oc-frame-info` is the same theme as the other tool frames.
+
+**Where:** `ToolOutput` constructor.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+			this.add_css_class("tool-frame");
+```
+
+#### Replace with
+
+```vala
+			this.add_css_class("tool-frame");
+			this.add_css_class("oc-frame");
+			this.add_css_class("oc-frame-info");
+```
+
+#### Remove
+
+```vala
+			var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+```
+
+#### Replace with
+
+```vala
+			var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+			row.add_css_class("oc-frame-header");
+```
+
+#### Remove
+
+```vala
+			this.view.add_css_class("tool-output");
+```
+
+#### Replace with
+
+The title stays the cut-off command. The body starts with the full command.
+
+```vala
+			this.view.add_css_class("tool-output");
+			this.view.buffer.text = command + "\n";
+```
+
+#### Remove
+
+```vala
+			this.scroll = new Gtk.ScrolledWindow() {
+				min_content_height = 80,
+				max_content_height = 280,
+				propagate_natural_height = true,
+				hexpand = true,
+				vexpand = false
+			};
+```
+
+#### Replace with
+
+Open height 200 instead of 80. Cap 480 instead of 280. Four pixels around the output.
+
+```vala
+			this.scroll = new Gtk.ScrolledWindow() {
+				min_content_height = 200,
+				max_content_height = 480,
+				propagate_natural_height = true,
+				hexpand = true,
+				vexpand = false,
+				margin_top = 4,
+				margin_bottom = 4,
+				margin_start = 4,
+				margin_end = 4
+			};
+```
+
+### `resources/style.css` — stop forcing a black output
+
+**Why:** Those two colours win over `.oc-frame text`, so the body stays a black box inside the themed frame.
+
+**Where:** `.tool-frame .tool-output`.
+
+**Depends on:** the `oc-frame` classes above.
+
+#### Remove
+
+```css
+.tool-frame .tool-output,
+.tool-frame .tool-output text {
+  font-family: monospace;
+  font-size: 0.9em;
+  background-color: #000000;
+  color: #ffffff;
+}
+```
+
+#### Replace with
+
+```css
+.tool-frame .tool-output,
+.tool-frame .tool-output text {
+  font-family: monospace;
+  font-size: 0.9em;
+}
+```
+
 ## Attempts / changelog
 
 - ✔️ 2026-10-27 — applied the three hunks in `ollmfilesd/Application.vala`, `liboctools/Bash/Request.vala`, and `liboctools/ReadFile/Request.vala`.
+- 🚫 2026-10-27 — field initializer `bash_lease = new Gee.HashMap<int, Request>()` does not work. The `Request()` creation method is still gone.
+- ✔️ 2026-10-27 — `arm_bash_listener` creates `bash_lease` on first use, then `set`.
+- ✔️ 2026-10-27 — issue 4: client calls `Codebase.rpc_search`. `RequestBase.execute` adds the domain and code when the wire message is empty.
+- ✔️ 2026-10-27 — issue 5: `ToolOutput` uses `oc-frame` and `oc-frame-info`. The body starts with the full command, the output margin is 4 pixels, the open height is 200, and the black output colours are gone.
 
 ## Next
 
-- 💩 ⏳ Restart the file daemon, then re-run a `bash` `pwd` plus a path-only `read` in Agent Pi. The running daemon still has the old handlers.
+- ✅ Issues 2 and 3. Do not revisit.
+- 🔷 ⏳ Rebuild the chat app and run one `codebase_search` plus one `bash` command. The file daemon already registers `rpc_search`, so it does not need a restart for issue 4.
+- ℹ️ Restarting the file daemon while this chat stays open is a separate failure: `docs/bugs/2026-10-27-filesd-restart-drops-client.md`.
 - ℹ️ The same prompt at 08:43 and 08:58 died in the UI as `Unexpected error: Exception has been thrown` before any tool call. The debug log has no matching line. That is a separate failure.
 
 ## Logs

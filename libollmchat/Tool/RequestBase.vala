@@ -215,7 +215,10 @@ namespace OLLMchat.Tool
 				return result;
 			} catch (Error e) {
 				GLib.debug("RequestBase.execute: Tool '%s' threw error: %s", this.tool.name, e.message);
-				return "ERROR: " + e.message;
+				if (e.message != "") {
+					return "ERROR: " + e.message;
+				}
+				return "ERROR: " + e.domain.to_string() + " " + e.code.to_string();
 			}
 		}
 		

@@ -41,19 +41,20 @@ namespace OLLMchatGtk
 		public ToolOutput(OLLMchat.History.Manager manager, string command, string action)
 		{
 			this.manager = manager;
-			this.add_css_class("tool-frame");
+			string[] frame_classes = { "tool-frame", "oc-frame", "oc-frame-info" };
 			if (action == "Running command as root (sudo)") {
-				this.add_css_class("root");
+				frame_classes += "root";
 			}
+			this.css_classes = frame_classes;
 			var header = new Gtk.Label("") {
 				halign = Gtk.Align.START,
 				ellipsize = Pango.EllipsizeMode.END,
 				use_markup = true,
-				hexpand = true
+				hexpand = true,
+				css_classes = { "command-preview" },
+				tooltip_text = command,
+				label = "<b>" + GLib.Markup.escape_text(command) + "</b>"
 			};
-			header.add_css_class("command-preview");
-			header.tooltip_text = command;
-			header.label = "<b>" + GLib.Markup.escape_text(command) + "</b>";
 			var status = new Gtk.Label(action) {
 				halign = Gtk.Align.START,
 				wrap = true
@@ -75,16 +76,18 @@ namespace OLLMchatGtk
 					? "Collapse" : "Expand";
 			});
 			this.stop = new Gtk.Button.with_label("Stop") {
-				valign = Gtk.Align.CENTER
+				valign = Gtk.Align.CENTER,
+				css_classes = { "destructive-action" }
 			};
-			this.stop.add_css_class("destructive-action");
 			this.stop.clicked.connect(() => {
 				this.stop.visible = false;
 				foreach (var req in this.manager.session.agent.active_tools.values) {
 					req.stop();
 				}
 			});
-			var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+			var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+				css_classes = { "oc-frame-header" }
+			};
 			row.append(this.collapse);
 			row.append(header);
 			row.append(this.stop);
@@ -92,17 +95,22 @@ namespace OLLMchatGtk
 				editable = false,
 				cursor_visible = false,
 				wrap_mode = Gtk.WrapMode.CHAR,
-				monospace = true
+				monospace = true,
+				css_classes = { "tool-output" }
 			};
-			this.view.add_css_class("tool-output");
+			this.view.buffer.text = command + "\n";
 			this.scroll = new Gtk.ScrolledWindow() {
-				min_content_height = 80,
-				max_content_height = 280,
+				min_content_height = 200,
+				max_content_height = 480,
 				propagate_natural_height = true,
 				hexpand = true,
-				vexpand = false
+				vexpand = false,
+				margin_top = 4,
+				margin_bottom = 4,
+				margin_start = 4,
+				margin_end = 4,
+				css_classes = { "tool-output" }
 			};
-			this.scroll.add_css_class("tool-output");
 			this.scroll.set_child(this.view);
 			this.body.set_child(this.scroll);
 			var col = new Gtk.Box(Gtk.Orientation.VERTICAL, 6);
