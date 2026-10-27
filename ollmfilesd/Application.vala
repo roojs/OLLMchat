@@ -290,7 +290,7 @@ Examples:
 				return;
 			}
 
-			OLLMrpc.rpc_register();
+			OLLMrpc.rpc_register(true);
 			Daemon.rpc_register();
 			ClientCert.rpc_register();
 			ProjectManager.rpc_register();

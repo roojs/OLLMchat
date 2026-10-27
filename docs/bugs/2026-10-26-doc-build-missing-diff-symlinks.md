@@ -12,7 +12,7 @@
 - ✔️ Job log: `libocfiles/meson.build:39:18: ERROR: File Diff/Patch.vala does not exist.`
 - ✔️ `dd8c2ca0` deleted the three symlinks (`mode 120000`): `libocfiles/Diff/Patch.vala`, `Differ.vala`, `PatchApplier.vala`.
 - ✔️ The real sources stayed in `ollmfilesd/Diff/`. `libocfiles/meson.build` and `docs/meson.build` still list the old paths. Callers still use `OLLMfiles.Diff` (`liboccoder/SourceView.vala`, `liboccoder/Diff/ReviewBar.vala`, `examples/oc-test-source-diff.vala`, `examples/oc-diff.vala`).
-- ℹ️ Parent `cefcdc2c` had `libocfiles/Diff/*.vala` → `../../ollmfilesd/Diff/*.vala`, as in `docs/plans/CODER-4.2.3.5.5-source-view-diff-items.md`.
+- ℹ️ Parent `cefcdc2c` had `libocfiles/Diff/*.vala` → `../../ollmfilesd/Diff/*.vala`, as in `docs/plans/CODER-4.2.3.5.5-DONE-source-view-diff-items.md`.
 
 ## Root cause
 

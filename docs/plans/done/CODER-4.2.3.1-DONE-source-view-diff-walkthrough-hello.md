@@ -1,10 +1,10 @@
 # 4.2.3.1 — SourceView diff walkthrough — `hello.vala`
 
-**Status:** **DESIGN OPEN** · design doc only (no implementation)
+**Status:** done — archived contract example for the merged diff review
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`CODER-4.2.3-URGENT-source-view-diff.md`](CODER-4.2.3-URGENT-source-view-diff.md)
+**Parent:** [`CODER-4.2.3-DONE-source-view-diff.md`](CODER-4.2.3-DONE-source-view-diff.md)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — checklist; vocabulary and named flows (**Flow A** … **F**) live in the parent plan.
 

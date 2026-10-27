@@ -65,7 +65,9 @@ namespace OLLMcoder
 			this.scroller = new Gtk.ScrolledWindow() {
 				hexpand = true,
 				vexpand = true,
-				child = this.box
+				child = this.box,
+				margin_start = 4,
+				margin_top = 4
 			};
 			this.append(this.scroller);
 			this.link_button = new Gtk.Button.with_label("") {

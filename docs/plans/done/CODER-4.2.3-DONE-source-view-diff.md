@@ -2,23 +2,23 @@
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this plan.**
 
-**Status:** **URGENT** · **⏳** Phases **1–3** ✅ done · Phase **4** design open
+**Status:** done — archived after the source-view and review work merged to mainline
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
-**Parent:** [`done/4.2-DONE-code-editor-tool.md`](done/4.2-DONE-code-editor-tool.md) — Phase 6 (split from ⏳ FUTURE)
+**Parent:** [`done/4.2-DONE-code-editor-tool.md`](4.2-DONE-code-editor-tool.md) — Phase 6 (split from ⏳ FUTURE)
 
 **Related:**
 
-- ℹ️ Shipped list + approve/reject: [`done/2.10.4.26-DONE-file-history-approval-knock-on.md`](done/2.10.4.26-DONE-file-history-approval-knock-on.md)
-- ℹ️ Daemon approve/revert: [`done/2.10.4.25-DONE-file-history-approval.md`](done/2.10.4.25-DONE-file-history-approval.md)
-- ℹ️ Diff library: [`done/5.2-DONE-diff-match-patch-simple-port.md`](done/5.2-DONE-diff-match-patch-simple-port.md) — `OLLMfiles.Diff.Differ`
-- ℹ️ Hunk merge reference: [`examples/oc-diff.vala`](../../examples/oc-diff.vala)
-- ℹ️ Worked example (seven-line walkthrough): [`CODER-4.2.3.1-source-view-diff-walkthrough-hello.md`](CODER-4.2.3.1-source-view-diff-walkthrough-hello.md)
-- ℹ️ Phase 1 DB: [`done/CODER-4.2.3.2-DONE-source-view-diff-db.md`](done/CODER-4.2.3.2-DONE-source-view-diff-db.md) ✅
-- ℹ️ Phase 2 render: [`done/CODER-4.2.3.3-DONE-source-view-diff-render.md`](done/CODER-4.2.3.3-DONE-source-view-diff-render.md) ✅
-- ℹ️ Phase 3 view: [`done/CODER-4.2.3.4-DONE-source-view-diff-view.md`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md) ✅
-- ℹ️ Phase 4 approval: [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md)
+- ℹ️ Shipped list + approve/reject: [`done/2.10.4.26-DONE-file-history-approval-knock-on.md`](2.10.4.26-DONE-file-history-approval-knock-on.md)
+- ℹ️ Daemon approve/revert: [`done/2.10.4.25-DONE-file-history-approval.md`](2.10.4.25-DONE-file-history-approval.md)
+- ℹ️ Diff library: [`done/5.2-DONE-diff-match-patch-simple-port.md`](5.2-DONE-diff-match-patch-simple-port.md) — `OLLMfiles.Diff.Differ`
+- ℹ️ Hunk merge reference: [`examples/oc-diff.vala`](../../../examples/oc-diff.vala)
+- ℹ️ Worked example (seven-line walkthrough): [`CODER-4.2.3.1-DONE-source-view-diff-walkthrough-hello.md`](CODER-4.2.3.1-DONE-source-view-diff-walkthrough-hello.md)
+- ℹ️ Phase 1 DB: [`done/CODER-4.2.3.2-DONE-source-view-diff-db.md`](CODER-4.2.3.2-DONE-source-view-diff-db.md) ✅
+- ℹ️ Phase 2 render: [`done/CODER-4.2.3.3-DONE-source-view-diff-render.md`](CODER-4.2.3.3-DONE-source-view-diff-render.md) ✅
+- ℹ️ Phase 3 view: [`done/CODER-4.2.3.4-DONE-source-view-diff-view.md`](CODER-4.2.3.4-DONE-source-view-diff-view.md) ✅
+- ℹ️ Phase 4 approval: [`CODER-4.2.3.5-DONE-source-view-diff-approval.md`](CODER-4.2.3.5-DONE-source-view-diff-approval.md)
 
 ---
 
@@ -26,10 +26,10 @@
 
 ### Phases (ship order)
 
-- 🔷 **Phase 1** — SQLite + migrate (`file_diff_part`, `status` → `reviewed`) — ✅ · [`done/CODER-4.2.3.2-DONE`](done/CODER-4.2.3.2-DONE-source-view-diff-db.md)
-- 🔷 **Phase 2** — `SourceView` inline unified-diff **rendering** — ✅ · [`done/CODER-4.2.3.3-DONE`](done/CODER-4.2.3.3-DONE-source-view-diff-render.md)
-- 🔷 **Phase 3** — **View** pending file (backup vs disk) — ✅ · [`done/CODER-4.2.3.4-DONE`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md)
-- 🔷 **Phase 4** — Per-hunk **approval flow** — **design open** after Phase 3 · [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md)
+- 🔷 **Phase 1** — SQLite + migrate (`file_diff_part`, `status` → `reviewed`) — ✅ · [`done/CODER-4.2.3.2-DONE`](CODER-4.2.3.2-DONE-source-view-diff-db.md)
+- 🔷 **Phase 2** — `SourceView` inline unified-diff **rendering** — ✅ · [`done/CODER-4.2.3.3-DONE`](CODER-4.2.3.3-DONE-source-view-diff-render.md)
+- 🔷 **Phase 3** — **View** pending file (backup vs disk) — ✅ · [`done/CODER-4.2.3.4-DONE`](CODER-4.2.3.4-DONE-source-view-diff-view.md)
+- 🔷 **Phase 4** — Per-hunk **approval flow** — **design open** after Phase 3 · [`CODER-4.2.3.5`](CODER-4.2.3.5-DONE-source-view-diff-approval.md)
 
 ### Confirmed (all phases)
 
@@ -57,16 +57,16 @@
 
 **Suggested order**
 
-1. 🔷 ✅ **Phase 1** — [`done/CODER-4.2.3.2-DONE`](done/CODER-4.2.3.2-DONE-source-view-diff-db.md).
-2. 🔷 ✅ **Phase 2** — [`done/CODER-4.2.3.3-DONE`](done/CODER-4.2.3.3-DONE-source-view-diff-render.md).
-3. 🔷 ✅ **Phase 3** — [`done/CODER-4.2.3.4-DONE`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md).
-4. 🔷 ⏳ **Phase 4** — [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md) (design open).
+1. 🔷 ✅ **Phase 1** — [`done/CODER-4.2.3.2-DONE`](CODER-4.2.3.2-DONE-source-view-diff-db.md).
+2. 🔷 ✅ **Phase 2** — [`done/CODER-4.2.3.3-DONE`](CODER-4.2.3.3-DONE-source-view-diff-render.md).
+3. 🔷 ✅ **Phase 3** — [`done/CODER-4.2.3.4-DONE`](CODER-4.2.3.4-DONE-source-view-diff-view.md).
+4. 🔷 ⏳ **Phase 4** — [`CODER-4.2.3.5`](CODER-4.2.3.5-DONE-source-view-diff-approval.md) (design open).
 
 ---
 
 ## Phase 1 — Database + upgrade
 
-ℹ️ Spec + fences: [`done/CODER-4.2.3.2-DONE-source-view-diff-db.md`](done/CODER-4.2.3.2-DONE-source-view-diff-db.md) — ✅
+ℹ️ Spec + fences: [`done/CODER-4.2.3.2-DONE-source-view-diff-db.md`](CODER-4.2.3.2-DONE-source-view-diff-db.md) — ✅
 
 - 🔷 ✅ Create **`file_diff_part`**; migrate **`status` → `reviewed`**.
 - 🔷 ✅ Derived **`FileDiffPart.path(FileHistory)`**; no SourceView / per-hunk RPC.
@@ -76,7 +76,7 @@
 
 ## Phase 2 — SourceView diff rendering
 
-ℹ️ Spec + fences: [`done/CODER-4.2.3.3-DONE-source-view-diff-render.md`](done/CODER-4.2.3.3-DONE-source-view-diff-render.md) — ✅
+ℹ️ Spec + fences: [`done/CODER-4.2.3.3-DONE-source-view-diff-render.md`](CODER-4.2.3.3-DONE-source-view-diff-render.md) — ✅
 
 - 🔷 ✅ **`show_diff(Differ)` / `clear_diff`** — unified overlay, secondary gutter, green/red **tags**.
 - 🔷 ✅ Caller owns **`Differ`**; SourceView uses **`patches`** + public **`lines1`/`lines2`** (no re-split).
@@ -88,7 +88,7 @@
 
 ## Phase 3 — View file with changes
 
-ℹ️ Spec + fences: [`done/CODER-4.2.3.4-DONE-source-view-diff-view.md`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md) — ✅
+ℹ️ Spec + fences: [`done/CODER-4.2.3.4-DONE-source-view-diff-view.md`](CODER-4.2.3.4-DONE-source-view-diff-view.md) — ✅
 
 - 🔷 ✅ Wire **`backup_path`** on pending **`FileWithHistory`**; **`open_file`** → **`Differ(V_backup, V_disk)`** → **`show_diff`**.
 - 🔷 ✅ **`clear_diff`** / rebuild on **`review_files.refreshed`**.
@@ -98,7 +98,7 @@
 
 ## Phase 4 — Approval flow of blocks (design then implement)
 
-ℹ️ Design: [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md) — **footer overview bar** settled; fences after sign-off.
+ℹ️ Design: [`CODER-4.2.3.5-DONE-source-view-diff-approval.md`](CODER-4.2.3.5-DONE-source-view-diff-approval.md) — **footer overview bar** settled; fences after sign-off.
 
 - 🔷 Per-hunk **Accept** / **Reject** / **Unapprove**; **`file_diff_part`** rows; bulk in **Bulk actions** hover menu.
 - 🔷 UI: footer bar — file nav | proportional hunk bands | **Bulk actions**; Accept/Reject in a **fixed centre overlay** on the source view (rapid accept).
@@ -126,7 +126,7 @@
 
 ℹ️ **Moved to sub-plan** — many nested code blocks broke Cursor markdown preview on this file.
 
-- [`CODER-4.2.3.1-source-view-diff-walkthrough-hello.md`](CODER-4.2.3.1-source-view-diff-walkthrough-hello.md) — seven-line file, **SourceView** markers, **SQLite** snapshots at each step (partial approve, stacked edit, unapprove, per-hunk reject).
+- [`CODER-4.2.3.1-DONE-source-view-diff-walkthrough-hello.md`](CODER-4.2.3.1-DONE-source-view-diff-walkthrough-hello.md) — seven-line file, **SourceView** markers, **SQLite** snapshots at each step (partial approve, stacked edit, unapprove, per-hunk reject).
 
 ### Flow A — Agent writes; user partial-approves (happy path)
 
@@ -262,7 +262,7 @@ User opens **changes-list menu** → **Approve all pending** → confirm “**N*
 
 ## Design — SQLite model (proposal)
 
-ℹ️ Shipped DDL today: [`ollmfilesd/FileHistory.vala`](../../ollmfilesd/FileHistory.vala) **`init_db`** (still has legacy **`status`** column until this plan ships — drop on migrate). **Partial approve adds one child table** — not a second parallel timeline.
+ℹ️ Shipped DDL today: [`ollmfilesd/FileHistory.vala`](../../../ollmfilesd/FileHistory.vala) **`init_db`** (still has legacy **`status`** column until this plan ships — drop on migrate). **Partial approve adds one child table** — not a second parallel timeline.
 
 ### `file_history.reviewed`
 
@@ -286,7 +286,7 @@ User opens **changes-list menu** → **Approve all pending** → confirm “**N*
 
 **`filebase.is_need_approval`** — file is in the pending review list.
 
-Whole-file approve ([`FileHistory.approve`](../../ollmfilesd/FileHistory.vala)): set **`reviewed=1`** on pending **`file_history`** rows — **no disk write**, no per-hunk rows until partial UI. Partial world: **`reviewed=1`** on **`file_history`** + **`accepted=1`** on all part rows (or **`reviewed=1`** alone when no part rows). **`backup_path`** exists for **reject** and diff baseline only.
+Whole-file approve ([`FileHistory.approve`](../../../ollmfilesd/FileHistory.vala)): set **`reviewed=1`** on pending **`file_history`** rows — **no disk write**, no per-hunk rows until partial UI. Partial world: **`reviewed=1`** on **`file_history`** + **`accepted=1`** on all part rows (or **`reviewed=1`** alone when no part rows). **`backup_path`** exists for **reject** and diff baseline only.
 
 ### Proposed: one child table
 
@@ -326,7 +326,7 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 
 ### Derived hunk file path (not in SQLite)
 
-ℹ️ Shipped backups: [`FileHistory.create_backup`](../../ollmfilesd/FileHistory.vala) stores **`backup_path`** in DB (written once at insert). **Hunk files differ:** path is **computed** from ids + parent path — no extra column.
+ℹ️ Shipped backups: [`FileHistory.create_backup`](../../../ollmfilesd/FileHistory.vala) stores **`backup_path`** in DB (written once at insert). **Hunk files differ:** path is **computed** from ids + parent path — no extra column.
 
 🔷 **Formula** — **`FileDiffPart.path(FileHistory history)`** (Phase 1):
 
@@ -380,11 +380,11 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 
 ## Design — approval baseline and partial approval
 
-ℹ️ Parent context: [`done/4.2-DONE-code-editor-tool.md`](done/4.2-DONE-code-editor-tool.md) Phase 6 mentioned “temporary approved copy” — **superseded:** disk is always end result; review is overlay + DB.
+ℹ️ Parent context: [`done/4.2-DONE-code-editor-tool.md`](4.2-DONE-code-editor-tool.md) Phase 6 mentioned “temporary approved copy” — **superseded:** disk is always end result; review is overlay + DB.
 
 ℹ️ **Baseline for Phases 2–3:** diff overlay = **`file_history.backup_path`** (**V_backup**) vs current **V_disk**. Partial / stacked / bulk remain Phase **4**.
 
-ℹ️ Shipped today ([`done/2.10.4.25-DONE-file-history-approval.md`](done/2.10.4.25-DONE-file-history-approval.md)):
+ℹ️ Shipped today ([`done/2.10.4.25-DONE-file-history-approval.md`](2.10.4.25-DONE-file-history-approval.md)):
 
 - One **file** row in `ReviewFiles` with **`approve_id`** (newest pending `file_history` row) and **`reject_id`** (newest row with backup).
 - **Approve (whole file):** marks that row and all older pending rows on the file approved.
@@ -417,7 +417,7 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
   - revert last bulk approve (restore pending state per file)?
   - or per-file unapprove only (no single “undo all”)?
   - backed by **`file_history`** / **`file_diff_part`** flips — **not** editor undo.
-- ℹ️ Shipped today: per-file Approve/Reject on [`liboccoder/Approvals.vala`](../../liboccoder/Approvals.vala) header — redesign may move or restyle when diff UI lands.
+- ℹ️ Shipped today: per-file Approve/Reject on [`liboccoder/Approvals.vala`](../../../liboccoder/Approvals.vala) header — redesign may move or restyle when diff UI lands.
 
 ### Questions to close (Phase 4 design pass)
 
@@ -437,7 +437,7 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 
 ### UI (Phase 4)
 
-ℹ️ Settled direction: [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md) — footer proportional hunk bar + overlay Accept/Reject; gutter buttons rejected.
+ℹ️ Settled direction: [`CODER-4.2.3.5`](CODER-4.2.3.5-DONE-source-view-diff-approval.md) — footer proportional hunk bar + overlay Accept/Reject; gutter buttons rejected.
 
 - 🔷 Footer overview bar (file nav | hunk bands | hover overflow).
 - 🔷 ⏳ Confirm Approvals header vs footer relationship; Flow B; hunk file format.
@@ -457,16 +457,16 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 
 ## Implementation spec
 
-ℹ️ **Phase 1–2 fences** live in [`done/CODER-4.2.3.2-DONE`](done/CODER-4.2.3.2-DONE-source-view-diff-db.md) and [`done/CODER-4.2.3.3-DONE`](done/CODER-4.2.3.3-DONE-source-view-diff-render.md).
+ℹ️ **Phase 1–2 fences** live in [`done/CODER-4.2.3.2-DONE`](CODER-4.2.3.2-DONE-source-view-diff-db.md) and [`done/CODER-4.2.3.3-DONE`](CODER-4.2.3.3-DONE-source-view-diff-render.md).
 
-ℹ️ **Phase 3–4:** Phase 3 done ([`done/CODER-4.2.3.4-DONE`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md)); Phase 4 stub [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md) after design pass.
+ℹ️ **Phase 3–4:** Phase 3 done ([`done/CODER-4.2.3.4-DONE`](CODER-4.2.3.4-DONE-source-view-diff-view.md)); Phase 4 stub [`CODER-4.2.3.5`](CODER-4.2.3.5-DONE-source-view-diff-approval.md) after design pass.
 
 - ℹ️ Likely touch points:
   - Phase **1:** `ollmfilesd/FileHistory.vala`, `FileDiffPart.vala`, migrate / `init_db`
   - Phase **2:** `liboccoder/SourceView.vala`
   - Phase **3:** `liboccoder/Approvals.vala`, client/daemon `FileHistory` (backup text)
   - Phase **4:** same + part RPCs / hunk overlay state
-- ℹ️ Diff **library** ([`OLLMfiles.Diff.Differ`](../../libocfiles/Diff/)): diff two strings → hunks/patches only.
+- ℹ️ Diff **library** ([`OLLMfiles.Diff.Differ`](../../../libocfiles/Diff/)): diff two strings → hunks/patches only.
 - ℹ️ Diff **consumer** (`ollmfilesd`, `liboccoder/SourceView`, `Approvals`): pending state, overlay, approve/reject RPC, **`file_diff_part`**.
 
 ---

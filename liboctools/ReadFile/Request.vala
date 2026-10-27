@@ -380,7 +380,7 @@ namespace OLLMtools.ReadFile
 			// Validate line range if not reading entire file and not using find_words or summarize
 			// (find_words and summarize can work without explicit line range)
 			if (!this.read_entire_file && !this.summarize && (this.find_words == null || this.find_words.strip() == "")) {
-				if (this.start_line < 1) {
+				if ((this.start_line != -1 || this.end_line != -1) && this.start_line < 1) {
 					var error_msg = "Invalid line range: start_line must be >= 1";
 					this.agent.add_message(new OLLMchat.Message("ui", 
 						OLLMchat.Message.fenced("text.oc-frame-danger Read file Response", 

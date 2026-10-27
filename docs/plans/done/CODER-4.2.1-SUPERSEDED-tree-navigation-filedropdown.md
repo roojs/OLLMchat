@@ -1,6 +1,8 @@
 # 4.2.1. Tree Navigation in FileDropdown
 
-ℹ️ The file pop-down, including the Tree tab and loading the folder tree, is Phase 2 of [`CODER-4.2.5-project-file-selector.md`](CODER-4.2.5-project-file-selector.md). This file is the older note. Do not implement it separately.
+**Status:** superseded by completed `CODER-4.2.5`
+
+ℹ️ The file pop-down, including the Tree tab and loading the folder tree, is Phase 2 of [`CODER-4.2.5-DONE-project-file-selector.md`](CODER-4.2.5-DONE-project-file-selector.md). This file is the older note. Do not implement it separately.
 
 ## Overview
 

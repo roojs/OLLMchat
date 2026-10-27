@@ -1,21 +1,21 @@
 # 4.2.3.5.5 — Diff items on the wire
 
-**Status:** **⏳** proposed — fences below cover the open path in [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md). `parts` runs the diff. The client paints from the returned objects.
+**Status:** done — archived after diff items merged to mainline
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md)
+**Parent:** [`CODER-4.2.3.5-DONE-source-view-diff-approval.md`](CODER-4.2.3.5-DONE-source-view-diff-approval.md)
 
-**Design:** [`CODER-4.2.3.5.4-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-source-view-diff-wire-model.md)
+**Design:** [`CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md)
 
-**Supersedes:** [`done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) — do not apply its fences.
+**Supersedes:** [`done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md`](CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) — do not apply its fences.
 
-**Next:** [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) — approval. [`4.2.3.5.7`](CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md) — resync after save.
+**Next:** [`4.2.3.5.6`](CODER-4.2.3.5.6-DONE-source-view-diff-approval-calls.md) — approval. [`4.2.3.5.7`](CODER-4.2.3.5.7-DONE-source-view-diff-resync.md) — resync after save.
 
 **Depends on:**
 
-- [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) — **✔️** editor hosts `ReviewBar`. Bulk accept / reject are in-memory stubs.
-- [`CODER-4.2.3-URGENT-source-view-diff.md`](CODER-4.2.3-URGENT-source-view-diff.md) — `file_diff_part`, Flow A–F
+- [`CODER-4.2.3.5.2-DONE-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-DONE-source-view-diff-approval-phase-b.md) — **✔️** editor hosts `ReviewBar`. Bulk accept / reject are in-memory stubs.
+- [`CODER-4.2.3-DONE-source-view-diff.md`](CODER-4.2.3-DONE-source-view-diff.md) — `file_diff_part`, Flow A–F
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
@@ -1077,7 +1077,7 @@ Bands from the line range. `accepted` 0 is pending, 1 accepted, -1 rejected. The
 
 ## LLM notes
 
-- 🚫 Apply any fence from [`4.2.3.5.3`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md).
+- 🚫 Apply any fence from [`4.2.3.5.3`](CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md).
 - 🚫 A hunk file that stores the full project text.
 - 🚫 A `hunk`, `hunk_remove`, or `hunk_add` column on `file_diff_part`. No `ALTER TABLE` for them.
 - 🚫 Copy `rows` into a `Gee.ArrayList<GLib.Object>` before `val("o", …)`. `rows` is already that array.
@@ -1089,7 +1089,7 @@ Bands from the line range. `accepted` 0 is pending, 1 accepted, -1 rejected. The
 - 🚫 Return `live` because the history id is present. The project file's modification stamp from that diff has to match `live_stamp`.
 - 🚫 Delete every `file_diff_part` row for a history and insert a new set. `rebuild_parts` deletes a row only when `compare` says so. A return of `3` keeps that row.
 - 🚫 Delete a row because `hunk_remove` and `hunk_add` are empty. Those strings are not columns. A load from the table always looks empty.
-- ℹ️ [`4.2.3.5.7`](CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md) calls the same `rebuild_parts` after save. That writes `live` and `live_stamp` for the kept parts.
+- ℹ️ [`4.2.3.5.7`](CODER-4.2.3.5.7-DONE-source-view-diff-resync.md) calls the same `rebuild_parts` after save. That writes `live` and `live_stamp` for the kept parts.
 - 🚫 A `+` or `-` prefix on hunk lines, and a `@@` line-number header inside `hunk_remove` or `hunk_add`.
 - 🚫 Leave the diff sources in `libocfiles` and only symlink them into `ollmfilesd`. The files move to `ollmfilesd/Diff`. `libocfiles/Diff` is the deprecated symlink kept for the current diff UI tests.
 - 🚫 Delete `libocfiles/Diff`, `show_diff`, or the diff examples in this phase. Those tests still need the old client diff.

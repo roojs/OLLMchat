@@ -359,7 +359,10 @@ namespace OLLMtools.Bash
 			try {
 				return yield this.bash_remote();
 			} catch (Error e) {
-				return "ERROR: " + e.message;
+				if (e.message != "") {
+					return "ERROR: " + e.message;
+				}
+				return "ERROR: " + e.domain.to_string() + " " + e.code.to_string();
 			} finally {
 				if (this.timeout_src != 0) {
 					GLib.Source.remove(this.timeout_src);

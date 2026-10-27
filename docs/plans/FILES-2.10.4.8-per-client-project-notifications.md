@@ -1,10 +1,12 @@
 # 2.10.4.8 — Per-client project context and file-change notifications
 
-**Status:** PROPOSAL — **future**. **No implementation yet** (no wire handlers, no V2 signal restore, no file watcher).
+**Status:** PROPOSAL — **future**. **No implementation yet** (no project
+interest wire, open-project monitor, routed notifications, or V2 signal
+restore).
 
 **Depends on:** [`2.10.4.4`](done/2.10.4.4-DONE-projectmanager.md) ✅–[`2.10.4.6`](done/2.10.4.6-DONE-file.md) cutover; [`2.10.4.7`](done/2.10.4.7-DONE-active-project-file-outside-db.md) (active project/file on client, not daemon DB)
 
-**Related:** [`APP-4.2.3-background-sync-file-watcher.md`](APP-4.2.3-background-sync-file-watcher.md) (daemon detects external disk changes); [`2.10.4.4`](2.10.4.4-DONE-projectmanager.md) events section (`OLLMrpc.Client.notification`)
+**Related:** [`APP-4.2.3-background-sync-file-watcher.md`](APP-4.2.3-background-sync-file-watcher.md) (older watcher notes; this plan owns the current per-client/open-project design); [`2.10.4.4`](done/2.10.4.4-DONE-projectmanager.md) events section (`OLLMrpc.Client.notification`); [`CODER-4.2.7`](CODER-4.2.7-coder-view-outstanding.md) (file-navigation consumer)
 
 **Parent:** [`FILES-2.10.4.0-summary.md`](FILES-2.10.4.0-summary.md) · **Cutover:** [`done/2.10.4.9-DONE-v2-caller-cutover.md`](done/2.10.4.9-DONE-v2-caller-cutover.md) · **Layout:** [`done/2.10.4.0-DONE-libocfiles-v2-and-rpc-layout.md`](done/2.10.4.0-DONE-libocfiles-v2-and-rpc-layout.md)
 
@@ -27,6 +29,44 @@ Today there is **no** per-session project binding on the daemon and **no** `even
 The daemon knows **which project each RPC client (window) is working on**, so it can **route file-change notifications** to the right `OLLMrpc.Client` sessions.
 
 Each window’s `V2/ProjectManager` keeps (or restores) **`file_contents_changed(File file)`** — emitted when that window’s client receives a relevant daemon notification, not when local `File.write` succeeds (daemon already queued scan/index on write).
+
+---
+
+## Open projects and monitor lifetime
+
+- 🔷 Each window has one open project.
+- 🔷 When a window opens or switches project, its RPC session registers that
+  project with `ollmfilesd`.
+- 🔷 Every project open in at least one connected window is monitored for
+  filesystem changes.
+- 🔷 Two or more windows on the same project share one daemon-side project
+  monitor. Notification routing remains per client.
+- 🔷 A project monitor stops when no connected session has that project open.
+- 🔷 Reconnect restores the window's project interest after the RPC session is
+  re-established.
+- 🔷 The daemon owns monitoring and stored file state. A window does not
+  monitor the filesystem itself.
+
+---
+
+## Folder and file freshness
+
+- 🔷 Files created, removed, moved, or changed after the initial project scan
+  must update the daemon's stored folder and file rows.
+- 🔷 Folder and file navigation reads those current rows and receives a
+  notification when visible data becomes stale.
+- 🔷 Notifications must distinguish content changes from structural changes
+  that affect folder or file lists.
+- 🔷 A structural change includes file or directory create, delete, move, and
+  rename.
+- 🔷 ⏳ Decide whether requesting a folder also performs a shallow scan of
+  that folder as recovery from a missed monitor event.
+  - The recovery scan would inspect direct children only.
+  - It would not recursively scan descendants.
+  - Its response would include changes found by that scan.
+- 💩 ⏳ Decide whether the recovery scan belongs in `Folder.fetch_dir`, in a
+  separate refresh call, or before the existing request.
+- 💩 ⏳ Decide whether repeated folder access needs a short freshness window.
 
 ---
 
@@ -82,7 +122,7 @@ Window A (project /home/a/proj1)          Window B (project /home/a/proj2)
 
 - e.g. `event.file.changed` — `params.path`, `mtime`, maybe `origin` (`external` | `peer` | `self`) so UI can suppress echo for own save.
 - Only sent to sessions whose watched project contains `path`.
-- See [`2.10.4.6`](2.10.4.6-file.md) events table — extend beyond `event.file.added`.
+- See [`2.10.4.6`](done/2.10.4.6-DONE-file.md) events table — extend beyond `event.file.added`.
 
 **Not in scope for v1 tranche:** full event catalog, watcher implementation, UI reload policy.
 
@@ -115,9 +155,14 @@ Window A (project /home/a/proj1)          Window B (project /home/a/proj2)
 
 1. **Watch granularity** — one project path per session, or list (multi-root later)?
 2. **Same file, two windows, same project** — both get notification; conflict UI per window (existing `FileUpdateStatus`)?
-3. **Notification vs poll** — is `File.changed.check` on focus still needed as fallback if watcher misses an event?
+3. **Notification vs refresh** — is `File.changed.check` on focus sufficient,
+   or should folder access perform the shallow recovery scan described above?
 4. **Peer write origin** — suppress notification to the session that performed `File.write`, or always broadcast to other sessions on same project?
 5. **Relationship to vector scan** — daemon queues index on write; notification is separate UI concern (do not conflate with `BackgroundScan` on client).
+6. **Monitor implementation** — recursive watcher, watched-directory set, or
+   another daemon-side mechanism?
+7. **Structural events** — one folder-invalidated event or separate added,
+   removed, and moved events?
 
 ---
 
@@ -125,11 +170,12 @@ Window A (project /home/a/proj1)          Window B (project /home/a/proj2)
 
 | Phase | What |
 | ----- | ---- |
-| **A** | Lock wire names in [`2.10.4.1`](FILES-2.10.4.1-ollmfilesd-rpc-api.md) / [`2.10.4.6`](2.10.4.6-file.md) |
+| **A** | Lock wire names in [`2.10.4.1`](FILES-2.10.4.1-ollmfilesd-rpc-api.md) / [`2.10.4.6`](done/2.10.4.6-DONE-file.md) |
 | **B** | Daemon session registry: `OLLMrpc.Client` session id → watched project path |
-| **C** | File watcher in daemon emits `event.file.changed`; route by project |
-| **D** | V2 PM: restore `file_contents_changed`; connect `OLLMrpc.Client.notification` |
-| **E** | Window UI: wire reload banner / focus check to notification + `OLLMrpc.Client.failed` for write errors |
+| **C** | Monitor every project referenced by at least one live session; update stored rows |
+| **D** | Emit content and structural file events; route them by project |
+| **E** | V2 PM: restore change signals; connect `OLLMrpc.Client.notification` |
+| **F** | Window UI: reload/conflict handling and folder/file-list refresh |
 
 ---
 
@@ -140,6 +186,11 @@ Window A (project /home/a/proj1)          Window B (project /home/a/proj2)
 3. External `touch` on file under proj1 → only windows watching proj1 notified.
 4. Switch project on window — notifications follow new project only.
 5. Daemon restart — clients re-watch on reconnect.
+6. Create, remove, rename, and move files externally — stored folder/file rows
+   and open navigation update without reopening the project.
+7. Two windows on one project — one daemon monitor, notifications delivered
+   to both sessions.
+8. Close or switch the last window using a project — its monitor is released.
 
 ---
 

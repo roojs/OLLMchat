@@ -1,12 +1,12 @@
 # CODER-4.2.6.1 Coder screen mainline — Step 2
 
-**Status:** ⏳ proposed
+**Status:** done — Step 2 merged to mainline
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan** until it is done and archived.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala code must follow `docs/coding-standards.md`.
 
-**Parent:** [`CODER-4.2.6-file-nav-mainline.md`](CODER-4.2.6-file-nav-mainline.md) — Step 2.
+**Parent:** [`CODER-4.2.6-DONE-file-nav-mainline.md`](CODER-4.2.6-DONE-file-nav-mainline.md) — Step 2.
 
 ---
 

@@ -1,6 +1,6 @@
 # CODER-4.2.4 Source view markdown preview
 
-**Status:** ⏳ proposed
+**Status:** done — core markdown preview merged to mainline; optional ideas are archived
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan** until it is done and archived.
 
@@ -8,7 +8,7 @@
 
 **Related:**
 
-- ℹ️ `CoderView` is `liboccoder/CoderView.vala` after [`CODER-4.2.6-file-nav-mainline.md`](CODER-4.2.6-file-nav-mainline.md).
+- ℹ️ `CoderView` is `liboccoder/CoderView.vala` after [`CODER-4.2.6-DONE-file-nav-mainline.md`](CODER-4.2.6-DONE-file-nav-mainline.md).
 - ℹ️ Unapproved changes stay on `liboccoder/Diff/ReviewBar.vala`. Chat history stays the left sidebar.
 
 ---

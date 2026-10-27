@@ -1,19 +1,19 @@
 # 4.2.3.5.3 — ReviewBar part rows and Approvals cleanup
 
-> **SUPERSEDED** by [`4.2.3.5.5`](../CODER-4.2.3.5.5-source-view-diff-items.md), [`4.2.3.5.6`](../CODER-4.2.3.5.6-source-view-diff-approval-calls.md), and [`4.2.3.5.7`](../CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md). Design: [`CODER-4.2.3.5.4-source-view-diff-wire-model.md`](../CODER-4.2.3.5.4-source-view-diff-wire-model.md). Do not apply the fences in this file.
+> **SUPERSEDED** by [`4.2.3.5.5`](CODER-4.2.3.5.5-DONE-source-view-diff-items.md), [`4.2.3.5.6`](CODER-4.2.3.5.6-DONE-source-view-diff-approval-calls.md), and [`4.2.3.5.7`](CODER-4.2.3.5.7-DONE-source-view-diff-resync.md). Design: [`CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md). Do not apply the fences in this file.
 
 **Status:** **superseded**
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md)
+**Parent:** [`CODER-4.2.3.5-DONE-source-view-diff-approval.md`](CODER-4.2.3.5-DONE-source-view-diff-approval.md)
 
-**Blocked by:** [`CODER-4.2.3.5.4-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-source-view-diff-wire-model.md) — client diffs today; approval must not ship full texts. Do not apply the fences below until that model is signed off.
+**Blocked by:** [`CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md) — client diffs today; approval must not ship full texts. Do not apply the fences below until that model is signed off.
 
 **Depends on:**
 
-- [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) — **✔️** editor hosts **`ReviewBar`**; live **`ReviewFiles`** queue. Bulk accept / reject are in-memory stubs.
-- [`CODER-4.2.3-URGENT-source-view-diff.md`](CODER-4.2.3-URGENT-source-view-diff.md) — **`file_diff_part`**, Flow A–F
+- [`CODER-4.2.3.5.2-DONE-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-DONE-source-view-diff-approval-phase-b.md) — **✔️** editor hosts **`ReviewBar`**; live **`ReviewFiles`** queue. Bulk accept / reject are in-memory stubs.
+- [`CODER-4.2.3-DONE-source-view-diff.md`](CODER-4.2.3-DONE-source-view-diff.md) — **`file_diff_part`**, Flow A–F
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
@@ -637,7 +637,7 @@ The colour on a decided hunk is the bar band, not a wash on the source text. The
 
 ### Header Approvals
 
-The footer already lists the pending files ([`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md)). The header list goes away once the footer menu really saves rows.
+The footer already lists the pending files ([`4.2.3.5.2`](CODER-4.2.3.5.2-DONE-source-view-diff-approval-phase-b.md)). The header list goes away once the footer menu really saves rows.
 
 - 🔷 ⏳ Remove the header changed-files popover.
 - 🔷 ⏳ Whole-file Approve and Reject move off that header. They are not a second way to open the diff.

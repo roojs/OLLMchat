@@ -2,7 +2,7 @@
 
 **Status:** ✔️ 09:22 `--test-flow` opened `/home/alan/gitlive/OLLMchat`, `replied id=3`, `Folder.fetch_children` replied, `folders=232`.
 
-**Related:** ℹ️ `docs/bugs/done/2026-07-07-FIXED-ollmfilesd-second-startup-rpc-blocked.md` (one request in flight is the contract). ℹ️ `docs/plans/CODER-4.2.5-project-file-selector.md`
+**Related:** ℹ️ `docs/bugs/done/2026-07-07-FIXED-ollmfilesd-second-startup-rpc-blocked.md` (one request in flight is the contract). ℹ️ `docs/plans/CODER-4.2.5-DONE-project-file-selector.md`
 
 ## Problem
 

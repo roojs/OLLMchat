@@ -9,8 +9,6 @@
 - [CODER-2.32-coder-summarized-history.md](CODER-2.32-coder-summarized-history.md)
 - [CODER-2.33-coder-prompt-templates.md](CODER-2.33-coder-prompt-templates.md)
 - [CODER-4.1-bugs.md](CODER-4.1-bugs.md)
-- [CODER-4.2.1-tree-navigation-filedropdown.md](CODER-4.2.1-tree-navigation-filedropdown.md)
-- [CODER-4.2.5-project-file-selector.md](CODER-4.2.5-project-file-selector.md)
 - [CODER-4.2.2-code-editor-manager-tool.md](CODER-4.2.2-code-editor-manager-tool.md)
 - [CODER-6.1-agent-pi.md](CODER-6.1-agent-pi.md)
 - [CODER-6.1.11-extended-base-skills.md](CODER-6.1.11-extended-base-skills.md)
@@ -19,6 +17,10 @@
 
 ## Recently archived (this prefix)
 
+- [done/CODER-4.2.3-DONE-source-view-diff.md](done/CODER-4.2.3-DONE-source-view-diff.md)
+- [done/CODER-4.2.4-DONE-source-view-markdown-preview.md](done/CODER-4.2.4-DONE-source-view-markdown-preview.md)
+- [done/CODER-4.2.5-DONE-project-file-selector.md](done/CODER-4.2.5-DONE-project-file-selector.md)
+- [done/CODER-4.2.6-DONE-file-nav-mainline.md](done/CODER-4.2.6-DONE-file-nav-mainline.md)
 - [done/CODER-4.7-REJECTED-rules-system.md](done/CODER-4.7-REJECTED-rules-system.md) — superseded by Agent Pi / `AGENTS.md`
 - [done/CODER-5.3-SUPERSEDED-agent-sandbox.md](done/CODER-5.3-SUPERSEDED-agent-sandbox.md) — Agent Pi is the active approach
 - [done/CODER-6.1.1-DONE-pi-agent.md](done/CODER-6.1.1-DONE-pi-agent.md)

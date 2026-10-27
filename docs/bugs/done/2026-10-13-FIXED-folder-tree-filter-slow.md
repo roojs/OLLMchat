@@ -7,7 +7,7 @@
 - **🔷** Opening the folder tree for this project takes about two seconds. That is too slow.
 - **🔷** The folder reply itself is not the slow part.
 - **🚫** The eye button and the type buttons do not freeze the pop-down. That title was wrong.
-- **ℹ️** `docs/plans/CODER-4.2.5-project-file-selector.md`.
+- **ℹ️** `docs/plans/CODER-4.2.5-DONE-project-file-selector.md`.
 
 ## Evidence
 

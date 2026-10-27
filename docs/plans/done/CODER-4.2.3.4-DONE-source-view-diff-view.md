@@ -4,13 +4,13 @@
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`CODER-4.2.3-URGENT-source-view-diff.md`](../CODER-4.2.3-URGENT-source-view-diff.md)
+**Parent:** [`CODER-4.2.3-DONE-source-view-diff.md`](CODER-4.2.3-DONE-source-view-diff.md)
 
 **Depends on:** [`CODER-4.2.3.2-DONE-source-view-diff-db.md`](CODER-4.2.3.2-DONE-source-view-diff-db.md) · [`CODER-4.2.3.3-DONE-source-view-diff-render.md`](CODER-4.2.3.3-DONE-source-view-diff-render.md)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans; proposed Vala follows **`docs/coding-standards.md`**
 
-**Next:** Phase 4 [`CODER-4.2.3.5`](../CODER-4.2.3.5-source-view-diff-approval.md)
+**Next:** Phase 4 [`CODER-4.2.3.5`](CODER-4.2.3.5-DONE-source-view-diff-approval.md)
 
 ---
 

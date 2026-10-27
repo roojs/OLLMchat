@@ -1,16 +1,16 @@
 # 4.2.3.5.6 — Approval calls
 
-**Status:** **✔️** in tree — fences applied on `ollmfilesd` and on the flip editor `examples/oc-test-source-diff/` (`SourceView.vala`, `ReviewBar.vala`). `liboccoder` has the same editor calls. Not user-smoked.
+**Status:** done — archived after approval calls merged to mainline
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md)
+**Parent:** [`CODER-4.2.3.5-DONE-source-view-diff-approval.md`](CODER-4.2.3.5-DONE-source-view-diff-approval.md)
 
-**Design:** [`CODER-4.2.3.5.4-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-source-view-diff-wire-model.md)
+**Design:** [`CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md)
 
-**Supersedes:** [`done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) — do not apply its fences.
+**Supersedes:** [`done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md`](CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) — do not apply its fences.
 
-**Depends on:** [`CODER-4.2.3.5.5-source-view-diff-items.md`](CODER-4.2.3.5.5-source-view-diff-items.md) — diff items stored on the file server, hunk text on the wire.
+**Depends on:** [`CODER-4.2.3.5.5-DONE-source-view-diff-items.md`](CODER-4.2.3.5.5-DONE-source-view-diff-items.md) — diff items stored on the file server, hunk text on the wire.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
@@ -87,7 +87,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 **Where:** visibility of `live`, `live_stamp`, and `rpc_manager`. The `part` map is new. `rebuild_parts` drops the previous ids for that history and stores the list it just kept. The project file is the `File` from the active project. Its buffer supplies the text. The backup path is a cache file, not a project `File`.
 
-**Depends on:** [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md).
+**Depends on:** [`4.2.3.5.5`](CODER-4.2.3.5.5-DONE-source-view-diff-items.md).
 
 #### Remove
 
@@ -1156,7 +1156,7 @@ A decided hunk copies the editor lines with kind 0. A pending hunk keeps the red
 
 ## LLM notes
 
-- 🚫 Apply any fence from [`4.2.3.5.3`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md). That `decide` took `part_index` and re-read both full texts.
+- 🚫 Apply any fence from [`4.2.3.5.3`](CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md). That `decide` took `part_index` and re-read both full texts.
 - 🚫 Rewrite the project file on accept, or on reset of an accept.
 - 🚫 Approve / reset aliased to GtkSource undo/redo.
 - 🚫 Accept / Reject buttons drawn inside the green or red area.

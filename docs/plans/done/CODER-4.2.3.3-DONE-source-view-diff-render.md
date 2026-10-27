@@ -4,7 +4,7 @@
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`../CODER-4.2.3-URGENT-source-view-diff.md`](../CODER-4.2.3-URGENT-source-view-diff.md)
+**Parent:** [`../CODER-4.2.3-DONE-source-view-diff.md`](CODER-4.2.3-DONE-source-view-diff.md)
 
 **Depends on:** [`CODER-4.2.3.2-DONE-source-view-diff-db.md`](CODER-4.2.3.2-DONE-source-view-diff-db.md)
 
@@ -424,7 +424,7 @@ test_source_diff = executable('oc-test-source-diff',
 
 ### 6. `tests/source-diff/` — smoke fixtures
 
-**Why:** Stable two-file pairs for `oc-test-source-diff` (and eyeballing). Hello pair matches [`CODER-4.2.3.1`](CODER-4.2.3.1-source-view-diff-walkthrough-hello.md) Step 1.
+**Why:** Stable two-file pairs for `oc-test-source-diff` (and eyeballing). Hello pair matches [`CODER-4.2.3.1`](CODER-4.2.3.1-DONE-source-view-diff-walkthrough-hello.md) Step 1.
 
 ℹ️ Files are already in the tree (Add below is the contract if missing).
 

@@ -34,8 +34,10 @@ namespace OLLMcoder.Folder
 	 * reads ''scalable/apps''. ''libochf'' stays its own row because it
 	 * has files beside ''Param''. A folder with no child folder has no
 	 * expander. The project is the top row and it is expanded. Selecting
-	 * it emits {@link selected} for that folder. An empty folder has no
-	 * icon. Its name binds the folder's ''css-classes'', so a folder
+	 * it emits {@link selected} for that folder. A row whose first
+	 * folder is not a link draws the coloured ''folder'' icon at the
+	 * same size as the link mark. A link keeps that mark. An empty
+	 * folder's name binds the folder's ''css-classes'', so a folder
 	 * with no files is light grey. The tooltip binds the folder's
 	 * ''tooltip'', the full path. The ghost button starts hiding empty
 	 * and ignored folders. Its icon is a crossed eye while hiding and
@@ -285,12 +287,22 @@ namespace OLLMcoder.Folder
 				var row = (Gtk.ListItem) obj;
 				var expander = new Gtk.TreeExpander();
 				var line = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
-				line.append(new Gtk.Label("") {
+				var names = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 4) {
+					halign = Gtk.Align.START,
+					hexpand = true,
+				};
+				names.append(new Gtk.Image.from_icon_name("folder") {
+					pixel_size = 12,
+					valign = Gtk.Align.CENTER,
+					visible = false,
+				});
+				names.append(new Gtk.Label("") {
 					halign = Gtk.Align.START,
 					hexpand = true,
 					xalign = 0,
 					ellipsize = Pango.EllipsizeMode.END,
 				});
+				line.append(names);
 				line.append(new Gtk.Image.from_icon_name("view-conceal-symbolic") {
 					pixel_size = 16,
 					visible = false,
@@ -337,9 +349,11 @@ namespace OLLMcoder.Folder
 					parts.add(shown);
 				}
 				var line = (Gtk.Box) expander.child;
-				var name_label = (Gtk.Label) line.get_first_child();
+				var names = (Gtk.Box) line.get_first_child();
+				var name_label = (Gtk.Label) names.get_first_child().get_next_sibling();
+				((Gtk.Image) names.get_first_child()).visible = folder.points_to_id == 0;
 				name_label.label = string.joinv("/", parts.to_array());
-				((Gtk.Image) name_label.get_next_sibling()).visible = tip.is_ignored;
+				((Gtk.Image) names.get_next_sibling()).visible = tip.is_ignored;
 				tip.bind_property("css-classes", name_label,
 					"css-classes", GLib.BindingFlags.SYNC_CREATE);
 				tip.bind_property("tooltip", name_label,

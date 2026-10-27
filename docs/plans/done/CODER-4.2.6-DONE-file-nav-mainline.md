@@ -1,6 +1,6 @@
 # CODER-4.2.6 Coder screen on mainline
 
-**Status:** ✔️ agent-complete — ready for user review
+**Status:** done — coder screen and smoke app use `liboccoder` on mainline
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan** until it is done and archived.
 
@@ -8,8 +8,8 @@
 
 **Related:**
 
-- ℹ️ Parent smoke behavior is [`CODER-4.2.5-project-file-selector.md`](CODER-4.2.5-project-file-selector.md).
-- ℹ️ Why the smoke editor is a copy: [`docs/bugs/done/2026-10-10-FIXED-folder-list-blocked-by-file-dropdown.md`](../bugs/done/2026-10-10-FIXED-folder-list-blocked-by-file-dropdown.md).
+- ℹ️ Parent smoke behavior is [`CODER-4.2.5-DONE-project-file-selector.md`](CODER-4.2.5-DONE-project-file-selector.md).
+- ℹ️ Why the smoke editor is a copy: [`docs/bugs/done/2026-10-10-FIXED-folder-list-blocked-by-file-dropdown.md`](../../bugs/done/2026-10-10-FIXED-folder-list-blocked-by-file-dropdown.md).
 - ℹ️ 4.2.4 and 4.2.5 left the product on the dropdown header. This plan replaces that with `CoderView`.
 - ℹ️ 4.2.4 still names `examples/oc-test-source-diff/CoderView.vala`. After Step 2 that screen is `liboccoder/CoderView.vala`.
 
@@ -197,7 +197,7 @@ After `'SourceView.vala'`:
 - 🔷 ✔️ Desktop and Android pass their selected form into the factories; factories do not hardcode desktop layout.
 - 🔷 ✔️ Search stays on `CoderView`; `save_button`, `source_view`, and `file_changed` provide the required editor integration.
 - ℹ️ `liboccoder/Diff/ReviewBar.vala` required no edit because it already contained the smoke behavior plus `update_diff_old`.
-- ℹ️ Exact Step 2 changes and verification are in [`CODER-4.2.6.1-coder-screen-mainline-step-2.md`](CODER-4.2.6.1-coder-screen-mainline-step-2.md).
+- ℹ️ Exact Step 2 changes and verification are in [`CODER-4.2.6.1-DONE-coder-screen-mainline-step-2.md`](CODER-4.2.6.1-DONE-coder-screen-mainline-step-2.md).
 
 ---
 

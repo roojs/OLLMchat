@@ -1,18 +1,18 @@
 # CODER-4.2.5 Project and file selector
 
-**Status:** proposed. Phase 1 is confirmed. Phase 2.3 search is done. Phase 2.4 is signed off. Phase 3 is the Android review of the smoke window. Phase 3.5 is the semantic file search, taken out of Phase 4. Phase 4 is the rest of the open later work.
+**Status:** done — implemented work merged to mainline; semantic search and final testing moved to `CODER-4.2.7`
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**.
 
 **Related:**
 
-- ℹ️ [`CODER-4.2.1-tree-navigation-filedropdown.md`](CODER-4.2.1-tree-navigation-filedropdown.md) — older tree note. The tree is Phase 2 of this plan.
-- ℹ️ [`docs/bugs/done/2026-10-13-FIXED-folder-tree-filter-slow.md`](../bugs/done/2026-10-13-FIXED-folder-tree-filter-slow.md) — folder tree load. Closed. The current open is 74ms.
+- ℹ️ [`CODER-4.2.1-SUPERSEDED-tree-navigation-filedropdown.md`](CODER-4.2.1-SUPERSEDED-tree-navigation-filedropdown.md) — older tree note. The tree is Phase 2 of this plan.
+- ℹ️ [`docs/bugs/done/2026-10-13-FIXED-folder-tree-filter-slow.md`](../../bugs/done/2026-10-13-FIXED-folder-tree-filter-slow.md) — folder tree load. Closed. The current open is 74ms.
 - ℹ️ Today: `liboccoder/ProjectDropdown.vala`, `liboccoder/FileDropdown.vala`, `liboccoder/SearchableDropdown.vala`.
 - ℹ️ Smoke app: `examples/oc-test-source-diff.vala`. Classes live in `examples/oc-test-source-diff/`.
-- ℹ️ Moving the coder screen onto `liboccoder`, including the diffs, then pointing this smoke app at that copy, is [`CODER-4.2.6-file-nav-mainline.md`](CODER-4.2.6-file-nav-mainline.md).
+- ℹ️ Moving the coder screen onto `liboccoder`, including the diffs, then pointing this smoke app at that copy, is [`CODER-4.2.6-DONE-file-nav-mainline.md`](CODER-4.2.6-DONE-file-nav-mainline.md).
 - ℹ️ Phone history today: `ollmapp/android/OllmchatWindow.vala` and `libollmchatgtk/HistoryBrowser.vala`.
-- ℹ️ Phone source-view trouble, partly worked: [`docs/bugs/2026-09-29-android-source-view-phone.md`](../bugs/2026-09-29-android-source-view-phone.md).
+- ℹ️ Phone source-view trouble, partly worked: [`docs/bugs/2026-09-29-FIXED-android-source-view-phone.md`](../../bugs/done/2026-09-29-FIXED-android-source-view-phone.md).
 
 ---
 
@@ -471,7 +471,7 @@ Not the next step. Phase 3 is next. Phase 3.5 follows that.
 
 ## LLM notes
 
-- 🚫 Do not remove the header history button in this plan. The view toggle that replaces it is [`CODER-4.2.4-source-view-markdown-preview.md`](CODER-4.2.4-source-view-markdown-preview.md).
+- 🚫 Do not remove the header history button in this plan. The view toggle that replaces it is [`CODER-4.2.4-DONE-source-view-markdown-preview.md`](CODER-4.2.4-DONE-source-view-markdown-preview.md).
 - 🚫 Desktop chat history stays where it is.
 - 🚫 Do not leave the folder tree for `CODER-4.2.1`. Phase 2 shows folders on the left and files on the right.
 - 🚫 Do not put files on the left tree. Do not bind that tree to `Folder.children`, and do not name the holder `FolderStore`. The holder is `FolderTreeStore`.

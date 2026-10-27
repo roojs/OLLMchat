@@ -1,12 +1,12 @@
 # Android — source view on the phone
 
-**Status:** ✔️ 2026-10-01 emulator (`Medium_Phone`, `sw411dp`): file `docs/bugs/2026-09-29-android-source-view-phone.md` open, header Agent Π, footer browser / text editor (selected) / chat. Problems 1 and 3 are still awaiting a phone check.
+**Status:** fixed — implementation is on mainline; final phone checks moved to `docs/plans/CODER-4.2.7-coder-view-outstanding.md`
 
 **Package:** `org.roojs.ollmchat.androidpoc`
 
 **Related:**
 
-- **ℹ️** Earlier scroll, search bar, and font: [`2026-09-28-android-source-view-usability.md`](2026-09-28-android-source-view-usability.md).
+- **ℹ️** Earlier scroll, search bar, and font: [`2026-09-28-FIXED-android-source-view-usability.md`](2026-09-28-FIXED-android-source-view-usability.md).
 - **ℹ️** Editor: `liboccoder/SourceView.vala`. Desktop `open_file` shows the search bar. Android leaves it hidden.
 - **ℹ️** Phone bottom bar: `ollmapp/android/OllmchatWindow.vala` (`chat_picker`, `browser_picker`, `editor_picker`).
 - **ℹ️** Language id on a buffer: `liboccoder/BufferProvider.vala`.
@@ -82,7 +82,7 @@
 
 - **🔷** Phone bar today shows Chat and Browser. The editor control is missing or does nothing.
 - **🔷** Do not add a separate Viewer button. View vs edit is problem 3.
-- **🔷** The three phone buttons stay the ones from [`RPC-8.2.8.11`](../plans/done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) and [`RPC-8.2.8.12`](../plans/done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md): browser, text editor, chat, on the right of the bar.
+- **🔷** The three phone buttons stay the ones from [`RPC-8.2.8.11`](../../plans/done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) and [`RPC-8.2.8.12`](../../plans/done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md): browser, text editor, chat, on the right of the bar.
 - **🔷** A click activates that page. The editor click mounts Agent Pi’s source view.
 
 ### Evidence
@@ -97,7 +97,7 @@
 - **✔️** The text-editor button is shown only for a coding agent. With no editor the phone bar is browser and chat.
 - **✔️** Its click calls the active agent's `activate`, which adds that source view and shows the page.
 - **🔷** 2026-09-30: On the phone, an agent with no editor does not show the text-editor button. That agent has no editor page. The bar is browser and chat. The text-editor button is shown when the agent has an editor, and that click shows the source view.
-- **✔️** 2026-09-30 emulator (`Medium_Phone`, `sw411dp`): desktop `https://192.168.0.16:8443` connected, file `docs/bugs/2026-09-29-android-source-view-phone.md` open and coloured. Footer is the model dropdown, browser, and chat. The text-editor button is not there. The header agent reads Just Ask. The saved window agent is `agent-pi`. `filesd-client.state` stayed `2` (`ENABLED`).
+- **✔️** 2026-09-30 emulator (`Medium_Phone`, `sw411dp`): desktop `https://192.168.0.16:8443` connected, file `docs/bugs/2026-09-29-FIXED-android-source-view-phone.md` open and coloured. Footer is the model dropdown, browser, and chat. The text-editor button is not there. The header agent reads Just Ask. The saved window agent is `agent-pi`. `filesd-client.state` stayed `2` (`ENABLED`).
 - **✔️** `editor_picker.visible` is set from `get_active_agent().has_editor` before the desktop session switch. That switch uses `ensure_agent_handler()`, which does not emit `agent_activated`. `activate()` then shows the source view. The button stays hidden.
 - **✔️** `History.Manager` keeps the `Config2` from before `load_config()` replaces `app.config`. `initialize_client` writes `LIVE` on the new object. The agent list watches the old one, so Agent Pi stays filtered out and the header stays on Just Ask.
 
@@ -231,7 +231,7 @@
 
 ## Appendix — Views by layout and agent
 
-- **ℹ️** Spec: [`RPC-8.2.8.11`](../plans/done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) Phase 3 and [`RPC-8.2.8.12`](../plans/done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md) Phases 2–3.
+- **ℹ️** Spec: [`RPC-8.2.8.11`](../../plans/done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) Phase 3 and [`RPC-8.2.8.12`](../../plans/done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md) Phases 2–3.
 - **ℹ️** A coding agent is `has_editor`: Agent Pi, the coder agent, and Skill. Chatter is not.
 - **ℹ️** The model dropdown stays on the left in every case. Send follows the composer, not these pages.
 - **🔷** Tablet and desktop are the same layout. The tablet is that layout in a smaller window.

@@ -1,16 +1,16 @@
 # 4.2.3.5.7 — Resync after save
 
-**Status:** **✔️** in tree — `examples/oc-test-source-diff/SourceView.vala` `save_file` calls `show_pending_diff` after a successful save, and that method calls `FileHistory.parts`. Not user-smoked.
+**Status:** done — archived after save resync merged to mainline
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md)
+**Parent:** [`CODER-4.2.3.5-DONE-source-view-diff-approval.md`](CODER-4.2.3.5-DONE-source-view-diff-approval.md)
 
-**Design:** [`CODER-4.2.3.5.4-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-source-view-diff-wire-model.md)
+**Design:** [`CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md)
 
-**Supersedes:** [`done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) — do not apply its fences.
+**Supersedes:** [`done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md`](CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) — do not apply its fences.
 
-**Depends on:** [`CODER-4.2.3.5.5-source-view-diff-items.md`](CODER-4.2.3.5.5-source-view-diff-items.md) — `FileHistory.parts` and `rebuild_parts`. [`CODER-4.2.3.5.6-source-view-diff-approval-calls.md`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) — approval calls, in the tree.
+**Depends on:** [`CODER-4.2.3.5.5-DONE-source-view-diff-items.md`](CODER-4.2.3.5.5-DONE-source-view-diff-items.md) — `FileHistory.parts` and `rebuild_parts`. [`CODER-4.2.3.5.6-DONE-source-view-diff-approval-calls.md`](CODER-4.2.3.5.6-DONE-source-view-diff-approval-calls.md) — approval calls, in the tree.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
@@ -22,7 +22,7 @@
 - 🔷 Diff update runs on the file server. The client re-renders and refills from the new array.
 - 🔷 Old and new diffs are separated by `FileDiffPart.compare`, not by scanning a combined hunk.
 - 🔷 The first pass indexes the stored parts by start line. Line numbers match and hunks match: that part is unchanged and drops out of the leftover set. The same pass walks the file by the line range.
-- 🔷 `rebuild_parts` keeps, updates, or deletes each stored part from `compare`. [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md).
+- 🔷 `rebuild_parts` keeps, updates, or deletes each stored part from `compare`. [`4.2.3.5.5`](CODER-4.2.3.5.5-DONE-source-view-diff-items.md).
 
 ---
 
@@ -71,7 +71,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 **Where:** `examples/oc-test-source-diff/SourceView.vala` `save_file`, the `sync_to_file` try. Not `liboccoder/SourceView.vala`.
 
-**Depends on:** [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md), [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md).
+**Depends on:** [`4.2.3.5.5`](CODER-4.2.3.5.5-DONE-source-view-diff-items.md), [`4.2.3.5.6`](CODER-4.2.3.5.6-DONE-source-view-diff-approval-calls.md).
 
 #### Remove
 
@@ -105,7 +105,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 ## LLM notes
 
-- 🚫 Apply any fence from [`4.2.3.5.3`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md).
+- 🚫 Apply any fence from [`4.2.3.5.3`](CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md).
 - 🚫 Carry a decision forward inside `OLLMfiles.Diff`. Matching is `FileDiffPart.compare`. An exact match drops that stored part from the leftover set. It does not delete the row.
 - 🚫 Client `Differ` on the backup body.
 - ℹ️ Touch points: `liboccoder/SourceView.vala`, `ollmfilesd/FileDiffPart.vala`, `ollmfilesd/File.vala` `rpc_write`, `libocfiles/Diff/Differ.vala`.

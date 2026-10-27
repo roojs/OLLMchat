@@ -1,18 +1,18 @@
 # 4.2.3.5 — SourceView diff Phase 4: block approval flow
 
-**Status:** **✅** Phase A + [`4.2.3.5.1`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) user-smoked · **✔️** [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) editor wire · **⏳** [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md) design · **⏳** [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md) · **✔️** [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) · **✔️** [`4.2.3.5.7`](CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md)
+**Status:** done — archived after the review flow merged to mainline
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`CODER-4.2.3-URGENT-source-view-diff.md`](CODER-4.2.3-URGENT-source-view-diff.md)
+**Parent:** [`CODER-4.2.3-DONE-source-view-diff.md`](CODER-4.2.3-DONE-source-view-diff.md)
 
-**Depends on:** [`done/CODER-4.2.3.4-DONE-source-view-diff-view.md`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md) (and earlier phases)
+**Depends on:** [`done/CODER-4.2.3.4-DONE-source-view-diff-view.md`](CODER-4.2.3.4-DONE-source-view-diff-view.md) (and earlier phases)
 
-**Contract reference:** parent **Design — user walkthrough** + **SQLite model** + [`CODER-4.2.3.1`](CODER-4.2.3.1-source-view-diff-walkthrough-hello.md)
+**Contract reference:** parent **Design — user walkthrough** + **SQLite model** + [`CODER-4.2.3.1`](CODER-4.2.3.1-DONE-source-view-diff-walkthrough-hello.md)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
-**Next (active):** [`4.2.3.5.7`](CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md) — resync after save. Design: [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md).
+**Next (active):** [`4.2.3.5.7`](CODER-4.2.3.5.7-DONE-source-view-diff-resync.md) — resync after save. Design: [`4.2.3.5.4`](CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md).
 
 ---
 
@@ -20,8 +20,8 @@
 
 | Phase | Focus | Where it runs |
 | --- | --- | --- |
-| **A** | Footer bar + hunk map + centre Accept/Reject overlay; **in-memory** decisions | [`oc-test-source-diff`](../../examples/oc-test-source-diff.vala) |
-| **B** | Wire to **`ReviewFiles`**, **`file_diff_part`**, daemon; move changed-files list from header **`Approvals`** | [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) · product editor |
+| **A** | Footer bar + hunk map + centre Accept/Reject overlay; **in-memory** decisions | [`oc-test-source-diff`](../../../examples/oc-test-source-diff.vala) |
+| **B** | Wire to **`ReviewFiles`**, **`file_diff_part`**, daemon; move changed-files list from header **`Approvals`** | [`4.2.3.5.2`](CODER-4.2.3.5.2-DONE-source-view-diff-approval-phase-b.md) · product editor |
 
 🔷 **Chosen UI:** footer **overview bar** (not gutter icons, not inline per-hunk toolbars). **One new review-chrome type** in **`liboccoder`** — not more logic in **`SourceView`**. Extra files only if **you** review Phase A and decide to split — not an agent or size heuristic.
 
@@ -48,7 +48,7 @@ Footer **diff control bar** — three zones:
 └──────────────┴────────────────────────────────────────────┴──────────────┘
 ```
 
-**Left — file nav (stub):** prev / next + `n / N` control; **hover popover** lists pending files (Phase A: CLI pair basenames from harness; same interaction as header [`Approvals`](../../liboccoder/Approvals.vala) task-due hover list — Phase B wires **`ReviewFiles`** and removes top popover).
+**Left — file nav (stub):** prev / next + `n / N` control; **hover popover** lists pending files (Phase A: CLI pair basenames from harness; same interaction as header [`Approvals`](../../../liboccoder/Approvals.vala) task-due hover list — Phase B wires **`ReviewFiles`** and removes top popover).
 
 - 🔷 **Desktop:** hover opens; 750ms leave hides; click **File n of n** toggles; prev/next first click must change file (do not eat the press).
 - 🔷 **Android:** no hover / no timeout; tap **File n of n** to open, tap again to close, tap an item to choose and close.
@@ -89,7 +89,7 @@ Footer **diff control bar** — three zones:
 
 ### SourceView vs ReviewBar (agent boundary)
 
-**`SourceView`** (inline diff view — [`4.2.3.4`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md); **not** Phase A review work):
+**`SourceView`** (inline diff view — [`4.2.3.4`](CODER-4.2.3.4-DONE-source-view-diff-view.md); **not** Phase A review work):
 
 - **`show_diff(Differ)`** — interleaved buffer, `diff-add` / `diff-remove` tags, baseline gutter
 - **`navigate_to_line`**, **`clear_diff`**
@@ -216,13 +216,13 @@ private Gtk.Box review_actions;   // Accept, Reject, Unapprove — centre via va
 
 | File | Type | Role |
 | --- | --- | --- |
-| [`liboccoder/Diff/ReviewBar.vala`](../../liboccoder/Diff/ReviewBar.vala) | **`Diff.ReviewBar`** | **✔️** **Only new Vala file for Phase A.** Footer three zones, hunk bands (Cairo), mock state, stub file nav / bulk; centre overlay child exposed as **`review_overlay`**. |
+| [`liboccoder/Diff/ReviewBar.vala`](../../../liboccoder/Diff/ReviewBar.vala) | **`Diff.ReviewBar`** | **✔️** **Only new Vala file for Phase A.** Footer three zones, hunk bands (Cairo), mock state, stub file nav / bulk; centre overlay child exposed as **`review_overlay`**. |
 
 | Also (minimal) | Change |
 | --- | --- |
-| [`liboccoder/meson.build`](../../liboccoder/meson.build) | **✔️** Add **one** `Diff/ReviewBar.vala` to `occoder_src` |
-| [`examples/oc-test-source-diff.vala`](../../examples/oc-test-source-diff.vala) | **✔️** Vertical **`Gtk.Box`**: **`Gtk.Overlay`**(`SourceView` + **`ReviewBar.review_overlay`**) + **`ReviewBar`** footer; **`ReviewBar(source_view, differ, …)`** after `show_diff`. |
-| [`resources/style.css`](../../resources/style.css) | **✔️** `.oc-diff-review-bar`, `.oc-diff-pending-label`, `.oc-diff-review-overlay`, `.oc-diff-hunk-map`, `.oc-diff-hunk-gap` |
+| [`liboccoder/meson.build`](../../../liboccoder/meson.build) | **✔️** Add **one** `Diff/ReviewBar.vala` to `occoder_src` |
+| [`examples/oc-test-source-diff.vala`](../../../examples/oc-test-source-diff.vala) | **✔️** Vertical **`Gtk.Box`**: **`Gtk.Overlay`**(`SourceView` + **`ReviewBar.review_overlay`**) + **`ReviewBar`** footer; **`ReviewBar(source_view, differ, …)`** after `show_diff`. |
+| [`resources/style.css`](../../../resources/style.css) | **✔️** `.oc-diff-review-bar`, `.oc-diff-pending-label`, `.oc-diff-review-overlay`, `.oc-diff-hunk-map`, `.oc-diff-hunk-gap` |
 
 ℹ️ **Split extra types/files:** **user review after Phase A smoke** — not an automated or agent decision. Do **not** create `Manager.vala`, `HunkMap.vala`, `ReviewOverlay.vala`, `HunkBand.vala` up front.
 
@@ -314,13 +314,13 @@ meson compile -C build occoder examples/oc-test-source-diff
 - **⏳** **ReviewBar:** in-buffer active-hunk highlight (dim / emphasize changed lines) — **not** SourceView; design + implement in **`ReviewBar.vala`** only when user approves approach.
 - **⏳** Smoke fixes in progress: hunk map visibility, overlay position, bulk menu, file nav hidden when one file, two-pair CLI on **`oc-test-source-diff`**.
 - **⏳** Accept/Reject **diff preview** (rebuild **`show_diff`** after each decision) — **removed** unauthorized **`sync_diff_from_decisions`** / **`load_diff`** helpers; needs **user-named** approach in **`ReviewBar`** before re-adding.
-- **✅** **Programmable review responses** — [`done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md).
+- **✅** **Programmable review responses** — [`done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md`](CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md).
 
 ### LLM notes (Phase A)
 
 - **✔️** Phase A Vala landed in **`ReviewBar.vala`** + test harness (Phase B still 🚫).
 - ℹ️ **SourceView boundary:** review hunk tracking / in-text highlight belongs in **ReviewBar** (see **SourceView vs ReviewBar** above). Wrong experiment reverted — do not re-add to **`SourceView.vala`** without explicit user approval.
-- 🚫 **`ReviewBar` helpers** unless **user or plan names them** — approved: **`on_width()`**, **`draw_hunk_band()`**, **`on_accept_clicked()`**, **`on_reject_clicked()`**, **`on_map_clicked()`**, **`next()`**, **`responses()`** ( [`4.2.3.5.1` done](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) ); do **not** add **`sync_*`**, **`load_*`**, **`ensure_*`**, etc. without approval.
+- 🚫 **`ReviewBar` helpers** unless **user or plan names them** — approved: **`on_width()`**, **`draw_hunk_band()`**, **`on_accept_clicked()`**, **`on_reject_clicked()`**, **`on_map_clicked()`**, **`next()`**, **`responses()`** ( [`4.2.3.5.1` done](CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) ); do **not** add **`sync_*`**, **`load_*`**, **`ensure_*`**, etc. without approval.
 - 🚫 Daemon, **`file_diff_part`**, disk writes, **`ReviewFiles`**, **`Approvals`** changes.
 - 🚫 Gutter / inline-buffer Accept/Reject as primary UI.
 - 🚫 Accept/Reject chrome on footer band (breaks rapid accept).
@@ -342,13 +342,13 @@ When the user asks about **in-text hunk highlighting**, **dimming non-active hun
 
 **Goal:** Same chrome as Phase A, backed by real pending review state.
 
-ℹ️ **Editor wire** is applied in [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md). One plan per phase: [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md) diff items, [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) approval, [`4.2.3.5.7`](CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md) resync. Design: [`CODER-4.2.3.5.4-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-source-view-diff-wire-model.md). [`4.2.3.5.3`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) is superseded.
+ℹ️ **Editor wire** is applied in [`CODER-4.2.3.5.2-DONE-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-DONE-source-view-diff-approval-phase-b.md). One plan per phase: [`4.2.3.5.5`](CODER-4.2.3.5.5-DONE-source-view-diff-items.md) diff items, [`4.2.3.5.6`](CODER-4.2.3.5.6-DONE-source-view-diff-approval-calls.md) approval, [`4.2.3.5.7`](CODER-4.2.3.5.7-DONE-source-view-diff-resync.md) resync. Design: [`CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-DONE-source-view-diff-wire-model.md). [`4.2.3.5.3`](CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) is superseded.
 
 ---
 
 ## Shared LLM notes (both phases)
 
-- 🚫 Vala fences for **Phase B** until open items in [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) are **🔷** in review.
+- 🚫 Vala fences for **Phase B** until open items in [`4.2.3.5.2`](CODER-4.2.3.5.2-DONE-source-view-diff-approval-phase-b.md) are **🔷** in review.
 - 🚫 Duplicate approve/reject in editor body until placement closed.
 - 🚫 Split **`ReviewBar.vala`** into more files without explicit user request after Phase A review.
 - ℹ️ Touch points when spec exists: `liboccoder/Diff/ReviewBar.vala`, `SourceView.vala`, `Approvals.vala`, `ollmfilesd/FileHistory.vala`, `FileDiffPart.vala`.

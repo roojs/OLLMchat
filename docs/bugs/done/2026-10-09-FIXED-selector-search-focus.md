@@ -8,7 +8,7 @@
 
 **Related:**
 
-- ℹ️ Plan: `docs/plans/CODER-4.2.5-project-file-selector.md`
+- ℹ️ Plan: `docs/plans/CODER-4.2.5-DONE-project-file-selector.md`
 - ℹ️ Desktop run: `./build/examples/oc-test-source-diff --selectors`
 - ℹ️ Working pattern: `liboccoder/SearchableDropdown.vala` (`autohide = false`, `can_focus = false`, focus stays in the entry)
 
