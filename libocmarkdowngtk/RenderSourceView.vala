@@ -380,7 +380,7 @@ namespace MarkdownGtk
 				editable = false,
 				cursor_visible = false,
 				show_line_numbers = false,
-				wrap_mode = Gtk.WrapMode.WORD,
+				wrap_mode = Gtk.WrapMode.NONE,
 				hexpand = true,
 				vexpand = false,
 				can_focus = false,
@@ -410,9 +410,11 @@ namespace MarkdownGtk
 			this.source_scrolled = new Gtk.ScrolledWindow() {
 				hexpand = true,
 				vexpand = true,
-				margin_start = 2
+				margin_start = 2,
+				hscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
+				vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
+				propagate_natural_width = false
 			};
-			this.source_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
 			this.source_scrolled.set_child(this.source_view);
 			this.stack.add_named(this.source_scrolled, "source");
 
@@ -554,7 +556,7 @@ namespace MarkdownGtk
 			if (for_width <= 0) {
 				return true;
 			}
-			// Get preferred height of the widget for the actual width so wrap-based height is correct
+			// Preferred height is the unwrapped line stack. Width does not change it.
 			int min_natural = 0;
 			int nat_natural = 0;
 			widget.measure(Gtk.Orientation.VERTICAL, for_width, out min_natural, out nat_natural, null, null);
@@ -578,7 +580,10 @@ namespace MarkdownGtk
 				case ResizeMode.REVEAL_BODY:
 					// Same capped size as INITIAL but vexpand true so revealer animates to correct height
 					int max_ht = this.get_max_collapsed_height();
-					int target_ht = (natural_height > 0 && natural_height < max_ht) ? natural_height : max_ht;
+					int target_ht = natural_height * 2;
+					if (natural_height <= 0 || target_ht >= max_ht) {
+						target_ht = max_ht;
+					}
 					if (target_ht <= 0) {
 						target_ht = 200;
 					}
@@ -591,7 +596,10 @@ namespace MarkdownGtk
 				case ResizeMode.FINAL:
 					// Get max height (50% of window)
 					int max_height = this.get_max_collapsed_height();
-					int target_height = (natural_height > 0 && natural_height < max_height) ? natural_height : max_height;
+					int target_height = natural_height * 2;
+					if (natural_height <= 0 || target_height >= max_height) {
+						target_height = max_height;
+					}
 					// GLib.debug("nat=%d max=%d target=%d", natural_height, max_height, target_height);
 					this.scrolled_window.set_size_request(-1, target_height);
 					this.scrolled_window.vexpand = false; // Prevent expansion in collapsed state

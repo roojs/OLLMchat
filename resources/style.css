@@ -133,9 +133,9 @@ separator.horizontal.oc-table-body-sep {
   background-color: white;
 }
 
-/* Code editor styling */
+/* Code blocks. Same Android face as .source-view. */
 .code-editor {
-  font-family: monospace;
+  font-family: "Droid Sans Mono", monospace;
   padding: 4px;
   background-color: white;
 }
