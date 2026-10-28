@@ -229,6 +229,7 @@ namespace OLLMcoder
 			this.selector_list_box = new Gtk.ListBox() {
 				selection_mode = Gtk.SelectionMode.NONE,
 				activate_on_single_click = true,
+				can_focus = false,
 				hexpand = true,
 				vexpand = true,
 			};
@@ -702,6 +703,7 @@ namespace OLLMcoder
 			if (this.form != Form.PHONE) {
 				this.button.tooltip_text = folder.path;
 			}
+			this.get_root().set_focus(null);
 			this.list.visible = false;
 			this.selector.visible = false;
 			this.chosen(folder);

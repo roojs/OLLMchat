@@ -23,10 +23,10 @@ namespace OLLMcoder
 	 * and {@link File.Pullout}.
 	 *
 	 * Back arrow, title, the current selection, a page stack, and
-	 * search at the bottom. The phone file page adds a close button
-	 * and hides the arrow at the project root. Opening it does not
-	 * focus search, so the keyboard stays down. Which edge it uses
-	 * is still open.
+	 * search at the bottom. The phone file page replaces the arrow
+	 * and title with path buttons and a close button. Opening it
+	 * does not focus search, so the keyboard stays down. Which edge
+	 * it uses is still open.
 	 *
 	 * == Example ==
 	 *
@@ -50,13 +50,13 @@ namespace OLLMcoder
 		/**
 		 * Line under the top bar. The project page shows the current
 		 * selection. The phone file page shows the path relative to
-		 * the project, and hides this line at the project root.
+		 * the project only when a path button is shortened to ''...''.
 		 */
 		public Gtk.Label current { get; private set; }
 
 		/**
-		 * Left arrow. Hidden on the phone file page at the project
-		 * root. Shown again below that root, and on the project page.
+		 * Left arrow on the project page. Hidden on the phone file
+		 * page.
 		 */
 		public Gtk.Button previous { get; private set; }
 
@@ -186,9 +186,11 @@ namespace OLLMcoder
 				if (this.back()) {
 					return;
 				}
+				this.get_root().set_focus(null);
 				this.visible = false;
 			});
 			this.close.clicked.connect(() => {
+				this.get_root().set_focus(null);
 				this.visible = false;
 			});
 		}

@@ -104,6 +104,7 @@ namespace OLLMcoder.Folder
 			this.folders = new Gtk.ListBox() {
 				hexpand = true,
 				activate_on_single_click = true,
+				can_focus = false,
 				selection_mode = Gtk.SelectionMode.NONE,
 			};
 			if (!load_files) {
@@ -151,6 +152,7 @@ namespace OLLMcoder.Folder
 			var file_box = new Gtk.ListBox() {
 				hexpand = true,
 				activate_on_single_click = true,
+				can_focus = false,
 				selection_mode = Gtk.SelectionMode.NONE,
 			};
 			file_box.bind_model(file_sorted, (item) => {

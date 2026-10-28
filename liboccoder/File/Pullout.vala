@@ -22,10 +22,13 @@ namespace OLLMcoder.File
 	 * Phone file page on {@link SelectorPull}.
 	 *
 	 * One folder at a time: its child folders, then its files. The
-	 * left arrow and the back key go up one directory. An X closes
-	 * the page. Tree and Recent sit above the title. Search stays
-	 * at the bottom of the pull-over. Tablet files are
-	 * {@link Overlay}.
+	 * top row shows the project and open folders as buttons with a
+	 * slash between them, shortened to ''...'' when needed, and an X
+	 * that closes the page. The full relative path under that row is
+	 * shown only when a folder button is shortened to ''...''. The
+	 * back key goes up one directory. Tree and Recent sit above the
+	 * path row. Search stays at the bottom of the pull-over. Tablet
+	 * files are {@link Overlay}.
 	 *
 	 * == Example ==
 	 *
@@ -48,7 +51,6 @@ namespace OLLMcoder.File
 		private Gtk.ScrolledWindow recent_scroll;
 		private Gtk.Stack filters;
 		private Gtk.Box file_bar;
-		private OLLMfiles.Folder level;
 		private string chosen_path = "";
 		private uint file_wait = 0;
 		private Gtk.Label list_note;
@@ -81,6 +83,7 @@ namespace OLLMcoder.File
 				hexpand = true,
 				vexpand = true,
 				activate_on_single_click = true,
+				can_focus = false,
 			};
 			this.list.bind_model(this.files, (item) => {
 				var file = (OLLMfiles.File) item;
@@ -216,19 +219,56 @@ namespace OLLMcoder.File
 			};
 			page.append(body);
 			this.selector.pages.add_named(page, "file");
-			this.selector.pages.notify["visible-child-name"].connect(() => {
-				this.file_bar.visible = this.selector.pages.visible_child_name == "file";
-			});
-			this.selector.back.connect(() => {
-				if (this.selector.kind != "file") {
+			this.path_box.visible = false;
+			this.path_box.insert_before(
+				this.selector.close.get_parent(), this.selector.close);
+			var crumb_click = new Gtk.GestureClick() {
+				propagation_phase = Gtk.PropagationPhase.CAPTURE,
+			};
+			crumb_click.pressed.connect((n, x, y) => {
+				if (n != 1) {
+					return;
+				}
+				var widget = this.path_box.pick(x, y, Gtk.PickFlags.DEFAULT);
+				while (widget != null &&
+					widget != this.path_box &&
+					!(widget is Gtk.Button)) {
+					widget = widget.get_parent();
+				}
+				if (!(widget is Gtk.Button)) {
+					return;
+				}
+				var target = ((Gtk.Button) widget).get_data<OLLMfiles.Folder>("folder");
+				if (target == null) {
+					return;
+				}
+				GLib.Idle.add(() => {
+					this.refresh_folder(target);
+					if (this.search_open) {
+						this.browse.query = this.selector.search.text.strip();
+					}
 					return false;
+				});
+			});
+			this.path_box.add_controller(crumb_click);
+			this.path_box.notify["width"].connect(() => {
+				if (this.fitting_crumbs) {
+					return;
 				}
-				var up = this.level.parent;
-				if (this.level.is_project || up == null) {
-					return true;
+				if (this.place_gen == 0) {
+					return;
 				}
-				this.refresh_folder(up);
-				return true;
+				if (this.path_box.get_width() == this.fitted_width) {
+					return;
+				}
+				this.render_crumbs();
+				this.selector.current.visible = this.crumbs_shortened;
+			});
+			this.selector.pages.notify["visible-child-name"].connect(() => {
+				var on_file = this.selector.pages.visible_child_name == "file";
+				this.file_bar.visible = on_file;
+				this.path_box.visible = on_file;
+				this.selector.heading.visible = !on_file;
 			});
 			var keys = new Gtk.EventControllerKey();
 			keys.key_pressed.connect((keyval, keycode, state) => {
@@ -287,6 +327,7 @@ namespace OLLMcoder.File
 			});
 			this.chosen.connect((file) => {
 				this.chosen_path = file.path;
+				this.get_root().set_focus(null);
 				this.selector.visible = false;
 			});
 		}
@@ -304,6 +345,9 @@ namespace OLLMcoder.File
 			this.selector.visible = true;
 			this.selector.close.visible = true;
 			this.file_bar.visible = true;
+			this.selector.previous.visible = false;
+			this.selector.heading.visible = false;
+			this.path_box.visible = true;
 			this.filters.visible_child_name = "tree";
 			this.search_open = false;
 			this.search_epoch++;
@@ -324,9 +368,9 @@ namespace OLLMcoder.File
 		}
 
 		/**
-		 * Refresh the phone page to one folder. The title and the
-		 * place line follow that folder. {@link Folder.Browse} shows
-		 * the level. The arrow is hidden at the project root.
+		 * Refresh the phone page to one folder. The path buttons follow
+		 * that folder, and the subtext line is shown only when a button
+		 * is shortened to ''...''. {@link Folder.Browse} shows the level.
 		 *
 		 * @param folder Folder now shown
 		 */
@@ -341,10 +385,10 @@ namespace OLLMcoder.File
 			if (place.has_prefix("/")) {
 				place = place.substring(1);
 			}
-			this.selector.heading.label = this.project.path_basename;
 			this.selector.current.label = place;
-			this.selector.current.visible = place != "";
-			this.selector.previous.visible = place != "";
+			this.place_gen++;
+			this.render_crumbs();
+			this.selector.current.visible = this.crumbs_shortened;
 			this.browse.visible = true;
 			if (this.recent_scroll.child != this.list) {
 				this.list.unparent();

@@ -508,6 +508,7 @@ row.selector-mark {
 	background-image: none;
 }
 
+.selector-pull button.flat,
 .file-sheet button.flat {
 	background: none;
 	background-image: none;
@@ -515,6 +516,11 @@ row.selector-mark {
 	box-shadow: none;
 	min-height: 0;
 	padding: 4px;
+}
+
+.path-box button.flat,
+.path-box label {
+	font-weight: bold;
 }
 
 .project-sheet button:checked,

@@ -136,6 +136,39 @@ namespace OLLMcoder.File
 		protected string path_text = "Select file";
 
 		/**
+		 * Folder-name buttons for the open path on phone and tablet.
+		 */
+		protected Gtk.Box path_box;
+
+		/**
+		 * Width of the path row last used to shorten crumb labels.
+		 */
+		protected int fitted_width = -1;
+
+		/**
+		 * True while crumb labels change, so width notify does not
+		 * fit the same row again.
+		 */
+		protected bool fitting_crumbs = false;
+
+		/**
+		 * True when {@link render_crumbs} shortened at least one
+		 * folder button to ''...'' to fit the path row.
+		 */
+		protected bool crumbs_shortened = false;
+
+		/**
+		 * Counts phone and tablet folder changes. Width notify on
+		 * the path row skips fitting while this is still zero.
+		 */
+		protected int place_gen = 0;
+
+		/**
+		 * Folder shown in the phone or tablet folder list.
+		 */
+		protected OLLMfiles.Folder level;
+
+		/**
 		 * Build the file button and the shared folder tree.
 		 *
 		 * @param manager Connected manager. Rows come from the project.
@@ -155,6 +188,14 @@ namespace OLLMcoder.File
 			);
 			this.file_list = new List(this.form == Form.TABLET);
 			this.search_home = this.project;
+			this.level = this.project;
+			if (this.form != Form.DESKTOP) {
+				this.path_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+					hexpand = true,
+					valign = Gtk.Align.CENTER,
+					css_classes = { "horizontal", "path-box" },
+				};
+			}
 			this.label = new Gtk.Label("Select file") {
 				xalign = 0,
 				halign = Gtk.Align.START,
@@ -252,6 +293,136 @@ namespace OLLMcoder.File
 				this.button.tooltip_text = "";
 				this.visible = true;
 			});
+		}
+
+		/**
+		 * Show the phone or tablet location as folder-name buttons
+		 * with a slash between them. Each button stores its folder.
+		 * A click opens that folder. The walk follows parent and
+		 * stops at the open project. Buttons that already match
+		 * stay. A step down adds one. A step up removes one.
+		 * Once the row has a width, folders after the project show
+		 * as ''...'' from the second folder until the buttons and
+		 * slashes fit. The project name stays. A tap on ''...''
+		 * still opens that folder.
+		 */
+		protected void render_crumbs()
+		{
+			if (this.fitting_crumbs) {
+				return;
+			}
+			this.fitting_crumbs = true;
+			this.crumbs_shortened = false;
+			var above = new Gee.ArrayList<OLLMfiles.Folder>();
+			var walk = this.level;
+			while (true) {
+				above.add(walk);
+				if (walk.parent == null || walk.id == this.project.id) {
+					break;
+				}
+				walk = walk.parent;
+			}
+			var want = above.size - 1;
+			var child = this.path_box.get_first_child();
+			while (child != null && want >= 0) {
+				if (!(child is Gtk.Button)) {
+					child = child.get_next_sibling();
+					continue;
+				}
+				var stored = ((Gtk.Button) child).get_data<OLLMfiles.Folder>("folder");
+				if (stored != above.get(want)) {
+					break;
+				}
+				want--;
+				child = child.get_next_sibling();
+			}
+			var drop = child;
+			if (drop != null) {
+				var prev = drop.get_prev_sibling();
+				if (prev != null && !(prev is Gtk.Button)) {
+					drop = prev;
+				}
+			}
+			while (drop != null) {
+				var next = drop.get_next_sibling();
+				this.path_box.remove(drop);
+				drop = next;
+			}
+			while (want >= 0) {
+				if (this.path_box.get_first_child() != null) {
+					this.path_box.append(new Gtk.Label("/") {
+						valign = Gtk.Align.CENTER,
+						css_classes = { "body", "list-chat-title" },
+					});
+				}
+				var target = above.get(want);
+				var crumb = new Gtk.Button.with_label(target.path_basename) {
+					can_focus = false,
+					valign = Gtk.Align.CENTER,
+					css_classes = { "flat", "body", "list-chat-title" },
+				};
+				crumb.set_data<OLLMfiles.Folder>("folder", target);
+				this.path_box.append(crumb);
+				want--;
+			}
+			var avail = this.path_box.get_width();
+			if (avail <= 1) {
+				this.fitting_crumbs = false;
+				return;
+			}
+			this.fitted_width = avail;
+			child = this.path_box.get_first_child();
+			while (child != null) {
+				if (!(child is Gtk.Button)) {
+					child = child.get_next_sibling();
+					continue;
+				}
+				var named = (Gtk.Button) child;
+				var folder = named.get_data<OLLMfiles.Folder>("folder");
+				if (named.label != folder.path_basename) {
+					named.label = folder.path_basename;
+				}
+				child = child.get_next_sibling();
+			}
+			var total = 0;
+			var n = 0;
+			var min_w = 0;
+			var nat_w = 0;
+			child = this.path_box.get_first_child();
+			while (child != null) {
+				child.measure(Gtk.Orientation.HORIZONTAL, -1,
+					out min_w, out nat_w, null, null);
+				total += nat_w;
+				n++;
+				child = child.get_next_sibling();
+			}
+			if (n > 1) {
+				total += (n - 1) * this.path_box.spacing;
+			}
+			var index = 0;
+			child = this.path_box.get_first_child();
+			while (child != null && total > avail) {
+				if (!(child is Gtk.Button)) {
+					child = child.get_next_sibling();
+					continue;
+				}
+				index++;
+				if (index == 1) {
+					child = child.get_next_sibling();
+					continue;
+				}
+				var narrow = (Gtk.Button) child;
+				narrow.measure(Gtk.Orientation.HORIZONTAL, -1,
+					out min_w, out nat_w, null, null);
+				var wide = nat_w;
+				narrow.label = "...";
+				this.crumbs_shortened = true;
+				narrow.measure(Gtk.Orientation.HORIZONTAL, -1,
+					out min_w, out nat_w, null, null);
+				total -= wide - nat_w;
+				child = child.get_next_sibling();
+			}
+			this.fitting_crumbs = false;
 		}
 
 		/**
@@ -413,6 +584,9 @@ namespace OLLMcoder.File
 			}
 			this.manager.activate_file(file);
 			this.chosen(file);
+			if (this.form != Form.DESKTOP) {
+				return;
+			}
 			var row = this.get_parent();
 			if (row == null) {
 				return;
