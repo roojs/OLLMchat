@@ -29,7 +29,8 @@ namespace OLLMcoder
 	 * search stay here. A chosen file is opened on the editor.
 	 * {@link SourceView.file_changed} updates the file button.
 	 * {@link SourceView.find} and {@link SourceView.find_again} drive
-	 * this search bar.
+	 * this search bar. The phone leaves that bar hidden. Search
+	 * there comes back when the screen has room for it.
 	 *
 	 * == Example ==
 	 *
@@ -309,7 +310,7 @@ namespace OLLMcoder
 				this.last_search_end = 0;
 				this.search_entry.text = "";
 				this.update_search_results();
-				search_bar.visible = true;
+				search_bar.visible = form != Form.PHONE;
 				var is_markdown = file.language.down() == "markdown" ||
 					file.path_basename.down().has_suffix(".md") ||
 					file.path_basename.down().has_suffix(".markdown");
@@ -330,10 +331,16 @@ namespace OLLMcoder
 				this.doc.visible = true;
 			});
 			this.editor.find.connect(() => {
+				if (form == Form.PHONE) {
+					return;
+				}
 				this.search_entry.grab_focus();
 				this.search_entry.select_region(0, -1);
 			});
 			this.editor.find_again.connect((back) => {
+				if (form == Form.PHONE) {
+					return;
+				}
 				if (back) {
 					this.backward_search();
 					return;
