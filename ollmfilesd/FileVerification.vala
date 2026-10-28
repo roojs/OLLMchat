@@ -156,7 +156,7 @@ namespace OLLMfilesd
 							file.saveToDB(this.manager.db, null, false);
 						}
 						var bytes = GLib.File.new_for_path(overlay_path).load_bytes(null);
-						yield file.realize((string) bytes.get_data(), unix_mode);
+						yield file.realize(bytes.get_data(), unix_mode);
 					} catch (GLib.Error e) {
 						GLib.critical("overlay created file %s: %s", real_path, e.message);
 						this.manager.notification(new OLLMrpc.Notification() {
@@ -260,7 +260,7 @@ namespace OLLMfilesd
 							file.saveToDB(this.manager.db, null, false);
 						}
 						var bytes = GLib.File.new_for_path(overlay_path).load_bytes(null);
-						yield file.realize((string) bytes.get_data(), unix_mode);
+						yield file.realize(bytes.get_data(), unix_mode);
 					} catch (GLib.Error e) {
 						GLib.critical("overlay modified file %s: %s", real_path, e.message);
 						this.manager.notification(new OLLMrpc.Notification() {

@@ -273,9 +273,25 @@ namespace OLLMcoder
 				sheet.halign = Gtk.Align.FILL;
 				sheet.valign = Gtk.Align.FILL;
 				cover.add_overlay(sheet);
+				cover.add_overlay(this.selector);
 				this.append(cover);
 			}
-			if (form != Form.TABLET) {
+			if (form == Form.PHONE) {
+				var column = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+					hexpand = true,
+					vexpand = true,
+				};
+				column.append(header);
+				column.append(editor_layer);
+				var cover = new Gtk.Overlay() {
+					hexpand = true,
+					vexpand = true,
+					child = column,
+				};
+				cover.add_overlay(this.selector);
+				this.append(cover);
+			}
+			if (form == Form.DESKTOP) {
 				this.append(header);
 				this.append(editor_layer);
 			}

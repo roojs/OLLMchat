@@ -390,10 +390,10 @@ namespace OLLMfilesd
 		 * This is used when the buffer already has the contents and we just need
 		 * to sync it to the file. Unlike write(), this does not update the buffer contents.
 		 * 
-		 * @param contents Contents to write
+		 * @param contents file bytes, length included, zeros kept
 		 * @throws Error if file cannot be written
 		 */
-		public async void write_real(string contents) throws Error
+		public async void write_real(uint8[] contents) throws Error
 		{
 			yield this.write_to_disk(contents);
 			if (this.file.id == -1) {
@@ -405,10 +405,10 @@ namespace OLLMfilesd
 		/**
 		 * Internal method: Write contents to file on disk.
 		 * 
-		 * @param contents Contents to write
+		 * @param contents file bytes, length included, zeros kept
 		 * @throws Error if file cannot be written
 		 */
-		protected async void write_to_disk(string contents) throws Error
+		protected async void write_to_disk(uint8[] contents) throws Error
 		{
 			var dirname = GLib.Path.get_dirname(this.file.path);
 			var dir_file = GLib.File.new_for_path(dirname);
@@ -426,9 +426,9 @@ namespace OLLMfilesd
 			);
 			
 			// Write contents asynchronously
-			uint8[] data = contents.data;
 			size_t bytes_written;
-			yield output_stream.write_all_async(data, GLib.Priority.DEFAULT, null, out bytes_written);
+			yield output_stream.write_all_async(
+				contents, GLib.Priority.DEFAULT, null, out bytes_written);
 			
 			// Close stream asynchronously
 			yield output_stream.close_async(GLib.Priority.DEFAULT, null);

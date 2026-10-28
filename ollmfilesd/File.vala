@@ -451,7 +451,7 @@ namespace OLLMfilesd
 							yield file_history.commit();
 							file.saveToDB(this.manager.db, null, false);
 						}
-						yield file.realize(content, unix_mode);
+						yield file.realize(content.data, unix_mode);
 						if (change_type == "modified") {
 							this.manager.notification(new OLLMrpc.Notification() {
 								method = "event.project.invalidate_cache",
@@ -796,10 +796,10 @@ namespace OLLMfilesd
 		/**
 		 * Apply content and mode on disk for an indexed file.
 		 *
-		 * @param content bytes to write via the buffer
+		 * @param content file bytes, length included, zeros kept
 		 * @param unix_mode optional rwx bits (''0'' skips chmod)
 		 */
-		public async void realize(string content, uint unix_mode) throws Error
+		public async void realize(uint8[] content, uint unix_mode) throws Error
 		{
 			if (this.buffer == null) {
 				this.manager.buffer_provider.create_buffer(this);

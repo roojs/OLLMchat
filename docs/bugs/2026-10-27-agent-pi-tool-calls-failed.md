@@ -1,6 +1,6 @@
 # Agent Pi bash and read calls failed
 
-**Status:** ✅ issues 2 and 3 are done. ✔️ issues 4 and 5 applied — rebuild the chat app before checking them
+**Status:** ✅ issues 2 and 3 are done. ✔️ issues 4, 5, and 6 applied — rebuild the chat app before checking them
 
 Agent Pi was asked to fold `FileConnectionAdd` into the source-diff test. It tried to list that folder and read the file. The commands and the path were fine. Two things in the harness stopped it.
 
@@ -218,7 +218,8 @@ Throw only when a line number was sent. Both defaults (`-1`) fall through and re
 - 🔷 Bash runs. The live frame is still wrong.
 - 🔷 It is white, with a grey up arrow. Markdown boxes use `.oc-frame` plus a theme class, so they pick up the blue (or theme) fill and a matching arrow. This frame does not, so `frame.css` never paints it.
 - 🔷 The command is the title and a long command is cut with an ellipsis. The ellipsis can stay. Under the title it says `Running command in sandbox`.
-- 🔷 The output area is black with white text. It should use the frame colours.
+- 🔷 The output area stays black with white text. That shell is required.
+- 🚫 Do not replace the black output with the frame fill.
 - 🔷 The output should show the full command.
 - 🔷 About 4 pixels of margin around the output.
 - 🔷 The expanded output is far too short.
@@ -310,15 +311,15 @@ Open height 200 instead of 80. Cap 480 instead of 280. Four pixels around the ou
 			};
 ```
 
-### `resources/style.css` — stop forcing a black output
+### `resources/style.css` — keep the black shell
 
-**Why:** Those two colours win over `.oc-frame text`, so the body stays a black box inside the themed frame.
+**Why:** The output is a shell. Black background and white text stay. Those two colours win over `.oc-frame text`, so the body stays a black box inside the frame.
 
 **Where:** `.tool-frame .tool-output`.
 
-**Depends on:** the `oc-frame` classes above.
+**Depends on:** none.
 
-#### Remove
+🚫 The 2026-10-27 removal of `#000000` / `#ffffff` is rejected. Put them back.
 
 ```css
 .tool-frame .tool-output,
@@ -330,14 +331,37 @@ Open height 200 instead of 80. Cap 480 instead of 280. Four pixels around the ou
 }
 ```
 
+## ✔️ Issue 6 — sending frame on a tool reply
+
+- 🔷 A tool result already appears in the transcript. The next outbound frame was still titled `Sending message` and its body was that tool result.
+- 🔷 Show that frame only for the send that ends on the user message.
+
+### Based on
+
+- ✔️ `ChatCompletions.send` paints `Sending message` whenever `this.agent` is set and the body is non-empty. A list longer than two messages uses the last message as that body.
+- ✔️ `toolsReply` appends the assistant turn and the tool results, then calls `send` again. The last message on that list has role `tool`.
+- ✔️ The user send ends with role `user` (`PendingMessage.run`, `Agent.Base.send_async`).
+
+### `libollmchat/Call/ChatCompletions.vala` — `send`: frame only for a user send
+
+**Why:** The tool result is already on screen. The frame is for the outbound text of the user send.
+
+**Where:** `send`, the `if (this.agent != null)` that builds the frame.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+			if (this.agent != null) {
+```
+
 #### Replace with
 
-```css
-.tool-frame .tool-output,
-.tool-frame .tool-output text {
-  font-family: monospace;
-  font-size: 0.9em;
-}
+```vala
+			/* Tool replies are already in the transcript. Frame is the user send. */
+			if (this.agent != null &&
+					this.messages.get(this.messages.size - 1).role == "user") {
 ```
 
 ## Attempts / changelog
@@ -346,7 +370,10 @@ Open height 200 instead of 80. Cap 480 instead of 280. Four pixels around the ou
 - 🚫 2026-10-27 — field initializer `bash_lease = new Gee.HashMap<int, Request>()` does not work. The `Request()` creation method is still gone.
 - ✔️ 2026-10-27 — `arm_bash_listener` creates `bash_lease` on first use, then `set`.
 - ✔️ 2026-10-27 — issue 4: client calls `Codebase.rpc_search`. `RequestBase.execute` adds the domain and code when the wire message is empty.
-- ✔️ 2026-10-27 — issue 5: `ToolOutput` uses `oc-frame` and `oc-frame-info`. The body starts with the full command, the output margin is 4 pixels, the open height is 200, and the black output colours are gone.
+- ✔️ 2026-10-27 — issue 5: `ToolOutput` uses `oc-frame` and `oc-frame-info`. The body starts with the full command, the output margin is 4 pixels, and the open height is 200.
+- 🚫 2026-10-27 — removing the black shell was wrong. The user requires white text on a black output.
+- ✔️ 2026-10-28 — `.tool-output` is `#000000` with `#ffffff` text again.
+- ✔️ 2026-10-28 — issue 6: `Sending message` is emitted only when the last outbound message has role `user`.
 
 ## Next
 

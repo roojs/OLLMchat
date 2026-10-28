@@ -468,10 +468,9 @@ namespace OLLMapp
 			}
 			var is_desktop_connected = false;
 			var is_desktop_available = false;
+			var was_disabled = config.filesd_client.state == FilesdClient.State.DISABLED;
 			if (config.filesd_client.addresses != ""
-				&& (config.filesd_client.state == FilesdClient.State.ENABLED
-					|| config.filesd_client.state == FilesdClient.State.LIVE
-					|| config.filesd_client.state == FilesdClient.State.SOCKET)) {
+				&& config.filesd_client.state != FilesdClient.State.REQUESTED) {
 				is_desktop_connected = true;
 				this.startup_status_label.label = "Checking desktop environment…";
 				is_desktop_available = yield this.probe_addresses(config);
@@ -570,11 +569,13 @@ namespace OLLMapp
 			if (is_desktop_connected && !is_desktop_available) {
 				config.filesd_client.state = FilesdClient.State.DISABLED;
 				this.app.config.save();
-				this.unavailable_notice = true;
-				this.notification(new OLLMrpc.Notification() {
-					method = "client.filesd.unreachable",
-					id = this.probe_code
-				});
+				if (!was_disabled) {
+					this.unavailable_notice = true;
+					this.notification(new OLLMrpc.Notification() {
+						method = "client.filesd.unreachable",
+						id = this.probe_code
+					});
+				}
 			}
 
 			this.history_manager.agent_status_change.connect(() => {

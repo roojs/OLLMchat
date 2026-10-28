@@ -396,7 +396,7 @@ namespace OLLMfilesd
 			this.lines = contents.split("\n");
 			
 			// Write to file (backup, write, update metadata)
-			yield this.write_real(contents);
+			yield this.write_real(contents.data);
 		}
 		
 		/**
@@ -524,7 +524,7 @@ namespace OLLMfilesd
 			var new_content = string.joinv("\n", this.lines);
 			
 			// Write to file (backup, write, update metadata)
-			yield this.write_real(new_content);
+			yield this.write_real(new_content.data);
 		}
 	}
 }

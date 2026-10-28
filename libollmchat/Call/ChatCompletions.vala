@@ -257,7 +257,9 @@ namespace OLLMchat.Call
 			this.cancellable = cancellable;
 			this.messages = messages;
 
-			if (this.agent != null) {
+			/* Tool replies are already in the transcript. Frame is the user send. */
+			if (this.agent != null &&
+					this.messages.get(this.messages.size - 1).role == "user") {
 				/* Longer than system + one user: frame is the last message. */
 				var body = "";
 				if (this.messages.size > 2) {
