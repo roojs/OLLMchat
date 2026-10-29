@@ -22,6 +22,7 @@ occoder_src = files([
   'namespace.vala',
   'BufferProvider.vala',
   'GtkSourceFileBuffer.vala',
+  'ChangeView.vala',
   'SearchableDropdown.vala',
   'ProjectDropdown.vala',
   'FileDropdown.vala',

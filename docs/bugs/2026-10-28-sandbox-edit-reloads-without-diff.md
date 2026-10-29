@@ -1,6 +1,6 @@
 # Sandbox edits reload the whole file and never paint the diff
 
-**Status:** ⏳ root cause confirmed; change-view fix proposed, including `apply` — not applied
+**Status:** ✔️ phase one applied (the class and the build). The editor still reloads. Wiring `ChangeView` into `SourceView` is [`2026-10-29-change-view-render.md`](2026-10-29-change-view-render.md).
 
 Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sandbox-git-status-truncates-index.md). The model was told to bundle `FileConnectionAdd` onto the end of `examples/oc-test-source-diff.vala`. The `write` tool never applied a fence. Bash did change the live file. Each of those writes replaced the open buffer with the whole file. History rows were stored. The source view never loaded them, so nothing was highlighted.
 
@@ -90,6 +90,8 @@ Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sand
 - 🚫 Building as its own entry that takes the file contents and refuses the file. `update` takes the file and the part array.
 - 🚫 A field initializer that constructs `new GtkSource.Buffer(null)`. The buffer is only the constructor argument.
 - 🔷 The body of `apply` and `apply_parts` is in §3. Empty `parts` is one `set_text`. A filled list is `apply_parts`.
+- 🔷 Phase one is that class, the `unchanged` flag, and the build entries. It is in the tree. Nothing calls it yet.
+- ℹ️ Wiring it into `SourceView` is [`2026-10-29-change-view-render.md`](2026-10-29-change-view-render.md). This log stays the class record.
 
 ### 1. `libocfiles/FileDiffPart.vala` — `unchanged`
 
@@ -508,13 +510,15 @@ namespace OLLMcoder
 					if (!cur.unchanged) {
 						span = old_n + new_n;
 					}
-					Gtk.TextIter start_iter;
-					if (span > 0 && this.buffer.get_iter_at_line(out start_iter, at)) {
-						Gtk.TextIter end_iter;
-						if (!this.buffer.get_iter_at_line(out end_iter, at + span)) {
-							this.buffer.get_end_iter(out end_iter);
+					if (span > 0) {
+						Gtk.TextIter start_iter;
+						if (this.buffer.get_iter_at_line(out start_iter, at)) {
+							Gtk.TextIter end_iter;
+							if (!this.buffer.get_iter_at_line(out end_iter, at + span)) {
+								this.buffer.get_end_iter(out end_iter);
+							}
+							this.buffer.delete(ref start_iter, ref end_iter);
 						}
-						this.buffer.delete(ref start_iter, ref end_iter);
 					}
 					i++;
 				}
@@ -647,3 +651,6 @@ Name the type that owns the buffer.
 - 🚫 2026-10-29 — a loop that copies file lines one by one. The gap text is `lines[start:end]` passed to `string.joinv`. The loop walks the hunks.
 - 🚫 2026-10-29 — assigning `FileDiffPart` fields after `new`. The unchanged run uses `new OLLMfiles.FileDiffPart() { … }`.
 - 🚫 2026-10-29 — the same gap text in `hunk_add` and `hunk_remove`. `unchanged` is the flag. The lines sit in `hunk_add` only.
+- 🔷 2026-10-29 — phase one is the approved class and the build. The render path is a separate log: [`2026-10-29-change-view-render.md`](2026-10-29-change-view-render.md).
+- ✔️ 2026-10-29 — phase one landed: client `compare` and `update_sum`, `unchanged` on both parts, `liboccoder/ChangeView.vala`, meson, and the namespace list. `SourceView` still reloads the file.
+- ✔️ 2026-10-29 — the delete checks `span > 0`, then calls `get_iter_at_line` on its own. Vala does not treat an `out` argument on the right of `&&` as assigned.

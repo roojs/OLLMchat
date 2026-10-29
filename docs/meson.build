@@ -334,6 +334,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/namespace.vala',  # Namespace documentation
     '../liboccoder/BufferProvider.vala',
     '../liboccoder/GtkSourceFileBuffer.vala',  # Must come before SourceView.vala (SourceView uses GtkSourceFileBuffer)
+    '../liboccoder/ChangeView.vala',
     '../liboccoder/SearchableDropdown.vala',
     '../liboccoder/ProjectDropdown.vala',
     '../liboccoder/FileDropdown.vala',

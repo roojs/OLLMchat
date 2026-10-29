@@ -74,6 +74,13 @@ namespace OLLMfilesd
 		public string hunk_add { get; set; default = ""; }
 
 		/**
+		 * True for an unchanged run built in the editor.
+		 * Not a database column. {@link hunk_remove} stays
+		 * empty. {@link hunk_add} holds the file lines.
+		 */
+		public bool unchanged { get; set; default = false; }
+
+		/**
 		 * First old line, 1-based. Not a column.
 		 */
 		public int old_line_start { get; set; default = 0; }

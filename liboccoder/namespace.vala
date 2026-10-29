@@ -32,6 +32,7 @@
  * === UI Components ===
  * 
  *  * SourceView: GTK SourceView widget wrapper for displaying and editing code
+ *  * ChangeView: owns the editor buffer and applies file updates
  *  * DocView: Rendered view of one open file
  *  * MarkdownView: Read-only markdown preview of one document
  *  * FileDropdown: Dropdown widget for selecting files
