@@ -75,7 +75,7 @@ Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sand
     - 🔷 An empty `parts` list writes the secondary view straight into the buffer with one `set_text`. That text is the file when every part is unchanged, and the file with the removed lines spliced in when a part is a hunk.
     - 🔷 A filled `parts` list is `apply_parts`. `apply` calls it and returns.
       - 🔷 The same piece is `FileDiffPart.compare`. `3` is the same lines and the same checksum: leave that stretch. `2` is the checksum only: leave that stretch. `1` is the lines only: replace that stretch. `0` is neither.
-      - 🚫 A `switch` on that return. Each result is its own `if`, then `continue`. The take and the put stay at the bottom of the loop.
+      - 🚫 A `switch` on that return. Each result is its own `if`, then `continue`. `if (!put) continue` so the insert is the rest of the iteration.
       - 🔷 A span ternary reads the aliased part. `end < start ? 0 : end - start + 1`. `parts.get` is not on the arm.
       - 🚫 A nested ternary, or a ternary arm that calls a method. That is the Vala codegen bug (`examples/oc-vala-ternary-bug.vala`). `compare`'s return stays `if`s.
       - 🔷 A piece only in the current change view: take it out.
@@ -518,57 +518,58 @@ namespace OLLMcoder
 					}
 					i++;
 				}
-				if (put) {
-					var inc = next.parts.get(j);
-					var old_n = inc.old_line_end < inc.old_line_start ? 0 : inc.old_line_end - inc.old_line_start + 1;
-					var new_n = inc.new_line_end < inc.new_line_start ? 0 : inc.new_line_end - inc.new_line_start + 1;
-					var text = inc.hunk_add;
-					if (!inc.unchanged && inc.hunk_remove != "") {
-						text = inc.hunk_add == "" ? inc.hunk_remove : inc.hunk_remove + "\n" + inc.hunk_add;
-					}
-					var span = new_n;
-					if (!inc.unchanged) {
-						span = old_n + new_n;
-					}
-					Gtk.TextIter at_iter;
-					var at_end = !this.buffer.get_iter_at_line(out at_iter, at);
-					if (at_end) {
-						this.buffer.get_end_iter(out at_iter);
-					}
-					if (text == "" && span > 0) {
-						var blanks = span;
-						if (at_end) {
-							blanks = span - 1;
-						}
-						text = string.nfill(blanks, '\n');
-					}
-					if (text != "" && !at_end && !text.has_suffix("\n")) {
-						text = text + "\n";
-					}
-					if (text != "") {
-						this.buffer.insert(ref at_iter, text, -1);
-					}
-					if (!inc.unchanged && old_n > 0) {
-						Gtk.TextIter tag_start;
-						Gtk.TextIter tag_end;
-						this.buffer.get_iter_at_line(out tag_start, at);
-						if (!this.buffer.get_iter_at_line(out tag_end, at + old_n)) {
-							this.buffer.get_end_iter(out tag_end);
-						}
-						this.buffer.apply_tag(remove_tag, tag_start, tag_end);
-					}
-					if (!inc.unchanged && new_n > 0) {
-						Gtk.TextIter tag_start;
-						Gtk.TextIter tag_end;
-						this.buffer.get_iter_at_line(out tag_start, at + old_n);
-						if (!this.buffer.get_iter_at_line(out tag_end, at + old_n + new_n)) {
-							this.buffer.get_end_iter(out tag_end);
-						}
-						this.buffer.apply_tag(add_tag, tag_start, tag_end);
-					}
-					at += span;
-					j++;
+				if (!put) {
+					continue;
 				}
+				var inc = next.parts.get(j);
+				var old_n = inc.old_line_end < inc.old_line_start ? 0 : inc.old_line_end - inc.old_line_start + 1;
+				var new_n = inc.new_line_end < inc.new_line_start ? 0 : inc.new_line_end - inc.new_line_start + 1;
+				var text = inc.hunk_add;
+				if (!inc.unchanged && inc.hunk_remove != "") {
+					text = inc.hunk_add == "" ? inc.hunk_remove : inc.hunk_remove + "\n" + inc.hunk_add;
+				}
+				var span = new_n;
+				if (!inc.unchanged) {
+					span = old_n + new_n;
+				}
+				Gtk.TextIter at_iter;
+				var at_end = !this.buffer.get_iter_at_line(out at_iter, at);
+				if (at_end) {
+					this.buffer.get_end_iter(out at_iter);
+				}
+				if (text == "" && span > 0) {
+					var blanks = span;
+					if (at_end) {
+						blanks = span - 1;
+					}
+					text = string.nfill(blanks, '\n');
+				}
+				if (text != "" && !at_end && !text.has_suffix("\n")) {
+					text = text + "\n";
+				}
+				if (text != "") {
+					this.buffer.insert(ref at_iter, text, -1);
+				}
+				if (!inc.unchanged && old_n > 0) {
+					Gtk.TextIter tag_start;
+					Gtk.TextIter tag_end;
+					this.buffer.get_iter_at_line(out tag_start, at);
+					if (!this.buffer.get_iter_at_line(out tag_end, at + old_n)) {
+						this.buffer.get_end_iter(out tag_end);
+					}
+					this.buffer.apply_tag(remove_tag, tag_start, tag_end);
+				}
+				if (!inc.unchanged && new_n > 0) {
+					Gtk.TextIter tag_start;
+					Gtk.TextIter tag_end;
+					this.buffer.get_iter_at_line(out tag_start, at + old_n);
+					if (!this.buffer.get_iter_at_line(out tag_end, at + old_n + new_n)) {
+						this.buffer.get_end_iter(out tag_end);
+					}
+					this.buffer.apply_tag(add_tag, tag_start, tag_end);
+				}
+				at += span;
+				j++;
 			}
 			this.parts.clear();
 			this.parts.add_all(next.parts);
@@ -641,6 +642,7 @@ Name the type that owns the buffer.
 - 🚫 2026-10-29 — `switch` on the `compare` return inside the parts walk. The cases nest the take and the put.
 - 🔷 2026-10-29 — `apply_parts` is the filled list. `apply` calls it when `parts.size > 0` and returns. Each `compare` result is an `if` then `continue`.
 - 🔷 2026-10-29 — `part`, `cur`, and `inc` alias `parts.get` before a span ternary. The arm is `end < start ? 0 : end - start + 1`. `parts.get` stays off the arm.
+- 🔷 2026-10-29 — `apply_parts` continues when `put` is false. The insert is the rest of the iteration.
 - 🚫 2026-10-29 — `update` copying the incoming hunks with `add_all` and calling `apply`. `update` builds `parts`, unchanged runs included, and returns that view.
 - 🚫 2026-10-29 — a loop that copies file lines one by one. The gap text is `lines[start:end]` passed to `string.joinv`. The loop walks the hunks.
 - 🚫 2026-10-29 — assigning `FileDiffPart` fields after `new`. The unchanged run uses `new OLLMfiles.FileDiffPart() { … }`.
