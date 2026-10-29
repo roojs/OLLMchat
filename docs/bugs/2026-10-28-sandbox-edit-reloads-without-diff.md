@@ -1,6 +1,6 @@
 # Sandbox edits reload the whole file and never paint the diff
 
-**Status:** ⏳ root cause confirmed from the 08:19 Agent Pi transcript and `files.sqlite` — fix not applied
+**Status:** ⏳ root cause confirmed; change-view fix proposed — not applied
 
 Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sandbox-git-status-truncates-index.md). The model was told to bundle `FileConnectionAdd` onto the end of `examples/oc-test-source-diff.vala`. The `write` tool never applied a fence. Bash did change the live file. Each of those writes replaced the open buffer with the whole file. History rows were stored. The source view never loaded them, so nothing was highlighted.
 
@@ -51,35 +51,299 @@ Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sand
 
 ### Strategy
 
-A file the user is looking at is one buffer. Opening it is the only time that buffer is filled with the whole file, and the only time the scroll is put back.
+- 🔷 The change view manages the buffer.
+  - 🔷 One constructor. The buffer argument is `GtkSource.Buffer?`. It has no default.
+    - 🔷 The current change view is constructed with the editor buffer. `SourceView` holds it. It is created empty. Empty is the flag.
+    - 🔷 The secondary change view is constructed with null.
+  - 🚫 Flipping the two instances. The one with the buffer stays current.
+  - ✔️ A `FileDiffPart` row today is one changed hunk. Add, remove, or replace. `hunk_remove` and `hunk_add` are the changed lines. The old and new line numbers are the span.
+  - ✔️ The differ skips equal lines. A gap between one part's `new_line_end` and the next part's `new_line_start` is an unchanged run.
+  - ✔️ `FileDiffPart.compare` tells two hunks apart on the daemon. `3` same lines and same text. `1` lines only. `2` text only. `0` neither. It does not edit a buffer.
+  - 🔷 An unchanged run is a `FileDiffPart` with `unchanged` true. `hunk_add` is that run's file lines. `hunk_remove` stays empty. The old and new spans cover the run.
+  - 🚫 The same text in `hunk_add` and `hunk_remove`.
+- 🔷 A pump is `update`, then later `apply`. That includes the first fill and `event.project.invalidate_cache`.
+  - 🔷 `open_file` is the only time the scroll is put back.
+  - 🚫 `file.read` then `set_buffer`.
+  - 🔷 `update` takes the file and the incoming hunks. It returns the secondary change view. It does not write the buffer.
+    - 🔷 The secondary view is constructed with null. An empty incoming list still builds one.
+    - 🔷 `parts` on that view is the whole file. Each gap between hunks is an unchanged `FileDiffPart`. Each incoming hunk is kept.
+    - 🔷 A gap's lines are `string.joinv("\n", lines[start:end])` in `hunk_add` only. `end` is exclusive. `unchanged` is true.
+    - 🚫 A loop over the file lines. The loop walks the hunks.
+    - 🚫 A field for the secondary change view.
+    - 🚫 Calling `apply` from `update`.
+  - 🔷 `apply` is the later call. The caller passes the view `update` returned.
+    - 🔷 An empty array applies the file straight into the buffer.
+    - 🔷 A non-empty array applies by the differentials.
+      - 🔷 The same piece in both: leave that stretch.
+      - 🔷 A piece that changed: replace that stretch.
+      - 🔷 A piece only in the current change view: take it out.
+      - 🔷 A piece only in the secondary change view: put it in.
+      - 🔷 Spans just written take the existing green and red tags on that buffer.
+      - 🔷 `ReviewBar.update_diff` redraws the hunk strip. It does not edit the buffer.
+- 🚫 A second `GtkSource.Buffer` built from the change view and swapped in with `set_buffer`. That is `show_pending_diff` (`display` and `kinds`, then `set_text`).
+- 🚫 Applying the eight history rows in time order, and only when the buffer text still equals that step's backup. Eight saves are one `update` against what is approved.
+- 🚫 Painting the newest history row (`approve_id`, backup 43027) as the whole pending diff.
+- 🚫 Building as its own entry that takes the file contents and refuses the file. `update` takes the file and the part array.
+- 🚫 A field initializer that constructs `new GtkSource.Buffer(null)`. The buffer is only the constructor argument.
+- ⏳ 🔷 The body of `apply` is not in the class proposal below. `update` only builds `parts`.
 
-These are different events. They are currently treated as one reload:
+### 1. `libocfiles/FileDiffPart.vala` — `unchanged`
 
-1. A sandbox save writes the whole file and says the project changed. It does not say which lines changed.
-2. The editor answers by reading the whole file and jumping the scroll. That answer is only right the first time the file is opened.
-3. The pending list is the saved steps. This run has eight. Each step kept the file from before that step. The list's `approve_id` is only the latest step.
-4. The green and red view is a second document. It is built by copying every line. Once the red lines are in it, its line numbers are not the file's line numbers. The green tag belongs to that document's tag table. It was never on the file buffer.
-5. Accept and reject already change the file buffer at a line. The coloured document is then built again, so that change is thrown off the screen.
+**Why:** An unchanged run is a `FileDiffPart`. The flag marks it. The file lines stay in `hunk_add` only.
 
-The project-changed notice means new steps may be waiting. It does not load the file.
+**Where:** after the `hunk_add` property.
 
-Steps are applied in time order. A step is applied only when the text in the file buffer is still that step's backup. The lines inserted or removed are the difference between that backup and the file after that step. When the step has been applied, the buffer matches the next step's backup, so the next step can be applied. Eight saves are eight steps. They are not one paint of the last `awk`.
+**Depends on:** none.
 
-If the buffer does not match the next backup, nothing is painted. That is the case when the user has typed, when the same step is delivered again, and when the coloured document is what is on screen. Updates are not applied to that coloured document.
+#### Add — after the `hunk_add` property
 
-Highlighting is not a separate pass over whatever is on screen. A step that has just been applied to the file buffer can be marked with the green and red tag that already exists. Copying that tag onto another buffer, or building the coloured document and calling that the refresh, is not part of this.
+The flag is not a database column. A real hunk leaves it false.
 
-### What a fresh step hands us
+```vala
+		/**
+		 * True for an unchanged run built in the editor.
+		 * Not a database column. {@link hunk_remove} stays
+		 * empty. {@link hunk_add} holds the file lines.
+		 */
+		public bool unchanged { get; set; default = false; }
+```
 
-- ✔️ The old file is that step's backup. The new file is the project file after the step. The diff is those two texts.
-- ✔️ `FileDiffPart` is only the changed hunks. Add, remove, or replace. Each part has the removed lines (`hunk_remove`), the added lines (`hunk_add`), and the old and new line numbers. It does not contain the unchanged stretches. The differ skips equal lines when it builds patches. A gap between one part's `new_line_end` and the next part's `new_line_start` is the unchanged run, and those lines stay as they are.
-- ✔️ A first show has no current parts. The walk is just the new parts, in order, and the unchanged gaps between them.
-- ✔️ A later step already has a current part list. `FileDiffPart.compare` says whether two parts are the same: `3` same lines and same text, `1` same lines only, `2` same text only, `0` neither. The daemon already uses that when it stores parts. The buffer walk is the same idea on screen.
-- 🔷 `SourceView.update_diff` walks the new parts against the current parts. Same part (`3`): leave that stretch. A part that changed: replace that stretch in the file buffer. A current part with no new part: take it out. A new part with no current part: put it in. Unchanged gaps are not touched.
-- 🔷 That method then calls `ReviewBar.update_diff`. That is the existing call that redraws the hunk strip at the bottom. It does not edit the buffer.
+### 2. `ollmfilesd/FileDiffPart.vala` — `unchanged`
+
+**Why:** The file-server part is the same wire type. A real hunk leaves the flag false.
+
+**Where:** after the `hunk_add` property.
+
+**Depends on:** none.
+
+#### Add — after the `hunk_add` property
+
+Same property as §1. No table change.
+
+```vala
+		/**
+		 * True for an unchanged run built in the editor.
+		 * Not a database column. {@link hunk_remove} stays
+		 * empty. {@link hunk_add} holds the file lines.
+		 */
+		public bool unchanged { get; set; default = false; }
+```
+
+### 3. `liboccoder/ChangeView.vala` — new class
+
+**Why:** The change view owns the editor buffer. `update` builds the secondary view's `parts`, unchanged runs included. `apply` is a later call and is not made from `update`.
+
+**Where:** new file.
+
+**Depends on:** §1 and §2.
+
+#### Add — new file `liboccoder/ChangeView.vala`
+
+The class. `update` returns the secondary view. `apply` is declared for the later stage and does not write the buffer in this proposal.
+
+```vala
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMcoder
+{
+	/**
+	 * Owns one editor buffer and the parts last applied to it.
+	 *
+	 * Construct it with the editor buffer for the current view.
+	 * {@link SourceView} holds that instance. {@link update} returns a
+	 * second instance whose {@link parts} include unchanged runs.
+	 * {@link apply} is a later call. The two instances are not swapped.
+	 *
+	 * == Example ==
+	 *
+	 * === Empty part list ===
+	 *
+	 * {{{
+	 * var view = new OLLMcoder.ChangeView(buffer);
+	 * var hunks = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
+	 * var next = view.update(file, hunks);
+	 * view.apply(next);
+	 * }}}
+	 */
+	public class ChangeView : Object
+	{
+		/**
+		 * Editor buffer from the constructor. Null on the
+		 * secondary instance. Not allocated here.
+		 */
+		private GtkSource.Buffer? buffer;
+
+		/**
+		 * True when this instance holds no parts.
+		 * A new instance starts empty. That is the flag.
+		 */
+		public bool empty = true;
+
+		/**
+		 * Whole file for this view. Unchanged runs and hunks.
+		 */
+		public Gee.ArrayList<OLLMfiles.FileDiffPart> parts {
+			get; set; default = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
+		}
+
+		/**
+		 * Current or secondary change view.
+		 *
+		 * @param buffer editor buffer, or null for the secondary view
+		 */
+		public ChangeView(GtkSource.Buffer? buffer)
+		{
+			this.buffer = buffer;
+		}
+
+		/**
+		 * Build a secondary change view from the file and the
+		 * incoming hunks. Does not call {@link apply}.
+		 * Gaps between hunks become unchanged parts. An empty
+		 * hunk list still builds those parts from the file.
+		 *
+		 * @param file file text for the unchanged runs
+		 * @param parts incoming hunks, or an empty list
+		 * @return the secondary change view
+		 */
+		public ChangeView update(OLLMfiles.File file, Gee.ArrayList<OLLMfiles.FileDiffPart> parts)
+		{
+			var next = new ChangeView(null);
+			var lines = file.buffer.get_text().split("\n");
+			var new_at = 1;
+			var old_at = 1;
+			for (var i = 0; i <= parts.size; i++) {
+				var new_end = lines.length;
+				var old_end = old_at + lines.length - new_at;
+				if (i < parts.size) {
+					new_end = parts.get(i).new_line_start - 1;
+					old_end = parts.get(i).old_line_start - 1;
+				}
+				if (new_end > lines.length) {
+					new_end = lines.length;
+				}
+				if (new_at <= new_end) {
+					var gap = new OLLMfiles.FileDiffPart() {
+						new_line_start = new_at,
+						new_line_end = new_end,
+						old_line_start = old_at,
+						old_line_end = old_end,
+						hunk_add = string.joinv("\n", lines[new_at - 1:new_end]),
+						unchanged = true
+					};
+					next.parts.add(gap);
+					new_at = gap.new_line_end + 1;
+					if (gap.old_line_end >= gap.old_line_start) {
+						old_at = gap.old_line_end + 1;
+					}
+				}
+				if (i == parts.size) {
+					break;
+				}
+				next.parts.add(parts.get(i));
+				if (parts.get(i).new_line_end >= parts.get(i).new_line_start) {
+					new_at = parts.get(i).new_line_end + 1;
+				}
+				if (parts.get(i).old_line_end >= parts.get(i).old_line_start) {
+					old_at = parts.get(i).old_line_end + 1;
+				}
+			}
+			next.empty = next.parts.size == 0;
+			return next;
+		}
+
+		/**
+		 * Later stage. {@link update} does not call this.
+		 * Straight write and the differentials are not in
+		 * this proposal.
+		 *
+		 * @param next secondary change view from {@link update}
+		 */
+		public void apply(ChangeView next)
+		{
+			if (next.empty) {
+				return;
+			}
+		}
+	}
+}
+```
+
+### 4. `liboccoder/meson.build` — compile `ChangeView.vala`
+
+**Why:** The new file has to be in the library.
+
+**Where:** `occoder_src`, after `'GtkSourceFileBuffer.vala',`.
+
+**Depends on:** §3.
+
+#### Add — after `'GtkSourceFileBuffer.vala',`
+
+List the new source before `SourceView.vala`.
+
+```meson
+  'ChangeView.vala',
+```
+
+### 5. `docs/meson.build` — valadoc input
+
+**Why:** New Vala files are valadoc inputs.
+
+**Where:** liboccoder sources, after `'../liboccoder/GtkSourceFileBuffer.vala',`.
+
+**Depends on:** §3.
+
+#### Add — after the `GtkSourceFileBuffer.vala` valadoc line
+
+Same order as `liboccoder/meson.build`.
+
+```meson
+    '../liboccoder/ChangeView.vala',
+```
+
+### 6. `liboccoder/namespace.vala` — list `ChangeView`
+
+**Why:** The namespace overview lists the editor types.
+
+**Where:** UI Components list, after the `SourceView` bullet.
+
+**Depends on:** §3.
+
+#### Add — after the `SourceView` overview bullet
+
+Name the type that owns the buffer.
+
+```vala
+ *  * ChangeView: owns the editor buffer and applies file updates
+```
 
 ## Attempts / changelog
 
 - ✔️ 2026-10-28 — read the 08:19–08:30 transcript, the eight history rows, and the empty `file_diff_part` table.
 - 🚫 2026-10-28 — reloading the file and then painting `show_pending_diff` still replaces the whole view and restores the scroll. That is first-open behaviour.
-- 🚫 2026-10-28 — `on_review_files_refresh` inserting the newest history row into the buffer on screen, including a second copy of the green tag. The buffer on screen is not always the file, and eight saves are eight steps.
+- 🚫 2026-10-28 — `on_review_files_refresh` inserting the newest history row into the buffer on screen, including a second copy of the green tag. The buffer on screen is not always the file, and eight saves are one proposed change view.
+- 🚫 2026-10-29 — `SourceView.update_diff` walking part lists, and applying each history row only when the buffer still matches that row's backup.
+- 🚫 2026-10-29 — a flat sequence whose last step sets the current change view to the proposed one. Building makes one view's data from the file contents and that change view. Comparison alters the buffer from the two data objects.
+- 🚫 2026-10-29 — dropping the current change view after the comparison. `SourceView` holds that value. The patch-set change view is the local, and it is not kept.
+- 🚫 2026-10-29 — a comparison entry that takes two already-built change views. The current change view is constructed with the buffer, empty. `update` takes the file and the part array, builds the no-buffer change view, and `apply` writes it. An empty array goes straight into the buffer. A non-empty array goes by the differentials. The two instances are not flipped.
+- 🔷 ⏳ 2026-10-29 — class proposal for `OLLMcoder.ChangeView`. Empty `apply` only. Differential body still open.
+- 🚫 2026-10-29 — `update` copying the incoming hunks with `add_all` and calling `apply`. `update` builds `parts`, unchanged runs included, and returns that view.
+- 🚫 2026-10-29 — a loop that copies file lines one by one. The gap text is `lines[start:end]` passed to `string.joinv`. The loop walks the hunks.
+- 🚫 2026-10-29 — assigning `FileDiffPart` fields after `new`. The unchanged run uses `new OLLMfiles.FileDiffPart() { … }`.
+- 🚫 2026-10-29 — the same gap text in `hunk_add` and `hunk_remove`. `unchanged` is the flag. The lines sit in `hunk_add` only.

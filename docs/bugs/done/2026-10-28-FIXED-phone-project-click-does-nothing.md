@@ -1,6 +1,6 @@
 # Phone project click does nothing after Agent Pi starts
 
-**Status:** ⏳ both fixes applied in tree — not verified on the phone
+**Status:** ✅ User verified on the phone, 2026-10-29. Project navigation works.
 
 ## Problem
 
@@ -199,7 +199,7 @@
 
 ## Next
 
-- 🔷 ⏳ Install on the phone. Tap the project button: the pull-over should list projects, and choosing one should send `activate_project`.
-- 🔷 ⏳ Boot with the desktop connection saved disabled. An answering desktop opens Agent Pi. A miss stays disabled, with no unreachable dialog.
-- 💩 ⏳ The `GtkTextBuffer` / `GtkSourceBuffer` cast while `SourceView` is constructed.
-- 💩 ⏳ The socket close about five seconds after the activity stops, and the following probe timeouts that hide Agent Pi.
+- ✅ 2026-10-29: user confirmed phone project navigation works.
+- 🔷 The boot probe of a disabled paired desktop was not called out again. It stays in this log as part of the same change.
+- 💩 The `GtkTextBuffer` / `GtkSourceBuffer` cast while `SourceView` is constructed was left out of this bug.
+- 💩 The socket close about five seconds after the activity stops, and the following probe timeouts that hide Agent Pi, were left out of this bug.

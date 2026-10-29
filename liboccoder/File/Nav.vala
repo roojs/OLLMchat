@@ -21,7 +21,7 @@ namespace OLLMcoder.File
 	/**
 	 * File navigation shared by the desktop sheet and the pull-over.
 	 *
-	 * The resting control is a flat button with a file icon. It stays
+	 * The resting control is a flat button. It stays
 	 * hidden until a project is chosen. {@link Overlay} covers the
 	 * editor. {@link Pullout} fills {@link SelectorPull}. Documents
 	 * and code stay here and stay hidden. The one that is down hides
@@ -210,15 +210,12 @@ namespace OLLMcoder.File
 					this.label.ellipsize = Pango.EllipsizeMode.START;
 					break;
 			}
-			var face = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
-			face.append(new Gtk.Image.from_icon_name("text-x-generic"));
-			face.append(this.label);
 			this.button = new Gtk.Button() {
-				child = face,
+				child = this.label,
 				hexpand = true,
 				valign = Gtk.Align.CENTER,
+				css_classes = { "flat" },
 			};
-			this.button.add_css_class("flat");
 			this.folder_tree.selected.connect((folder) => {
 				this.file_list.load(folder);
 			});

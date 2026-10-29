@@ -1,6 +1,6 @@
 # Phone selector and folder browse steal focus to the chat entry
 
-**Status:** ⏳ root cause confirmed; fix applied in tree — not verified on the phone
+**Status:** ✅ User verified on the phone, 2026-10-29. Focus stays off the chat entry.
 
 ## Problem
 
@@ -287,4 +287,4 @@
 
 ## Next
 
-- 🔷 ⏳ Rebuild and test on the phone: selecting a project and navigating folders/files in `SelectorPull` keeps focus off the chat composer and does not raise the keyboard.
+- ✅ 2026-10-29: user confirmed selecting a project and browsing folders no longer raises the keyboard.
