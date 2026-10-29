@@ -489,6 +489,12 @@ row.selector-mark {
 	background-image: none;
 }
 
+.selector-pull button:checked {
+	background-color: @theme_selected_bg_color;
+	background-image: none;
+	color: @theme_selected_fg_color;
+}
+
 .project-sheet {
 	background-color: @theme_bg_color;
 	background-image: none;
@@ -516,6 +522,12 @@ row.selector-mark {
 	box-shadow: none;
 	min-height: 0;
 	padding: 4px;
+}
+
+.coder-header button.flat {
+	padding-left: 2px;
+	padding-right: 2px;
+	min-width: 0;
 }
 
 .path-box button.flat,

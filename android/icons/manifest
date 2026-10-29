@@ -44,3 +44,6 @@ symbolic/actions/document-edit-symbolic.svg	Adwaita	symbolic/actions/document-ed
 symbolic/actions/chat-message-new-symbolic.svg	Adwaita	symbolic/actions/chat-message-new-symbolic.svg
 symbolic/actions/chat-message-symbolic.svg	bundled	bundled
 scalable/apps/org.roojs.ollmchat.svg	bundled	scalable/apps/org.roojs.ollmchat.svg
+scalable/devices/media-floppy.svg	Humanity	devices/48/media-floppy.svg
+symbolic/actions/document-print-symbolic.svg	Adwaita	symbolic/actions/document-print-symbolic.svg
+symbolic/actions/format-justify-left-symbolic.svg	Adwaita	symbolic/actions/format-justify-left-symbolic.svg

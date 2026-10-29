@@ -259,11 +259,12 @@ namespace OLLMcoder.Folder
 		 * the icon for its MIME type, then the generic icon for that
 		 * type, then ''text-x-generic''. Both are 32 pixels. A link
 		 * keeps that icon. Its name has a link mark before it. The
-		 * second line is the path relative to the project, including
-		 * the item name. A link uses the target path, so the line
-		 * shows where it points. That line is absent at the project
-		 * root. A long path drops the item name first, then keeps
-		 * the first folder.
+		 * second line for a folder is the path relative to the
+		 * project, including the folder name. A link uses the target
+		 * path, so the line shows where it points. That line is
+		 * absent at the project root. A long path drops the folder
+		 * name first, then keeps the first folder. A file's second
+		 * line is the modified time, then '' - '', then the size.
 		 *
 		 * @param item Folder or file for this list box
 		 * @return The list box child
@@ -306,37 +307,54 @@ namespace OLLMcoder.Folder
 				ellipsize = Pango.EllipsizeMode.END,
 				css_classes = { "body", "list-chat-title" },
 			});
-			var rel = item.path;
-			if (item.points_to != null && item.points_to.path != "") {
-				rel = item.points_to.path;
-			}
-			if (this.project.path != "" && rel.has_prefix(this.project.path)) {
-				rel = rel.substring(this.project.path.length);
-			}
-			if (rel.has_prefix("/")) {
-				rel = rel.substring(1);
-			}
-			var below = rel.contains("/");
-			if (below && rel.length > 36) {
-				var cut = rel.last_index_of_char('/');
-				if (cut > 0) {
-					rel = rel.substring(0, cut);
+			if (item is OLLMfiles.File) {
+				var when = ((OLLMfiles.File) item).display_modified;
+				var size = ((OLLMfiles.File) item).display_size;
+				var shown = size;
+				if (when != "") {
+					shown = when + " - " + size;
 				}
-			}
-			if (below && rel.contains("/") && rel.length > 36) {
-				var first = rel.index_of_char('/');
-				if (first > 0) {
-					rel = rel.substring(0, first) + "/…";
-				}
-			}
-			if (below) {
-				column.append(new Gtk.Label(rel) {
+				column.append(new Gtk.Label(shown) {
 					xalign = 0,
 					halign = Gtk.Align.START,
 					hexpand = true,
 					ellipsize = Pango.EllipsizeMode.END,
 					css_classes = { "caption", "dim-label" },
 				});
+			}
+			if (!(item is OLLMfiles.File)) {
+				var rel = item.path;
+				if (item.points_to != null && item.points_to.path != "") {
+					rel = item.points_to.path;
+				}
+				if (this.project.path != "" && rel.has_prefix(this.project.path)) {
+					rel = rel.substring(this.project.path.length);
+				}
+				if (rel.has_prefix("/")) {
+					rel = rel.substring(1);
+				}
+				var below = rel.contains("/");
+				if (below && rel.length > 36) {
+					var cut = rel.last_index_of_char('/');
+					if (cut > 0) {
+						rel = rel.substring(0, cut);
+					}
+				}
+				if (below && rel.contains("/") && rel.length > 36) {
+					var first = rel.index_of_char('/');
+					if (first > 0) {
+						rel = rel.substring(0, first) + "/…";
+					}
+				}
+				if (below) {
+					column.append(new Gtk.Label(rel) {
+						xalign = 0,
+						halign = Gtk.Align.START,
+						hexpand = true,
+						ellipsize = Pango.EllipsizeMode.END,
+						css_classes = { "caption", "dim-label" },
+					});
+				}
 			}
 			line.append(column);
 			return line;

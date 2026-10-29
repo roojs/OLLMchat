@@ -1,6 +1,6 @@
 # Phone file and project chrome
 
-**Status:** ⏳ proposals written — not applied
+**Status:** ✔️ proposals applied — await device check
 
 Phone only, unless an item says otherwise. Tablet keeps the pane on the right, so the footer item does not apply there.
 
@@ -31,7 +31,7 @@ Related, closed: [`2026-10-28-FIXED-phone-project-click-does-nothing.md`](done/2
 
 ## Proposed fix
 
-- 🔷 Each item below is the change for that problem line. The file-button icon is applied. The rest is not.
+- ✔️ Each item below is applied. Desktop `ninja` of `liboccoder`, `libollmchatgtk`, and `ollmchat` succeeded. `AgentManager.vala` is Android-only, so that file was not in the desktop link. Host icon sources for the three new manifest rows are present.
 - 🔷 2026-10-29: the file button has no icon on desktop, tablet, or phone.
 
 ### `liboccoder/File/Nav.vala` — file button has no icon
@@ -110,6 +110,8 @@ Related, closed: [`2026-10-28-FIXED-phone-project-click-does-nothing.md`](done/2
 			};
 ```
 
+- ✔️ 2026-10-29: applied in `liboccoder/CoderView.vala`.
+
 ### `resources/style.css` — header padding
 
 **Why:** Flat buttons still keep theme padding. Less horizontal padding on the coder header gives the file name the rest of that gap. Every form uses this header.
@@ -128,6 +130,8 @@ After the `.selector-pull button.flat` rule.
 }
 ```
 
+- ✔️ 2026-10-29: applied in `resources/style.css`.
+
 ### `android/icons/manifest` — save and markdown glyphs
 
 **Why:** Both glyphs beside a markdown file name are missing. Save stays `media-floppy`, the colour icon. Adwaita does not ship that file. Humanity does, at 48 pixels. The markdown toggle is `document-print-symbolic`, and `format-justify-left-symbolic` while source is showing. Those two already live under Adwaita's `symbolic/actions`.
@@ -143,6 +147,8 @@ scalable/devices/media-floppy.svg	Humanity	devices/48/media-floppy.svg
 symbolic/actions/document-print-symbolic.svg	Adwaita	symbolic/actions/document-print-symbolic.svg
 symbolic/actions/format-justify-left-symbolic.svg	Adwaita	symbolic/actions/format-justify-left-symbolic.svg
 ```
+
+- ✔️ 2026-10-29: applied in `android/icons/manifest`.
 
 ### `android/icons/Adwaita/index.theme` — devices directory
 
@@ -175,6 +181,8 @@ MinSize=1
 MaxSize=512
 ```
 
+- ✔️ 2026-10-29: applied in `android/icons/Adwaita/index.theme`.
+
 ### `liboccoder/SelectorPull.vala` — project line
 
 **Why:** The project page hides the line under the title on the phone and the tablet. The phone file page still uses it for a shortened path.
@@ -194,6 +202,8 @@ MaxSize=512
 		 * Line under the top bar. The project page hides this line.
 		 * The phone file page shows the path relative to
 ```
+
+- ✔️ 2026-10-29: applied in `liboccoder/SelectorPull.vala`.
 
 ### `liboccoder/ProjectSelector.vala` — hide that line
 
@@ -217,6 +227,8 @@ MaxSize=512
 						this.selector.current.visible = false;
 ```
 
+- ✔️ 2026-10-29: applied in `liboccoder/ProjectSelector.vala`.
+
 ### `resources/style.css` — which toggle is selected
 
 **Why:** `.selector-pull button` paints every button in the pull-over with the window background, so Recent, All, Tree, and Recent look the same. One checked rule covers both pairs. The toggles are inside the pull-over. The stack switcher is too.
@@ -234,6 +246,8 @@ After the rule that sets `.selector-pull button` to the window background.
 	color: @theme_selected_fg_color;
 }
 ```
+
+- ✔️ 2026-10-29: applied in `resources/style.css`.
 
 ### `liboccoder/Folder/Browse.vala` — file subtext is date and size
 
@@ -353,6 +367,8 @@ After the rule that sets `.selector-pull button` to the window background.
 			}
 ```
 
+- ✔️ 2026-10-29: applied in `liboccoder/Folder/Browse.vala`.
+
 ### `libollmchatgtk/ChatWidget.vala` — overlay over the composer
 
 **Why:** The composer and the model bar are the lower box in this widget. An overlay around the stack and that box is tall enough for the phone sheet to cover both. Nothing walks the widget tree looking for `chat-composer-strip`.
@@ -389,6 +405,8 @@ Next to `view_stack`. The phone coder's pull-over is placed on this overlay.
 			};
 			this.append(this.cover);
 ```
+
+- ✔️ 2026-10-29: applied in `libollmchatgtk/ChatWidget.vala`.
 
 ### `liboccoder/CoderView.vala` — phone sheet is not parented here
 
@@ -430,6 +448,8 @@ Next to `view_stack`. The phone coder's pull-over is placed on this overlay.
 			}
 ```
 
+- ✔️ 2026-10-29: applied in `liboccoder/CoderView.vala`.
+
 ### `ollmapp/android/AgentManager.vala` — place the phone sheet
 
 **Why:** This is the phone window code that already has the chat widget and, after activate, the coder. The first time Agent Pi's page is created, its pull-over goes on `cover`. Later opens leave it there. `visible` stays false until the project or file button opens it, so the composer shows through until then.
@@ -450,17 +470,23 @@ Next to `view_stack`. The phone coder's pull-over is placed on this overlay.
 ```vala
 			factory.activate.begin(this.shell, (obj, res) => {
 				factory.activate.end(res);
-				if (this.is_phone && factory.name == "agent-pi") {
-					var tabs = (Adw.ViewStack) ((OLLMchat.ChatDesktopInterface) this.shell).tab_view();
-					var coder = (OLLMcoder.CoderView) tabs.get_visible_child();
-					if (coder.selector.get_parent() == null) {
-						this.shell.chat_widget.cover.add_overlay(coder.selector);
-					}
+				if (!this.is_phone || factory.name != "agent-pi") {
+					this.schedule_pane_update(true);
+					return;
 				}
+				var tabs = (Adw.ViewStack) ((OLLMchat.ChatDesktopInterface) this.shell).tab_view();
+				var coder = (OLLMcoder.CoderView) tabs.get_visible_child();
+				if (coder.selector.get_parent() != null) {
+					this.schedule_pane_update(true);
+					return;
+				}
+				this.shell.chat_widget.cover.add_overlay(coder.selector);
 				this.schedule_pane_update(true);
 			});
 ```
 
+- ✔️ 2026-10-29: applied in `ollmapp/android/AgentManager.vala`. The callback returns before the overlay when this is not the phone Agent Pi page, and again when the pull-over already has a parent. Not in the desktop link.
+
 ## Next
 
-- ⏳ Walk the proposed fixes one at a time. Do not apply one until that item is the one being fixed.
+- ⏳ Phone check: file name has no icon and more room, save and markdown glyphs draw, the project line under the title is hidden, Recent/All and Tree/Recent show which is selected, a file row shows time and size, and the composer plus model bar stay covered while the project or file sheet is open. Tablet: hide that project line, and leave the footer rows visible.

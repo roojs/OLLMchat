@@ -89,12 +89,13 @@ namespace OLLMcoder
 				hexpand = true,
 				vexpand = true,
 			};
-			var header = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+			var header = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				valign = Gtk.Align.START,
 				margin_start = 6,
 				margin_end = 6,
 				margin_top = 4,
 				margin_bottom = 4,
+				css_classes = { "coder-header" },
 			};
 			var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				hexpand = true,
@@ -284,13 +285,7 @@ namespace OLLMcoder
 				};
 				column.append(header);
 				column.append(editor_layer);
-				var cover = new Gtk.Overlay() {
-					hexpand = true,
-					vexpand = true,
-					child = column,
-				};
-				cover.add_overlay(this.selector);
-				this.append(cover);
+				this.append(column);
 			}
 			if (form == Form.DESKTOP) {
 				this.append(header);

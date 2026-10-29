@@ -5,7 +5,7 @@ Example=folder
 Inherits=hicolor
 Hidden=true
 
-Directories=symbolic/actions,symbolic/categories,symbolic/places,symbolic/status,symbolic/ui,symbolic/mimetypes,symbolic/legacy,scalable/apps,scalable/places,scalable/mimetypes,
+Directories=symbolic/actions,symbolic/categories,symbolic/places,symbolic/status,symbolic/ui,symbolic/mimetypes,symbolic/legacy,scalable/apps,scalable/places,scalable/devices,scalable/mimetypes,
 
 [symbolic/actions]
 Context=Actions
@@ -65,6 +65,13 @@ MaxSize=512
 
 [scalable/places]
 Context=Places
+Size=128
+Type=Scalable
+MinSize=1
+MaxSize=512
+
+[scalable/devices]
+Context=Devices
 Size=128
 Type=Scalable
 MinSize=1

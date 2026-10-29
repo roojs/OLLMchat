@@ -584,11 +584,7 @@ namespace OLLMcoder
 						this.selector.heading.label = "Projects";
 						this.selector.close.visible = false;
 						this.selector.previous.visible = true;
-						this.selector.current.visible = true;
-						this.selector.current.label = this.label.label;
-						if (this.form != Form.PHONE && this.button.tooltip_text != "") {
-							this.selector.current.label = this.button.tooltip_text;
-						}
+						this.selector.current.visible = false;
 						this.selector.pages.visible_child_name = "project";
 						this.selector.search.placeholder_text = "Search projects";
 						this.selector.visible = true;

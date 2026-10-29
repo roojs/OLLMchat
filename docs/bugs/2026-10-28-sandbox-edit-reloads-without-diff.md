@@ -1,6 +1,6 @@
 # Sandbox edits reload the whole file and never paint the diff
 
-**Status:** ⏳ root cause confirmed; change-view fix proposed — not applied
+**Status:** ⏳ root cause confirmed; change-view fix proposed, including `apply` — not applied
 
 Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sandbox-git-status-truncates-index.md). The model was told to bundle `FileConnectionAdd` onto the end of `examples/oc-test-source-diff.vala`. The `write` tool never applied a fence. Bash did change the live file. Each of those writes replaced the open buffer with the whole file. History rows were stored. The source view never loaded them, so nothing was highlighted.
 
@@ -67,31 +67,35 @@ Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sand
   - 🔷 `update` takes the file and the incoming hunks. It returns the secondary change view. It does not write the buffer.
     - 🔷 The secondary view is constructed with null. An empty incoming list still builds one.
     - 🔷 `parts` on that view is the whole file. Each gap between hunks is an unchanged `FileDiffPart`. Each incoming hunk is kept.
-    - 🔷 A gap's lines are `string.joinv("\n", lines[start:end])` in `hunk_add` only. `end` is exclusive. `unchanged` is true.
+    - 🔷 A gap's lines are `string.joinv("\n", lines[start:end])` in `hunk_add` only. `end` is exclusive. `unchanged` is true. The gap and each kept hunk call `update_sum` so `compare` has a checksum.
     - 🚫 A loop over the file lines. The loop walks the hunks.
     - 🚫 A field for the secondary change view.
     - 🚫 Calling `apply` from `update`.
-  - 🔷 `apply` is the later call. The caller passes the view `update` returned.
-    - 🔷 An empty array applies the file straight into the buffer.
-    - 🔷 A non-empty array applies by the differentials.
-      - 🔷 The same piece in both: leave that stretch.
-      - 🔷 A piece that changed: replace that stretch.
+  - 🔷 `apply` is the call after `update`. The caller passes the view `update` returned. `update` does not call it.
+    - 🔷 An empty `parts` list writes the secondary view straight into the buffer with one `set_text`. That text is the file when every part is unchanged, and the file with the removed lines spliced in when a part is a hunk.
+    - 🔷 A filled `parts` list is `apply_parts`. `apply` calls it and returns.
+      - 🔷 The same piece is `FileDiffPart.compare`. `3` is the same lines and the same checksum: leave that stretch. `2` is the checksum only: leave that stretch. `1` is the lines only: replace that stretch. `0` is neither.
+      - 🚫 A `switch` on that return. Each result is its own `if`, then `continue`. The take and the put stay at the bottom of the loop.
+      - 🔷 A span ternary reads the aliased part. `end < start ? 0 : end - start + 1`. `parts.get` is not on the arm.
+      - 🚫 A nested ternary, or a ternary arm that calls a method. That is the Vala codegen bug (`examples/oc-vala-ternary-bug.vala`). `compare`'s return stays `if`s.
       - 🔷 A piece only in the current change view: take it out.
       - 🔷 A piece only in the secondary change view: put it in.
-      - 🔷 Spans just written take the existing green and red tags on that buffer.
-      - 🔷 `ReviewBar.update_diff` redraws the hunk strip. It does not edit the buffer.
+      - 💩 On `0`, a later part whose `compare` is `2` or `3` is that piece. Both cursors have such a part: the nearer one is the insert or the delete. Neither does: that piece changed.
+      - 🔷 Spans just written take `diff-add` and `diff-remove` on that buffer.
+      - 🔷 The constructor that receives the editor buffer adds those two tags when the tag table does not already have them. Same colors as the source view.
+      - 🔷 `ReviewBar.update_diff` redraws the hunk strip. It does not edit the buffer. `apply` does not call it.
 - 🚫 A second `GtkSource.Buffer` built from the change view and swapped in with `set_buffer`. That is `show_pending_diff` (`display` and `kinds`, then `set_text`).
 - 🚫 Applying the eight history rows in time order, and only when the buffer text still equals that step's backup. Eight saves are one `update` against what is approved.
 - 🚫 Painting the newest history row (`approve_id`, backup 43027) as the whole pending diff.
 - 🚫 Building as its own entry that takes the file contents and refuses the file. `update` takes the file and the part array.
 - 🚫 A field initializer that constructs `new GtkSource.Buffer(null)`. The buffer is only the constructor argument.
-- ⏳ 🔷 The body of `apply` is not in the class proposal below. `update` only builds `parts`.
+- 🔷 The body of `apply` and `apply_parts` is in §3. Empty `parts` is one `set_text`. A filled list is `apply_parts`.
 
 ### 1. `libocfiles/FileDiffPart.vala` — `unchanged`
 
-**Why:** An unchanged run is a `FileDiffPart`. The flag marks it. The file lines stay in `hunk_add` only.
+**Why:** An unchanged run is a `FileDiffPart`. The flag marks it. The file lines stay in `hunk_add` only. `compare` and `update_sum` live on the file-server part today. The editor holds this class, so the same two methods go here.
 
-**Where:** after the `hunk_add` property.
+**Where:** `unchanged` after the `hunk_add` property. The methods after `decided_at`. The class overview stops saying `compare` is file-server only.
 
 **Depends on:** none.
 
@@ -106,6 +110,69 @@ The flag is not a database column. A real hunk leaves it false.
 		 * empty. {@link hunk_add} holds the file lines.
 		 */
 		public bool unchanged { get; set; default = false; }
+```
+
+#### Remove — class overview, the `compare` sentence
+
+```vala
+	 * {@link accepted} is 0 undecided, 1 accepted, -1 rejected.
+	 * ''compare'' is on the file-server part. It takes another
+	 * part.
+```
+
+#### Replace with
+
+The editor calls `compare` on this type. The file server keeps the same return values.
+
+```vala
+	 * {@link accepted} is 0 undecided, 1 accepted, -1 rejected.
+	 * {@link compare} takes another part. 0 neither. 1 lines
+	 * only. 2 checksum only. 3 both. The file server matches.
+```
+
+#### Add — after `decided_at`
+
+`update_sum` matches the file server. `compare` reads `checksum`, so `update_sum` has to run first. The return is `if`s. The file server still has the nested ternary.
+
+```vala
+		/**
+		 * Set {@link checksum} from {@link hunk_remove} and
+		 * {@link hunk_add}. SHA256 of the remove text, a NUL,
+		 * then the add text.
+		 */
+		public void update_sum()
+		{
+			var sum = new GLib.Checksum(GLib.ChecksumType.SHA256);
+			sum.update((uint8[]) (this.hunk_remove + "\0" + this.hunk_add).to_utf8(), -1);
+			this.checksum = sum.get_string();
+		}
+
+		/**
+		 * Compare this part to another file part.
+		 *
+		 * 0 neither. 1 line numbers only. 2 checksum only. 3 both.
+		 *
+		 * @param other the other hunk
+		 * @return 0, 1, 2, or 3
+		 */
+		public int compare(FileDiffPart other)
+		{
+			var lines = this.old_line_start == other.old_line_start &&
+				this.old_line_end == other.old_line_end &&
+				this.new_line_start == other.new_line_start &&
+				this.new_line_end == other.new_line_end;
+			var hunks = this.checksum != "" && this.checksum == other.checksum;
+			if (lines && hunks) {
+				return 3;
+			}
+			if (lines) {
+				return 1;
+			}
+			if (hunks) {
+				return 2;
+			}
+			return 0;
+		}
 ```
 
 ### 2. `ollmfilesd/FileDiffPart.vala` — `unchanged`
@@ -131,7 +198,7 @@ Same property as §1. No table change.
 
 ### 3. `liboccoder/ChangeView.vala` — new class
 
-**Why:** The change view owns the editor buffer. `update` builds the secondary view's `parts`, unchanged runs included. `apply` is a later call and is not made from `update`.
+**Why:** The change view owns the editor buffer. `update` builds the secondary view's `parts`, unchanged runs included, and does not write the buffer. `apply` writes an empty `parts` list with one `set_text`. A filled list returns through `apply_parts`.
 
 **Where:** new file.
 
@@ -139,7 +206,7 @@ Same property as §1. No table change.
 
 #### Add — new file `liboccoder/ChangeView.vala`
 
-The class. `update` returns the secondary view. `apply` is declared for the later stage and does not write the buffer in this proposal.
+The class. `update` returns the secondary view and does not call `apply`. `apply` writes an empty `parts` list. `apply_parts` writes a filled one.
 
 ```vala
 /*
@@ -168,7 +235,8 @@ namespace OLLMcoder
 	 * Construct it with the editor buffer for the current view.
 	 * {@link SourceView} holds that instance. {@link update} returns a
 	 * second instance whose {@link parts} include unchanged runs.
-	 * {@link apply} is a later call. The two instances are not swapped.
+	 * {@link apply} writes that instance into this buffer. The two
+	 * instances are not swapped.
 	 *
 	 * == Example ==
 	 *
@@ -205,11 +273,38 @@ namespace OLLMcoder
 		/**
 		 * Current or secondary change view.
 		 *
+		 * The secondary view passes null. The current view passes the
+		 * editor buffer. That buffer receives ''diff-add'' and
+		 * ''diff-remove'' when the tag table lacks them.
+		 *
 		 * @param buffer editor buffer, or null for the secondary view
 		 */
 		public ChangeView(GtkSource.Buffer? buffer)
 		{
 			this.buffer = buffer;
+			if (this.buffer == null) {
+				return;
+			}
+			if (this.buffer.tag_table.lookup("diff-add") != null) {
+				return;
+			}
+			this.buffer.tag_table.add(new Gtk.TextTag("diff-add") {
+				paragraph_background_rgba = Gdk.RGBA() {
+					red = 0.75f,
+					green = 0.95f,
+					blue = 0.75f,
+					alpha = 1.0f
+				}
+			});
+			this.buffer.tag_table.add(new Gtk.TextTag("diff-remove") {
+				paragraph_background_rgba = Gdk.RGBA() {
+					red = 0.95f,
+					green = 0.75f,
+					blue = 0.75f,
+					alpha = 1.0f
+				},
+				editable = false
+			});
 		}
 
 		/**
@@ -232,8 +327,9 @@ namespace OLLMcoder
 				var new_end = lines.length;
 				var old_end = old_at + lines.length - new_at;
 				if (i < parts.size) {
-					new_end = parts.get(i).new_line_start - 1;
-					old_end = parts.get(i).old_line_start - 1;
+					var inc = parts.get(i);
+					new_end = inc.new_line_start - 1;
+					old_end = inc.old_line_start - 1;
 				}
 				if (new_end > lines.length) {
 					new_end = lines.length;
@@ -247,6 +343,7 @@ namespace OLLMcoder
 						hunk_add = string.joinv("\n", lines[new_at - 1:new_end]),
 						unchanged = true
 					};
+					gap.update_sum();
 					next.parts.add(gap);
 					new_at = gap.new_line_end + 1;
 					if (gap.old_line_end >= gap.old_line_start) {
@@ -256,12 +353,14 @@ namespace OLLMcoder
 				if (i == parts.size) {
 					break;
 				}
-				next.parts.add(parts.get(i));
-				if (parts.get(i).new_line_end >= parts.get(i).new_line_start) {
-					new_at = parts.get(i).new_line_end + 1;
+				var inc = parts.get(i);
+				inc.update_sum();
+				next.parts.add(inc);
+				if (inc.new_line_end >= inc.new_line_start) {
+					new_at = inc.new_line_end + 1;
 				}
-				if (parts.get(i).old_line_end >= parts.get(i).old_line_start) {
-					old_at = parts.get(i).old_line_end + 1;
+				if (inc.old_line_end >= inc.old_line_start) {
+					old_at = inc.old_line_end + 1;
 				}
 			}
 			next.empty = next.parts.size == 0;
@@ -269,17 +368,211 @@ namespace OLLMcoder
 		}
 
 		/**
-		 * Later stage. {@link update} does not call this.
-		 * Straight write and the differentials are not in
-		 * this proposal.
+		 * Write {@link next} into this buffer.
+		 *
+		 * A filled {@link parts} list calls {@link apply_parts} and
+		 * returns. An empty list writes the secondary view with one
+		 * ''set_text'', then paints green and red on the hunk spans.
+		 * {@link update} does not call this. The caller redraws the
+		 * strip with ''ReviewBar.update_diff''.
 		 *
 		 * @param next secondary change view from {@link update}
 		 */
 		public void apply(ChangeView next)
 		{
-			if (next.empty) {
+			if (this.parts.size > 0) {
+				this.apply_parts(next);
 				return;
 			}
+			var add_tag = this.buffer.tag_table.lookup("diff-add");
+			var remove_tag = this.buffer.tag_table.lookup("diff-remove");
+			string[] blobs = {};
+			for (var n = 0; n < next.parts.size; n++) {
+				var part = next.parts.get(n);
+				var new_n = part.new_line_end < part.new_line_start ? 0 : part.new_line_end - part.new_line_start + 1;
+				var old_n = part.old_line_end < part.old_line_start ? 0 : part.old_line_end - part.old_line_start + 1;
+				if (part.unchanged) {
+					if (new_n > 0) {
+						blobs += part.hunk_add;
+					}
+					continue;
+				}
+				if (old_n > 0) {
+					blobs += part.hunk_remove;
+				}
+				if (new_n > 0) {
+					blobs += part.hunk_add;
+				}
+			}
+			this.buffer.set_text(string.joinv("\n", blobs), -1);
+			var at = 0;
+			for (var n = 0; n < next.parts.size; n++) {
+				var part = next.parts.get(n);
+				var new_n = part.new_line_end < part.new_line_start ? 0 : part.new_line_end - part.new_line_start + 1;
+				var old_n = part.old_line_end < part.old_line_start ? 0 : part.old_line_end - part.old_line_start + 1;
+				if (part.unchanged) {
+					at += new_n;
+					continue;
+				}
+				if (old_n > 0) {
+					Gtk.TextIter tag_start;
+					Gtk.TextIter tag_end;
+					this.buffer.get_iter_at_line(out tag_start, at);
+					if (!this.buffer.get_iter_at_line(out tag_end, at + old_n)) {
+						this.buffer.get_end_iter(out tag_end);
+					}
+					this.buffer.apply_tag(remove_tag, tag_start, tag_end);
+					at += old_n;
+				}
+				if (new_n > 0) {
+					Gtk.TextIter tag_start;
+					Gtk.TextIter tag_end;
+					this.buffer.get_iter_at_line(out tag_start, at);
+					if (!this.buffer.get_iter_at_line(out tag_end, at + new_n)) {
+						this.buffer.get_end_iter(out tag_end);
+					}
+					this.buffer.apply_tag(add_tag, tag_start, tag_end);
+					at += new_n;
+				}
+			}
+			this.parts.clear();
+			this.parts.add_all(next.parts);
+			this.empty = this.parts.size == 0;
+		}
+
+		/**
+		 * Write {@link next} by the differentials.
+		 *
+		 * {@link OLLMfiles.FileDiffPart.compare} 2 or 3 leaves the
+		 * stretch. 1 replaces it. 0 takes out a piece only in this
+		 * view or puts one in from {@link next}.
+		 * {@link apply} calls this when {@link parts} is filled.
+		 *
+		 * @param next secondary change view from {@link update}
+		 */
+		private void apply_parts(ChangeView next)
+		{
+			var add_tag = this.buffer.tag_table.lookup("diff-add");
+			var remove_tag = this.buffer.tag_table.lookup("diff-remove");
+			var i = 0;
+			var j = 0;
+			var at = 0;
+			while (i < this.parts.size || j < next.parts.size) {
+				var put = i >= this.parts.size;
+				var take = j >= next.parts.size;
+				if (i < this.parts.size && j < next.parts.size) {
+					var cur = this.parts.get(i);
+					var inc = next.parts.get(j);
+					var rel = cur.compare(inc);
+					if (rel == 2 || rel == 3) {
+						at += cur.new_line_end < cur.new_line_start ? 0 : cur.new_line_end - cur.new_line_start + 1;
+						if (!cur.unchanged) {
+							at += cur.old_line_end < cur.old_line_start ? 0 : cur.old_line_end - cur.old_line_start + 1;
+						}
+						i++;
+						j++;
+						continue;
+					}
+					if (rel == 1) {
+						put = true;
+						take = true;
+					}
+					if (rel == 0) {
+						var later_next = j + 1;
+						while (later_next < next.parts.size) {
+							var ahead = cur.compare(next.parts.get(later_next));
+							if (ahead == 2 || ahead == 3) {
+								break;
+							}
+							later_next++;
+						}
+						var later_cur = i + 1;
+						while (later_cur < this.parts.size) {
+							var ahead = inc.compare(this.parts.get(later_cur));
+							if (ahead == 2 || ahead == 3) {
+								break;
+							}
+							later_cur++;
+						}
+						var found_next = later_next < next.parts.size;
+						var found_cur = later_cur < this.parts.size;
+						put = !found_cur || (found_next && later_next - j <= later_cur - i);
+						take = !found_next || (found_cur && later_cur - i < later_next - j);
+					}
+				}
+				if (take) {
+					var cur = this.parts.get(i);
+					var old_n = cur.old_line_end < cur.old_line_start ? 0 : cur.old_line_end - cur.old_line_start + 1;
+					var new_n = cur.new_line_end < cur.new_line_start ? 0 : cur.new_line_end - cur.new_line_start + 1;
+					var span = new_n;
+					if (!cur.unchanged) {
+						span = old_n + new_n;
+					}
+					Gtk.TextIter start_iter;
+					if (span > 0 && this.buffer.get_iter_at_line(out start_iter, at)) {
+						Gtk.TextIter end_iter;
+						if (!this.buffer.get_iter_at_line(out end_iter, at + span)) {
+							this.buffer.get_end_iter(out end_iter);
+						}
+						this.buffer.delete(ref start_iter, ref end_iter);
+					}
+					i++;
+				}
+				if (put) {
+					var inc = next.parts.get(j);
+					var old_n = inc.old_line_end < inc.old_line_start ? 0 : inc.old_line_end - inc.old_line_start + 1;
+					var new_n = inc.new_line_end < inc.new_line_start ? 0 : inc.new_line_end - inc.new_line_start + 1;
+					var text = inc.hunk_add;
+					if (!inc.unchanged && inc.hunk_remove != "") {
+						text = inc.hunk_add == "" ? inc.hunk_remove : inc.hunk_remove + "\n" + inc.hunk_add;
+					}
+					var span = new_n;
+					if (!inc.unchanged) {
+						span = old_n + new_n;
+					}
+					Gtk.TextIter at_iter;
+					var at_end = !this.buffer.get_iter_at_line(out at_iter, at);
+					if (at_end) {
+						this.buffer.get_end_iter(out at_iter);
+					}
+					if (text == "" && span > 0) {
+						var blanks = span;
+						if (at_end) {
+							blanks = span - 1;
+						}
+						text = string.nfill(blanks, '\n');
+					}
+					if (text != "" && !at_end && !text.has_suffix("\n")) {
+						text = text + "\n";
+					}
+					if (text != "") {
+						this.buffer.insert(ref at_iter, text, -1);
+					}
+					if (!inc.unchanged && old_n > 0) {
+						Gtk.TextIter tag_start;
+						Gtk.TextIter tag_end;
+						this.buffer.get_iter_at_line(out tag_start, at);
+						if (!this.buffer.get_iter_at_line(out tag_end, at + old_n)) {
+							this.buffer.get_end_iter(out tag_end);
+						}
+						this.buffer.apply_tag(remove_tag, tag_start, tag_end);
+					}
+					if (!inc.unchanged && new_n > 0) {
+						Gtk.TextIter tag_start;
+						Gtk.TextIter tag_end;
+						this.buffer.get_iter_at_line(out tag_start, at + old_n);
+						if (!this.buffer.get_iter_at_line(out tag_end, at + old_n + new_n)) {
+							this.buffer.get_end_iter(out tag_end);
+						}
+						this.buffer.apply_tag(add_tag, tag_start, tag_end);
+					}
+					at += span;
+					j++;
+				}
+			}
+			this.parts.clear();
+			this.parts.add_all(next.parts);
+			this.empty = this.parts.size == 0;
 		}
 	}
 }
@@ -342,7 +635,12 @@ Name the type that owns the buffer.
 - 🚫 2026-10-29 — a flat sequence whose last step sets the current change view to the proposed one. Building makes one view's data from the file contents and that change view. Comparison alters the buffer from the two data objects.
 - 🚫 2026-10-29 — dropping the current change view after the comparison. `SourceView` holds that value. The patch-set change view is the local, and it is not kept.
 - 🚫 2026-10-29 — a comparison entry that takes two already-built change views. The current change view is constructed with the buffer, empty. `update` takes the file and the part array, builds the no-buffer change view, and `apply` writes it. An empty array goes straight into the buffer. A non-empty array goes by the differentials. The two instances are not flipped.
-- 🔷 ⏳ 2026-10-29 — class proposal for `OLLMcoder.ChangeView`. Empty `apply` only. Differential body still open.
+- 🚫 2026-10-29 — class proposal that left `apply` empty for a second phase.
+- 🔷 2026-10-29 — `apply` is in the class proposal. Empty `parts` writes the secondary view with `set_text` and the green and red tags. A filled list leaves, replaces, takes out, and puts in.
+- 🔷 2026-10-29 — piece match is `FileDiffPart.compare`. 2 or 3 leaves. 1 replaces. 0 looks ahead for a 2 or 3. `update` calls `update_sum` so the checksum is set. The editor part gains those two methods.
+- 🚫 2026-10-29 — `switch` on the `compare` return inside the parts walk. The cases nest the take and the put.
+- 🔷 2026-10-29 — `apply_parts` is the filled list. `apply` calls it when `parts.size > 0` and returns. Each `compare` result is an `if` then `continue`.
+- 🔷 2026-10-29 — `part`, `cur`, and `inc` alias `parts.get` before a span ternary. The arm is `end < start ? 0 : end - start + 1`. `parts.get` stays off the arm.
 - 🚫 2026-10-29 — `update` copying the incoming hunks with `add_all` and calling `apply`. `update` builds `parts`, unchanged runs included, and returns that view.
 - 🚫 2026-10-29 — a loop that copies file lines one by one. The gap text is `lines[start:end]` passed to `string.joinv`. The loop walks the hunks.
 - 🚫 2026-10-29 — assigning `FileDiffPart` fields after `new`. The unchanged run uses `new OLLMfiles.FileDiffPart() { … }`.

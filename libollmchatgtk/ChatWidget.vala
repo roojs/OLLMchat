@@ -35,6 +35,13 @@ namespace OLLMchatGtk
 		 * may be added by the application (Android chat ↔ tool).
 		 */
 		public Gtk.Stack view_stack { get; private set; }
+		/**
+		 * Overlay over the transcript and the composer.
+		 *
+		 * The child is the stack plus the lower box. The phone
+		 * project and file sheet is added here.
+		 */
+		public Gtk.Overlay cover { get; private set; }
 		public ChatPermission permission_widget { get; private set; }
 		public ChatBar chat_bar { get; private set; }
 		public ChatInput chat_input { get; private set; }
@@ -234,7 +241,12 @@ namespace OLLMchatGtk
 				this.streaming_state(this.manager.session.is_running);
 			});
 
-			this.append(main_box);
+			this.cover = new Gtk.Overlay() {
+				hexpand = true,
+				vexpand = true,
+				child = main_box,
+			};
+			this.append(this.cover);
 
 			this.manager.notification.connect((notif) => {
 				switch (notif.method) {

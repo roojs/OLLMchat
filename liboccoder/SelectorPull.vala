@@ -48,8 +48,8 @@ namespace OLLMcoder
 		public Gtk.Label heading { get; private set; }
 
 		/**
-		 * Line under the top bar. The project page shows the current
-		 * selection. The phone file page shows the path relative to
+		 * Line under the top bar. The project page hides this line.
+		 * The phone file page shows the path relative to
 		 * the project only when a path button is shortened to ''...''.
 		 */
 		public Gtk.Label current { get; private set; }

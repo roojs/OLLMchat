@@ -76,6 +76,17 @@ namespace OLLMapp.Android
 			var factory = this.shell.history_manager.get_active_agent();
 			factory.activate.begin(this.shell, (obj, res) => {
 				factory.activate.end(res);
+				if (!this.is_phone || factory.name != "agent-pi") {
+					this.schedule_pane_update(true);
+					return;
+				}
+				var tabs = (Adw.ViewStack) ((OLLMchat.ChatDesktopInterface) this.shell).tab_view();
+				var coder = (OLLMcoder.CoderView) tabs.get_visible_child();
+				if (coder.selector.get_parent() != null) {
+					this.schedule_pane_update(true);
+					return;
+				}
+				this.shell.chat_widget.cover.add_overlay(coder.selector);
 				this.schedule_pane_update(true);
 			});
 		}
