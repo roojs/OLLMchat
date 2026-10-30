@@ -209,7 +209,8 @@ namespace OLLMchatGtk
 		 * Idle after TextView buffer.changed: set {@link content_height} from
 		 * line yrange; request bottom pin on next allocate when caret is at end.
 		 *
-		 * @return true to wait for map/width, false when done
+		 * @return false. A later timeout retries while the view is unmapped,
+		 *   has no width, or has no line height.
 		 */
 		private bool buffer_change()
 		{
@@ -217,10 +218,12 @@ namespace OLLMchatGtk
 				return false;
 			}
 			if (!this.text_view.get_mapped()) {
-				return true;
+				GLib.Timeout.add(100, this.buffer_change);
+				return false;
 			}
 			if (this.get_width() <= 0) {
-				return true;
+				GLib.Timeout.add(100, this.buffer_change);
+				return false;
 			}
 			var peer_h = 0;
 			if (this.line_peer != null) {
@@ -258,7 +261,8 @@ namespace OLLMchatGtk
 				if (peer_h > 0) {
 					return false;
 				}
-				return true;
+				GLib.Timeout.add(100, this.buffer_change);
+				return false;
 			}
 			this.need_fit = false;
 			var content_h = y + line_h;

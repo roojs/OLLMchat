@@ -103,8 +103,14 @@ namespace OLLMcoder
 			header.append(this.projects);
 			header.append(spacer);
 			header.append(this.files);
-			this.editor.save_button.add_css_class("flat");
 			this.editor.save_button.valign = Gtk.Align.CENTER;
+			if (form == Form.DESKTOP) {
+				this.editor.save_button.add_css_class("flat");
+			}
+			if (form != Form.DESKTOP) {
+				this.editor.save_button.has_frame = false;
+				this.editor.save_button.add_css_class("page-picker");
+			}
 			header.append(this.editor.save_button);
 			var showing_doc = false;
 			var md_button = new Gtk.Button() {
@@ -114,7 +120,13 @@ namespace OLLMcoder
 				valign = Gtk.Align.CENTER,
 				visible = false,
 			};
-			md_button.add_css_class("flat");
+			if (form == Form.DESKTOP) {
+				md_button.add_css_class("flat");
+			}
+			if (form != Form.DESKTOP) {
+				md_button.has_frame = false;
+				md_button.add_css_class("page-picker");
+			}
 			md_button.clicked.connect(() => {
 				if (showing_doc) {
 					showing_doc = false;

@@ -111,6 +111,9 @@ namespace OLLMcoder.Diff
 
 		public int pending_after(int after_index)
 		{
+			if (this.size < 1) {
+				return -1;
+			}
 			var work = new Gee.ArrayList<HunkBand>();
 			work.add_all(this);
 			work.sort((a, b) => {

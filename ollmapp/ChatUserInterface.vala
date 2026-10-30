@@ -68,6 +68,16 @@ namespace OLLMapp
 			this.history_manager.agent_activated.connect((factory) => {
 				factory.activate.begin(this, (obj, res) => {
 					factory.activate.end(res);
+					if (factory.name != "agent-pi") {
+						return;
+					}
+					var tabs = (Adw.ViewStack) ((OLLMchat.ChatDesktopInterface) this).tab_view();
+					var coder = (OLLMcoder.CoderView) tabs.get_visible_child();
+					if (coder.files.form != OLLMcoder.Form.PHONE ||
+						coder.selector.get_parent() != null) {
+						return;
+					}
+					this.chat_widget.cover.add_overlay(coder.selector);
 				});
 			});
 			this.history_manager.agent_deactivated.connect((factory) => {
@@ -79,6 +89,16 @@ namespace OLLMapp
 				var factory = this.history_manager.get_active_agent();
 				factory.activate.begin(this, (obj, res) => {
 					factory.activate.end(res);
+					if (factory.name != "agent-pi") {
+						return;
+					}
+					var tabs = (Adw.ViewStack) ((OLLMchat.ChatDesktopInterface) this).tab_view();
+					var coder = (OLLMcoder.CoderView) tabs.get_visible_child();
+					if (coder.files.form != OLLMcoder.Form.PHONE ||
+						coder.selector.get_parent() != null) {
+						return;
+					}
+					this.chat_widget.cover.add_overlay(coder.selector);
 				});
 			});
 		}

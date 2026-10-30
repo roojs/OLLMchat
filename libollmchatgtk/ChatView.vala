@@ -868,8 +868,11 @@ namespace OLLMchatGtk
 				// Check if layout is ready by verifying upper bound is reasonable
 				// If upper is 0 or very small, layout might not be complete yet
 				if (vadjustment.upper < 100.0) {
-					// Layout not ready yet, try again on next idle (but only if scrolling is still enabled)
-					return this.scroll_enabled && !this.autoscroll_paused_by_user;
+					GLib.Timeout.add(100, () => {
+						this.scroll_to_bottom();
+						return false;
+					});
+					return false;
 				}
 				
 				// Mark as programmatic so the value_changed handler does not set autoscroll_paused_by_user
@@ -923,7 +926,11 @@ namespace OLLMchatGtk
 						"scroll_idx retry upper=%.0f idx=%d",
 						vadj.upper,
 						idx); */
-					return true;
+					GLib.Timeout.add(100, () => {
+						this.scroll_to_idx(idx);
+						return false;
+					});
+					return false;
 				}
 				var t = idx;
 				var w = this.render_box.by_id.get(t);
@@ -1060,7 +1067,11 @@ namespace OLLMchatGtk
 		{
 			// Check if widget is valid and realized
 			if (widget == null || !widget.get_realized()) {
-				return true; // Try again next time
+				GLib.Timeout.add(100, () => {
+					this.resize_widget_callback(widget, scrolled_window, mode, expand_button);
+					return false;
+				});
+				return false;
 			}
 			
 			// Get preferred height of the widget

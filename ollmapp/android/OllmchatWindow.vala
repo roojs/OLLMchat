@@ -558,6 +558,11 @@ namespace OLLMapp
 
 			this.connect_agent_factory_signals();
 
+			if (!this.is_tablet) {
+				this.chat_widget.view_stack.add_named(this.pane_stack, "pane");
+				this.chat_container.append(this.chat_widget);
+			}
+
 			if (is_desktop_connected && is_desktop_available) {
 				var empty = this.history_manager.create_new_session();
 				empty.project_path = this.history_manager.session.project_path;
@@ -621,9 +626,6 @@ namespace OLLMapp
 				this.pane_stack.visible = false;
 				columns.append(this.pane_stack);
 				this.chat_container.append(columns);
-			} else {
-				this.chat_widget.view_stack.add_named(this.pane_stack, "pane");
-				this.chat_container.append(this.chat_widget);
 			}
 			this.view_stack.visible_child_name = "chat";
 
