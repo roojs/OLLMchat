@@ -56,6 +56,7 @@ namespace OLLMcoder
 		public MarkdownView()
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+			this.add_css_class("markdown-preview");
 			this.hexpand = true;
 			this.vexpand = true;
 			this.box = new MarkdownGtk.RenderBox();

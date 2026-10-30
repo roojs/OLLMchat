@@ -97,11 +97,38 @@ if (natural_height <= 0 || target_height >= max_height) {
 }
 ```
 
+## Preview size
+
+- 🔷 2026-10-30: preview fences are a little large. About two points smaller. Chat stays as it is.
+- ℹ️ Desktop theme is Cantarell 11. `.code-editor` with no size is 11pt (14.667px). 11pt minus 2pt is 9pt.
+- 🚫 Do not set `font-size` on `.code-editor`. Chat fences use that class.
+
+### `liboccoder/MarkdownView.vala`
+
+#### Add — immediately after `Object(...)` in the constructor
+
+```vala
+			this.add_css_class("markdown-preview");
+```
+
+### `resources/style.css`
+
+#### Add — immediately after `.code-editor`
+
+```css
+/* File preview fences only. Theme size is 11pt; chat stays there. */
+.markdown-preview .code-editor {
+  font-size: 9pt;
+}
+```
+
 ## Attempts / changelog
 
 - ✔️ 2026-10-28: CSS font list and inner horizontal scroll applied as above.
 - ✔️ 2026-10-28: fitted code-box height is twice the text height, still capped at half the window.
+- ✔️ 2026-10-30: preview fences are 9pt. Chat fences stay at the theme size.
 
 ## Next
 
 - ⏳ User checks a fenced block in the Android file preview: fixed face, long line scrolls inside the box.
+- ⏳ User checks the desktop file preview: fence text is about two points smaller than chat.

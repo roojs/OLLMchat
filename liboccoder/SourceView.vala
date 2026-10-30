@@ -63,6 +63,12 @@ namespace OLLMcoder
 			}
 			private bool diff_active = false;
 			public GtkSource.View source_view { get; private set; }
+			/**
+			 * Current change view. Constructed with the editor
+			 * buffer. Starts empty. The secondary view is only
+			 * the return from {@link ChangeView.proposal}.
+			 */
+			private ChangeView change_view;
 			private Gtk.ScrolledWindow scrolled_window;
 			private Gtk.CssProvider font_css { get; set; default = new Gtk.CssProvider(); }
 			private double source_font_px = 14;
@@ -141,25 +147,15 @@ namespace OLLMcoder
 					file.check_changed.begin((obj, res) => {
 						if (file.check_changed.end(res) == OLLMfiles.FileUpdateStatus.NO_CHANGE
 							|| this.current_file != file
-							|| file.buffer.is_modified) {
+							|| (this.source_view.buffer as GtkSource.Buffer).get_modified()) {
 							return;
 						}
-						this.save_current_file_state();
 						file.read.begin((read_obj, read_res) => {
 							file.read.end(read_res);
 							if (this.current_file != file) {
 								return;
 							}
-							if (this.diff_active) {
-								this.clear_diff();
-							}
-							this.source_view.set_buffer(file.buffer as GtkSource.Buffer);
-							if (this.manager.review_files.file_map.has_key(file.path)) {
-								this.show_pending_diff.begin(file);
-								return;
-							}
-							this.restore_cursor_position(file);
-							this.restore_scroll_position(file);
+							this.show_pending_diff.begin(file);
 						});
 					});
 				});
@@ -224,6 +220,7 @@ namespace OLLMcoder
 					hexpand = true,
 					vexpand = true
 				};
+				this.change_view = new ChangeView(this.source_view.buffer as GtkSource.Buffer);
 				// Add CSS class for monospace font styling
 				this.source_view.add_css_class("source-view");
 				this.font_css.load_from_string(".source-view { font-size: 14px; }");
@@ -537,8 +534,11 @@ namespace OLLMcoder
 						gtk_buffer.text.length);
 				}
 			
-				// Switch view to file's buffer (GtkSourceFileBuffer IS a GtkSource.Buffer)
-				this.source_view.set_buffer(gtk_buffer);
+				if (this.current_file != file) {
+					this.change_view.parts.clear();
+					this.change_view.empty = true;
+				}
+				(this.source_view.buffer as GtkSource.Buffer).language = gtk_buffer.language;
 				this.current_file = file;
 				this.file_changed(file);
 			
@@ -735,135 +735,52 @@ namespace OLLMcoder
 			}
 
 			/**
-			 * If ''file'' is pending approval, load diff items and paint them.
+			 * Paint ''file'' through the current change view.
 			 *
-			 * Calls ''FileHistory.parts''. Does not read the backup.
+			 * Pending paths load one ''FileHistory.parts'' reply
+			 * for ''approve_id'' into ''parts''. That array is the
+			 * hunks for that history row. Any other path leaves
+			 * ''parts'' empty.
+			 * {@link ChangeView.proposal} then {@link ChangeView.apply}.
+			 * The review bar is redrawn after apply.
 			 *
-			 * @param file open project file (buffer already holds V_disk)
+			 * @param file open project file; ''buffer'' is the plain text
 			 */
 			public async void show_pending_diff(OLLMfiles.File file)
 			{
-				if (!this.manager.review_files.file_map.has_key(file.path)) {
-					return;
-				}
-				var row = this.manager.review_files.file_map.get(file.path);
-				OLLMrpc.Response response;
-				try {
-					response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-						method = "FileHistory.parts",
-						args = OLLMrpc.args("x", row.approve_id)
-					});
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to load diff parts for %s: %s", file.path, e.message);
-					return;
+				var parts = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
+				if (this.manager.review_files.file_map.has_key(file.path)) {
+					OLLMrpc.Response response;
+					try {
+						response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+							method = "FileHistory.parts",
+							args = OLLMrpc.args("x",
+								this.manager.review_files.file_map.get(file.path).approve_id)
+						});
+					} catch (GLib.Error e) {
+						GLib.warning("Failed to load diff parts for %s: %s", file.path, e.message);
+						return;
+					}
+					if (this.current_file != file) {
+						return;
+					}
+					if (response.error != null) {
+						GLib.warning("Failed to load diff parts for %s: %s", file.path, response.error.message);
+						return;
+					}
+					if (response.retval.type() != GLib.Type.INVALID) {
+						parts = (Gee.ArrayList<OLLMfiles.FileDiffPart>) response.retval.get_object();
+					}
 				}
 				if (this.current_file != file) {
-					return;
-				}
-				if (response.error != null) {
-					GLib.warning("Failed to load diff parts for %s: %s", file.path, response.error.message);
-					return;
-				}
-				if (response.retval.type() == GLib.Type.INVALID) {
-					if (this.diff_active) {
-						this.clear_diff();
-					}
 					return;
 				}
 				if (this.diff_active) {
 					this.clear_diff();
 				}
-				var parts = (Gee.ArrayList<OLLMfiles.FileDiffPart>) response.retval.get_object();
-				var editor_lines = (file.buffer as GtkSource.Buffer).text.split("\n");
-				var display = new Gee.ArrayList<string>();
-				var kinds = new Gee.ArrayList<int>();
-				this.diff_baseline.clear();
-				this.diff_remove_at.clear();
-				this.diff_remove_n.clear();
-				var new_i = 1;
-				foreach (var part in parts) {
-					var add_count = part.new_line_end < part.new_line_start
-						? 0 : part.new_line_end - part.new_line_start + 1;
-					var remove_count = part.old_line_end < part.old_line_start
-						? 0 : part.old_line_end - part.old_line_start + 1;
-					while (new_i < part.new_line_start && new_i <= editor_lines.length) {
-						display.add(editor_lines[new_i - 1]);
-						this.diff_baseline.add(new_i);
-						kinds.add(0);
-						new_i++;
-					}
-					if (part.accepted != 0) {
-						if (add_count == 0) {
-							if (part.new_line_start > new_i) {
-								new_i = part.new_line_start;
-							}
-							continue;
-						}
-						for (var ln = part.new_line_start;
-							ln < part.new_line_start + add_count && ln <= editor_lines.length;
-							ln++) {
-							display.add(editor_lines[ln - 1]);
-							this.diff_baseline.add(ln);
-							kinds.add(0);
-						}
-						new_i = part.new_line_start + add_count;
-						continue;
-					}
-					if (remove_count > 0 && part.hunk_remove != "") {
-						this.diff_remove_at.add(part.new_line_start);
-						this.diff_remove_n.add(remove_count);
-						var removed = part.hunk_remove.split("\n");
-						for (var r = 0; r < remove_count && r < removed.length; r++) {
-							display.add(removed[r]);
-							this.diff_baseline.add(0);
-							kinds.add(2);
-						}
-					}
-					if (add_count == 0) {
-						if (part.new_line_start > new_i) {
-							new_i = part.new_line_start;
-						}
-						continue;
-					}
-					for (var ln = part.new_line_start;
-						ln < part.new_line_start + add_count && ln <= editor_lines.length;
-						ln++) {
-						display.add(editor_lines[ln - 1]);
-						this.diff_baseline.add(ln);
-						kinds.add(1);
-					}
-					new_i = part.new_line_start + add_count;
-				}
-				while (new_i <= editor_lines.length) {
-					display.add(editor_lines[new_i - 1]);
-					this.diff_baseline.add(new_i);
-					kinds.add(0);
-					new_i++;
-				}
-				this.diff_buffer = new GtkSource.Buffer(this.diff_tag_table);
-				this.diff_buffer.set_text(string.joinv("\n", display.to_array()), -1);
-				var add_tag = this.diff_tag_table.lookup("diff-add");
-				var remove_tag = this.diff_tag_table.lookup("diff-remove");
-				for (var i = 0; i < kinds.size; i++) {
-					if (kinds.get(i) == 0) {
-						continue;
-					}
-					Gtk.TextIter iter;
-					this.diff_buffer.get_iter_at_line(out iter, i);
-					var line_end = iter;
-					if (!line_end.ends_line()) {
-						line_end.forward_to_line_end();
-					}
-					if (!line_end.is_end()) {
-						line_end.forward_char();
-					}
-					this.diff_buffer.apply_tag(
-						kinds.get(i) == 1 ? add_tag : remove_tag, iter, line_end);
-				}
-				this.pre_diff_buffer = this.source_view.buffer as GtkSource.Buffer;
-				this.source_view.set_buffer(this.diff_buffer);
-				this.source_view.show_line_numbers = false;
-				this.diff_active = true;
+				var proposal = this.change_view.proposal(file, parts);
+				this.change_view.apply(proposal);
+				(this.source_view.buffer as GtkSource.Buffer).set_modified(false);
 				this.scrolled_window.visible = true;
 				this.review_bar.update_diff(parts, this.review_bar.file_index);
 			}
@@ -1107,6 +1024,22 @@ namespace OLLMcoder
 			
 				// Sync buffer to file
 				var file = this.current_file;
+				var plain = true;
+				for (var i = 0; i < this.change_view.parts.size; i++) {
+					if (this.change_view.parts.get(i).unchanged) {
+						continue;
+					}
+					plain = false;
+					break;
+				}
+				if (plain) {
+					Gtk.TextIter start_iter;
+					Gtk.TextIter end_iter;
+					(this.source_view.buffer as GtkSource.Buffer).get_bounds(out start_iter, out end_iter);
+					(file.buffer as GtkSource.Buffer).set_text(
+						(this.source_view.buffer as GtkSource.Buffer).get_text(start_iter, end_iter, false),
+						-1);
+				}
 				try {
 					yield file.buffer.sync_to_file();
 				} catch (Error e) {
@@ -1150,6 +1083,9 @@ namespace OLLMcoder
 						}
 					});
 				}
+				(this.source_view.buffer as GtkSource.Buffer).set_text("", -1);
+				this.change_view.parts.clear();
+				this.change_view.empty = true;
 			
 				// Show "file deleted" indicator in placeholder
 			

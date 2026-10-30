@@ -22,9 +22,9 @@ namespace OLLMcoder
 	 * Owns one editor buffer and the parts last applied to it.
 	 *
 	 * Construct it with the editor buffer for the current view.
-	 * {@link SourceView} holds that instance. {@link update} returns a
+	 * {@link SourceView} holds that instance. {@link proposal} returns a
 	 * second instance whose {@link parts} include unchanged runs.
-	 * {@link apply} writes that instance into this buffer. The two
+	 * {@link apply} writes that proposal into this buffer. The two
 	 * instances are not swapped.
 	 *
 	 * == Example ==
@@ -34,8 +34,8 @@ namespace OLLMcoder
 	 * {{{
 	 * var view = new OLLMcoder.ChangeView(buffer);
 	 * var hunks = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
-	 * var next = view.update(file, hunks);
-	 * view.apply(next);
+	 * var proposal = view.proposal(file, hunks);
+	 * view.apply(proposal);
 	 * }}}
 	 */
 	public class ChangeView : Object
@@ -97,16 +97,16 @@ namespace OLLMcoder
 		}
 
 		/**
-		 * Build a secondary change view from the file and the
-		 * incoming hunks. Does not call {@link apply}.
+		 * Build a proposal from the file and the incoming hunks.
+		 * Does not call {@link apply}.
 		 * Gaps between hunks become unchanged parts. An empty
 		 * hunk list still builds those parts from the file.
 		 *
 		 * @param file file text for the unchanged runs
 		 * @param parts incoming hunks, or an empty list
-		 * @return the secondary change view
+		 * @return the proposal
 		 */
-		public ChangeView update(OLLMfiles.File file, Gee.ArrayList<OLLMfiles.FileDiffPart> parts)
+		public ChangeView proposal(OLLMfiles.File file, Gee.ArrayList<OLLMfiles.FileDiffPart> parts)
 		{
 			var next = new ChangeView(null);
 			var lines = file.buffer.get_text().split("\n");
@@ -162,10 +162,10 @@ namespace OLLMcoder
 		 * A filled {@link parts} list calls {@link apply_parts} and
 		 * returns. An empty list writes the secondary view with one
 		 * ''set_text'', then paints green and red on the hunk spans.
-		 * {@link update} does not call this. The caller redraws the
+		 * {@link proposal} does not call this. The caller redraws the
 		 * strip with ''ReviewBar.update_diff''.
 		 *
-		 * @param next secondary change view from {@link update}
+		 * @param next proposal from {@link proposal}
 		 */
 		public void apply(ChangeView next)
 		{
@@ -173,6 +173,7 @@ namespace OLLMcoder
 				this.apply_parts(next);
 				return;
 			}
+			// current buffer is empty -- as parts is 0...
 			var add_tag = this.buffer.tag_table.lookup("diff-add");
 			var remove_tag = this.buffer.tag_table.lookup("diff-remove");
 			string[] blobs = {};
@@ -237,7 +238,7 @@ namespace OLLMcoder
 		 * view or puts one in from {@link next}.
 		 * {@link apply} calls this when {@link parts} is filled.
 		 *
-		 * @param next secondary change view from {@link update}
+		 * @param next proposal from {@link proposal}
 		 */
 		private void apply_parts(ChangeView next)
 		{

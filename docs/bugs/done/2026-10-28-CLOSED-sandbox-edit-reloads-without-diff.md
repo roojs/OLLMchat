@@ -1,6 +1,6 @@
 # Sandbox edits reload the whole file and never paint the diff
 
-**Status:** ✔️ phase one applied (the class and the build). The editor still reloads. Wiring `ChangeView` into `SourceView` is [`2026-10-29-change-view-render.md`](2026-10-29-change-view-render.md).
+**Status:** 🚫 CLOSED 2026-10-30. The class is in the tree. The source-view call is [`2026-10-29-CLOSED-change-view-render.md`](2026-10-29-CLOSED-change-view-render.md). Editing that paint is [`2026-10-30-live-diff-edit-sync.md`](../2026-10-30-live-diff-edit-sync.md).
 
 Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sandbox-git-status-truncates-index.md). The model was told to bundle `FileConnectionAdd` onto the end of `examples/oc-test-source-diff.vala`. The `write` tool never applied a fence. Bash did change the live file. Each of those writes replaced the open buffer with the whole file. History rows were stored. The source view never loaded them, so nothing was highlighted.
 
@@ -61,17 +61,17 @@ Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sand
   - ✔️ `FileDiffPart.compare` tells two hunks apart on the daemon. `3` same lines and same text. `1` lines only. `2` text only. `0` neither. It does not edit a buffer.
   - 🔷 An unchanged run is a `FileDiffPart` with `unchanged` true. `hunk_add` is that run's file lines. `hunk_remove` stays empty. The old and new spans cover the run.
   - 🚫 The same text in `hunk_add` and `hunk_remove`.
-- 🔷 A pump is `update`, then later `apply`. That includes the first fill and `event.project.invalidate_cache`.
+- 🔷 A pump is `proposal`, then later `apply`. That includes the first fill and `event.project.invalidate_cache`.
   - 🔷 `open_file` is the only time the scroll is put back.
   - 🚫 `file.read` then `set_buffer`.
-  - 🔷 `update` takes the file and the incoming hunks. It returns the secondary change view. It does not write the buffer.
+  - 🔷 `proposal` takes the file and the incoming hunks. It returns the proposal. It does not write the buffer.
     - 🔷 The secondary view is constructed with null. An empty incoming list still builds one.
     - 🔷 `parts` on that view is the whole file. Each gap between hunks is an unchanged `FileDiffPart`. Each incoming hunk is kept.
     - 🔷 A gap's lines are `string.joinv("\n", lines[start:end])` in `hunk_add` only. `end` is exclusive. `unchanged` is true. The gap and each kept hunk call `update_sum` so `compare` has a checksum.
     - 🚫 A loop over the file lines. The loop walks the hunks.
     - 🚫 A field for the secondary change view.
-    - 🚫 Calling `apply` from `update`.
-  - 🔷 `apply` is the call after `update`. The caller passes the view `update` returned. `update` does not call it.
+    - 🚫 Calling `apply` from `proposal`.
+  - 🔷 `apply` is the call after `proposal`. The caller passes that return value to `apply`. `proposal` does not call it.
     - 🔷 An empty `parts` list writes the secondary view straight into the buffer with one `set_text`. That text is the file when every part is unchanged, and the file with the removed lines spliced in when a part is a hunk.
     - 🔷 A filled `parts` list is `apply_parts`. `apply` calls it and returns.
       - 🔷 The same piece is `FileDiffPart.compare`. `3` is the same lines and the same checksum: leave that stretch. `2` is the checksum only: leave that stretch. `1` is the lines only: replace that stretch. `0` is neither.
@@ -85,13 +85,13 @@ Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sand
       - 🔷 The constructor that receives the editor buffer adds those two tags when the tag table does not already have them. Same colors as the source view.
       - 🔷 `ReviewBar.update_diff` redraws the hunk strip. It does not edit the buffer. `apply` does not call it.
 - 🚫 A second `GtkSource.Buffer` built from the change view and swapped in with `set_buffer`. That is `show_pending_diff` (`display` and `kinds`, then `set_text`).
-- 🚫 Applying the eight history rows in time order, and only when the buffer text still equals that step's backup. Eight saves are one `update` against what is approved.
+- 🚫 Applying the eight history rows in time order, and only when the buffer text still equals that step's backup. Eight saves are one `proposal` against what is approved.
 - 🚫 Painting the newest history row (`approve_id`, backup 43027) as the whole pending diff.
-- 🚫 Building as its own entry that takes the file contents and refuses the file. `update` takes the file and the part array.
+- 🚫 Building as its own entry that takes the file contents and refuses the file. `proposal` takes the file and the part array.
 - 🚫 A field initializer that constructs `new GtkSource.Buffer(null)`. The buffer is only the constructor argument.
 - 🔷 The body of `apply` and `apply_parts` is in §3. Empty `parts` is one `set_text`. A filled list is `apply_parts`.
-- 🔷 Phase one is that class, the `unchanged` flag, and the build entries. It is in the tree. Nothing calls it yet.
-- ℹ️ Wiring it into `SourceView` is [`2026-10-29-change-view-render.md`](2026-10-29-change-view-render.md). This log stays the class record.
+- 🔷 Phase one is that class, the `unchanged` flag, and the build entries. It is in the tree.
+- ℹ️ The source-view call landed in [`2026-10-29-CLOSED-change-view-render.md`](2026-10-29-CLOSED-change-view-render.md). Closed with this log.
 
 ### 1. `libocfiles/FileDiffPart.vala` — `unchanged`
 
@@ -200,7 +200,7 @@ Same property as §1. No table change.
 
 ### 3. `liboccoder/ChangeView.vala` — new class
 
-**Why:** The change view owns the editor buffer. `update` builds the secondary view's `parts`, unchanged runs included, and does not write the buffer. `apply` writes an empty `parts` list with one `set_text`. A filled list returns through `apply_parts`.
+**Why:** The change view owns the editor buffer. `proposal` builds the secondary view's `parts`, unchanged runs included, and does not write the buffer. `apply` writes an empty `parts` list with one `set_text`. A filled list returns through `apply_parts`.
 
 **Where:** new file.
 
@@ -208,7 +208,7 @@ Same property as §1. No table change.
 
 #### Add — new file `liboccoder/ChangeView.vala`
 
-The class. `update` returns the secondary view and does not call `apply`. `apply` writes an empty `parts` list. `apply_parts` writes a filled one.
+The class. `proposal` returns the proposal and does not call `apply`. `apply` writes an empty `parts` list. `apply_parts` writes a filled one.
 
 ```vala
 /*
@@ -235,9 +235,9 @@ namespace OLLMcoder
 	 * Owns one editor buffer and the parts last applied to it.
 	 *
 	 * Construct it with the editor buffer for the current view.
-	 * {@link SourceView} holds that instance. {@link update} returns a
+	 * {@link SourceView} holds that instance. {@link proposal} returns a
 	 * second instance whose {@link parts} include unchanged runs.
-	 * {@link apply} writes that instance into this buffer. The two
+	 * {@link apply} writes that proposal into this buffer. The two
 	 * instances are not swapped.
 	 *
 	 * == Example ==
@@ -247,8 +247,8 @@ namespace OLLMcoder
 	 * {{{
 	 * var view = new OLLMcoder.ChangeView(buffer);
 	 * var hunks = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
-	 * var next = view.update(file, hunks);
-	 * view.apply(next);
+	 * var proposal = view.proposal(file, hunks);
+	 * view.apply(proposal);
 	 * }}}
 	 */
 	public class ChangeView : Object
@@ -310,16 +310,16 @@ namespace OLLMcoder
 		}
 
 		/**
-		 * Build a secondary change view from the file and the
-		 * incoming hunks. Does not call {@link apply}.
+		 * Build a proposal from the file and the incoming hunks.
+		 * Does not call {@link apply}.
 		 * Gaps between hunks become unchanged parts. An empty
 		 * hunk list still builds those parts from the file.
 		 *
 		 * @param file file text for the unchanged runs
 		 * @param parts incoming hunks, or an empty list
-		 * @return the secondary change view
+		 * @return the proposal
 		 */
-		public ChangeView update(OLLMfiles.File file, Gee.ArrayList<OLLMfiles.FileDiffPart> parts)
+		public ChangeView proposal(OLLMfiles.File file, Gee.ArrayList<OLLMfiles.FileDiffPart> parts)
 		{
 			var next = new ChangeView(null);
 			var lines = file.buffer.get_text().split("\n");
@@ -375,10 +375,10 @@ namespace OLLMcoder
 		 * A filled {@link parts} list calls {@link apply_parts} and
 		 * returns. An empty list writes the secondary view with one
 		 * ''set_text'', then paints green and red on the hunk spans.
-		 * {@link update} does not call this. The caller redraws the
+		 * {@link proposal} does not call this. The caller redraws the
 		 * strip with ''ReviewBar.update_diff''.
 		 *
-		 * @param next secondary change view from {@link update}
+		 * @param next proposal from {@link proposal}
 		 */
 		public void apply(ChangeView next)
 		{
@@ -450,7 +450,7 @@ namespace OLLMcoder
 		 * view or puts one in from {@link next}.
 		 * {@link apply} calls this when {@link parts} is filled.
 		 *
-		 * @param next secondary change view from {@link update}
+		 * @param next proposal from {@link proposal}
 		 */
 		private void apply_parts(ChangeView next)
 		{
@@ -639,18 +639,20 @@ Name the type that owns the buffer.
 - 🚫 2026-10-29 — `SourceView.update_diff` walking part lists, and applying each history row only when the buffer still matches that row's backup.
 - 🚫 2026-10-29 — a flat sequence whose last step sets the current change view to the proposed one. Building makes one view's data from the file contents and that change view. Comparison alters the buffer from the two data objects.
 - 🚫 2026-10-29 — dropping the current change view after the comparison. `SourceView` holds that value. The patch-set change view is the local, and it is not kept.
-- 🚫 2026-10-29 — a comparison entry that takes two already-built change views. The current change view is constructed with the buffer, empty. `update` takes the file and the part array, builds the no-buffer change view, and `apply` writes it. An empty array goes straight into the buffer. A non-empty array goes by the differentials. The two instances are not flipped.
+- 🚫 2026-10-29 — a comparison entry that takes two already-built change views. The current change view is constructed with the buffer, empty. `proposal` takes the file and the part array, builds the no-buffer change view, and `apply` writes it. An empty array goes straight into the buffer. A non-empty array goes by the differentials. The two instances are not flipped.
 - 🚫 2026-10-29 — class proposal that left `apply` empty for a second phase.
 - 🔷 2026-10-29 — `apply` is in the class proposal. Empty `parts` writes the secondary view with `set_text` and the green and red tags. A filled list leaves, replaces, takes out, and puts in.
-- 🔷 2026-10-29 — piece match is `FileDiffPart.compare`. 2 or 3 leaves. 1 replaces. 0 looks ahead for a 2 or 3. `update` calls `update_sum` so the checksum is set. The editor part gains those two methods.
+- 🔷 2026-10-29 — piece match is `FileDiffPart.compare`. 2 or 3 leaves. 1 replaces. 0 looks ahead for a 2 or 3. `proposal` calls `update_sum` so the checksum is set. The editor part gains those two methods.
 - 🚫 2026-10-29 — `switch` on the `compare` return inside the parts walk. The cases nest the take and the put.
 - 🔷 2026-10-29 — `apply_parts` is the filled list. `apply` calls it when `parts.size > 0` and returns. Each `compare` result is an `if` then `continue`.
 - 🔷 2026-10-29 — `part`, `cur`, and `inc` alias `parts.get` before a span ternary. The arm is `end < start ? 0 : end - start + 1`. `parts.get` stays off the arm.
 - 🔷 2026-10-29 — `apply_parts` continues when `put` is false. The insert is the rest of the iteration.
-- 🚫 2026-10-29 — `update` copying the incoming hunks with `add_all` and calling `apply`. `update` builds `parts`, unchanged runs included, and returns that view.
+- 🚫 2026-10-29 — `proposal` copying the incoming hunks with `add_all` and calling `apply`. `proposal` builds `parts`, unchanged runs included, and returns that view.
 - 🚫 2026-10-29 — a loop that copies file lines one by one. The gap text is `lines[start:end]` passed to `string.joinv`. The loop walks the hunks.
 - 🚫 2026-10-29 — assigning `FileDiffPart` fields after `new`. The unchanged run uses `new OLLMfiles.FileDiffPart() { … }`.
 - 🚫 2026-10-29 — the same gap text in `hunk_add` and `hunk_remove`. `unchanged` is the flag. The lines sit in `hunk_add` only.
-- 🔷 2026-10-29 — phase one is the approved class and the build. The render path is a separate log: [`2026-10-29-change-view-render.md`](2026-10-29-change-view-render.md).
+- 🔷 2026-10-29 — phase one is the approved class and the build. The render path is a separate log: [`2026-10-29-CLOSED-change-view-render.md`](2026-10-29-CLOSED-change-view-render.md).
+- 🚫 2026-10-30 — closed. The call is in that log. Live edits are [`2026-10-30-live-diff-edit-sync.md`](../2026-10-30-live-diff-edit-sync.md).
 - ✔️ 2026-10-29 — phase one landed: client `compare` and `update_sum`, `unchanged` on both parts, `liboccoder/ChangeView.vala`, meson, and the namespace list. `SourceView` still reloads the file.
+- ✔️ 2026-10-30 — `update` renamed to `proposal`. `apply` writes that proposal.
 - ✔️ 2026-10-29 — the delete checks `span > 0`, then calls `get_iter_at_line` on its own. Vala does not treat an `out` argument on the right of `&&` as assigned.

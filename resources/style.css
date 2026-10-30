@@ -140,6 +140,11 @@ separator.horizontal.oc-table-body-sep {
   background-color: white;
 }
 
+/* File preview fences only. Theme size is 11pt; chat stays there. */
+.markdown-preview .code-editor {
+  font-size: 9pt;
+}
+
 /* Source view. Droid Sans Mono is the Android fixed face.
    Desktop skips it and uses monospace. */
 .source-view {
