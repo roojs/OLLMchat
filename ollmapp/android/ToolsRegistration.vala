@@ -28,9 +28,10 @@ namespace OLLMapp.Android
 	 *
 	 * Compiles {@link OLLMtools.WebFetch}, {@link OLLMtools.SessionFetch},
 	 * {@link OLLMtools.GoogleSearch}, and {@link OLLMwebkit.Tool} into the
-	 * Android executable. {@link OLLMtools.ReadFile.Read} and
-	 * {@link OLLMtools.EditMode.Write} are compiled from liboctools.
-	 * Bash and the rest of liboctools are not linked on device.
+	 * Android executable. {@link OLLMtools.ReadFile.Read},
+	 * {@link OLLMtools.EditMode.Write}, and {@link OLLMtools.Bash.Tool}
+	 * are compiled from liboctools. Bash runs on the desktop daemon.
+	 * The rest of liboctools is not linked on device.
 	 *
 	 * @since 1.0
 	 */

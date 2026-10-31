@@ -88,14 +88,23 @@ Markdown links such as [#user-1](#user-1) or [#tool-6](#tool-6) refer to stored 
 			}
 			var skill_set = new SkillSet();
 			skill_set.scan(project_path);
-			outbound.add(new OLLMchat.Message("system", tpl.system_fill(
+			var skills_prompt = skill_set.to_prompt(
+				agent.session.manager.config.agents.get(
+					agent.session.agent_name).skills);
+			var filled = tpl.system_fill(
 				"environment", factory.build_environment(),
 				"cwd", project_path,
 				"agents_md", factory.build_agents_md(project_path),
-				"skills_md", skill_set.to_prompt(
-					agent.session.manager.config.agents.get(
-						agent.session.agent_name).skills),
-				"conversation_summary", summary_text)));
+				"skills_md", skills_prompt,
+				"conversation_summary", summary_text);
+			GLib.debug("filled skills_chars=%d summary_chars=%d skills_token=%s summary_token=%s catalog=%s from_file=%s",
+				skills_prompt.length, summary_text.length,
+				filled.contains("{skills_md}").to_string(),
+				filled.contains("{conversation_summary}").to_string(),
+				filled.contains("<available_skills>").to_string(),
+				agent.session.manager.config.agents.get(
+					agent.session.agent_name).skills_from_file.to_string());
+			outbound.add(new OLLMchat.Message("system", filled));
 
 			foreach (var msg in since_summary) {
 				outbound.add(msg);

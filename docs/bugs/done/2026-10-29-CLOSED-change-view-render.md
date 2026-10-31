@@ -1,6 +1,6 @@
 # Wire ChangeView into the source view
 
-**Status:** 🚫 CLOSED 2026-10-30. §1–§6 are in `liboccoder/SourceView.vala`. Not checked in the app. Editing that paint is [`2026-10-30-live-diff-edit-sync.md`](../2026-10-30-live-diff-edit-sync.md).
+**Status:** 🚫 CLOSED 2026-10-30. §1–§6 are in `liboccoder/SourceView.vala`. Not checked in the app. Editing that paint is [`2026-10-30-CLOSED-live-diff-edit-sync.md`](2026-10-30-CLOSED-live-diff-edit-sync.md).
 
 ℹ️ The class, `unchanged`, and `compare` are already applied. That record is [`2026-10-28-CLOSED-sandbox-edit-reloads-without-diff.md`](2026-10-28-CLOSED-sandbox-edit-reloads-without-diff.md). The paint is `ChangeView.apply`. This log is only the call from `SourceView`.
 
@@ -422,7 +422,7 @@ Empty `parts` so the next open of another file is a first fill.
 - ✔️ 2026-10-30 — call sites stay. `proposal` receives that array. `apply` writes it.
 - ✔️ 2026-10-30 — §1–§6 applied in `SourceView`. The editor stays on its own buffer. `show_pending_diff` calls `proposal` then `apply`.
 - ✔️ 2026-10-30 — `ChangeView.update` renamed to `proposal`.
-- 🚫 2026-10-30 — closed. Not checked in the app. Live edits are [`2026-10-30-live-diff-edit-sync.md`](../2026-10-30-live-diff-edit-sync.md).
+- 🚫 2026-10-30 — closed. Not checked in the app. Live edits are [`2026-10-30-CLOSED-live-diff-edit-sync.md`](2026-10-30-CLOSED-live-diff-edit-sync.md).
 
 ## Next
 

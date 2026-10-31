@@ -1,6 +1,6 @@
 # Codebase search banner does not name the model
 
-**Status:** ⏳ banner text applied; not verified on a running app.
+**Status:** 🚫 CLOSED 2026-10-31. Parked. The `SearchFault` banner text is in the tree. It was not checked on a running app. A new log if that banner shows up again.
 
 ## Problem
 
@@ -54,3 +54,7 @@ Store `tool_fault`, `embed_fault`, and `analysis_fault`. A later failure is `CAL
 #### Replace with
 
 `Banner.show` carries `object_type = "SearchFault"` and args `(fault, slot, detail)`. Desktop and Android banners call `SearchFault.text`.
+
+## Next
+
+- 🚫 2026-10-31. Closed. The banner has not shown up. Leave it.

@@ -1,8 +1,8 @@
 # Phone sits on Loading folders
 
-**Status:** ⏳ fix is on the phone (pid 29652). Sheet not checked.
+**Status:** ✅ 2026-10-31. Opening a project leaves Loading folders. The first level shows.
 
-There is no open bug for this. [`2026-10-24-CLOSED-folder-load-slow.md`](done/2026-10-24-CLOSED-folder-load-slow.md) was closed without a change.
+[`2026-10-24-CLOSED-folder-load-slow.md`](2026-10-24-CLOSED-folder-load-slow.md) was closed without a change.
 
 ## Problem
 
@@ -75,7 +75,8 @@ There is no open bug for this. [`2026-10-24-CLOSED-folder-load-slow.md`](done/20
 
 - ✔️ 2026-10-31 — applied both fences in `liboccoder/Folder/Tree.vala`. The tree model is collapsed. Loading no longer builds a second model.
 - ✔️ 2026-10-31 — `PIXIEWOOD_PHASE=build` then `adb install -r`. Launched pid 29652. Same signature as the morning install, so the package was updated in place.
+- ✅ 2026-10-31 — opening a project on the phone leaves **Loading folders**. The first level shows.
 
 ## Next
 
-- 💩 ⏳ Open a project on the phone. The sheet leaves **Loading folders** and shows the first level.
+- 🚫 None. Fixed.

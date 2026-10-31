@@ -5,6 +5,7 @@
 static JavaVM *ollmapp_android_vm = NULL;
 static jclass ollmapp_android_pair_cls = NULL;
 static jobject ollmapp_android_pair_context = NULL;
+static char *ollmapp_phone_label = NULL;
 
 JNIEXPORT void JNICALL
 Java_org_roojs_ollmchat_androidpoc_PairBrowse_nativeBind (JNIEnv *env,
@@ -24,6 +25,31 @@ Java_org_roojs_ollmchat_androidpoc_PairBrowse_nativeBind (JNIEnv *env,
 	}
 	ollmapp_android_pair_context = (*env)->NewGlobalRef (env, context);
 	g_message ("android pair: bound");
+}
+
+JNIEXPORT void JNICALL
+Java_org_roojs_ollmchat_androidpoc_PairBrowse_nativePhoneLabel (JNIEnv *env,
+	jclass cls,
+	jstring label)
+{
+	const char *utf;
+
+	(void) cls;
+	utf = (*env)->GetStringUTFChars (env, label, NULL);
+	g_free (ollmapp_phone_label);
+	ollmapp_phone_label = g_strdup (utf != NULL ? utf : "");
+	if (utf != NULL) {
+		(*env)->ReleaseStringUTFChars (env, label, utf);
+	}
+}
+
+const char *
+ollmapp_android_phone_label (void)
+{
+	if (ollmapp_phone_label == NULL) {
+		return "";
+	}
+	return ollmapp_phone_label;
 }
 
 static JNIEnv *

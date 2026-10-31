@@ -56,7 +56,7 @@ namespace OLLMcoder.AgentPi
 		}
 
 		/**
-		 * Seed agent config if missing; assert required tools are registered.
+		 * Seed agent config if missing.
 		 *
 		 * @param config application config
 		 * @param tools manager tool map (after fill_tools)
@@ -85,15 +85,6 @@ namespace OLLMcoder.AgentPi
 					"deep-research",
 					"webpage-reader",
 				});
-			}
-			if (!tools.has_key("write")) {
-				GLib.error("agent %s: required tool missing: write", this.name);
-			}
-			if (!tools.has_key("read")) {
-				GLib.error("agent %s: required tool missing: read", this.name);
-			}
-			if (!tools.has_key("bash")) {
-				GLib.error("agent %s: required tool missing: bash", this.name);
 			}
 		}
 

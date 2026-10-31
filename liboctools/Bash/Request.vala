@@ -71,36 +71,24 @@ namespace OLLMtools.Bash
 		private GLib.FileOutputStream spill_stream;
 		private bool spill_active = false;
 		private string spill_path = "";
-		private GLib.Subprocess child;
-		private bool child_active = false;
-		private OLLMbwrap.Bubble bubble;
-		private bool bubble_active = false;
+
+		/**
+		 * Remembered ''Sandbox-Bubble.can_wrap'' reply. Empty until the
+		 * first command asks the file daemon.
+		 */
+		private static string wrap_status = "";
 
 		public override void stop()
 		{
 			this.stopped = true;
-			if (this.bubble_active) {
-				this.bubble.stop();
-				return;
-			}
-			if (!this.child_active) {
-				return;
-			}
-#if !G_OS_WIN32
-			var id = this.child.get_identifier();
-			if (id != null) {
-				Posix.kill(-(int.parse(id)), Posix.Signal.KILL);
-			}
-#endif
-			this.child.force_exit();
 		}
 
-		public override string to_summary ()
+		public override string to_summary()
 		{
 			string[] lines = {};
 			lines += "Command:";
 			lines += this.command;
-			if (this.working_dir.strip () != "") {
+			if (this.working_dir.strip() != "") {
 				lines += "Working directory: " + this.working_dir;
 			}
 			if (this.network) {
@@ -112,58 +100,29 @@ namespace OLLMtools.Bash
 			if (this.timeout != 60) {
 				lines += "Timeout: " + this.timeout.to_string() + "s";
 			}
-			return string.joinv ("\n", lines);
+			return string.joinv("\n", lines);
 		}
 		
 		/**
-		 * Normalizes working_dir to an absolute path.
-		 * 
-		 * - If working_dir is empty, returns empty string (will use default project directory)
-		 * - If working_dir is already absolute, returns it as-is
-		 * - If working_dir is "playground", returns $HOME/playground (bind mount in bwrap)
-		 * - If working_dir is relative, treats it as relative to user's home directory ($HOME)
-		 * 
-		 * @return Normalized absolute path, or empty string if working_dir is empty
+		 * Suffix for a permission question when the daemon cannot sandbox.
+		 *
+		 * ''wrap_status'' comes from the first ''Sandbox-Bubble.can_wrap''
+		 * reply. ''1'' means bubblewrap is available, so the suffix is empty.
+		 *
+		 * @return warning text, or empty
 		 */
-		private string normalize_working_dir()
+		private string bwrap_unavailable_note()
 		{
-			if (this.working_dir.strip() == "") {
-				return "";
+			switch (Request.wrap_status) {
+				case "1":
+					return "";
+				case "windows":
+					return " (Windows: commands run unsandboxed.)";
+				case "flatpak":
+					return " (Flatpak: bubblewrap is not used here.)";
+				default:
+					return " (Install bubblewrap or add bwrap to PATH to enable sandboxing.)";
 			}
-			
-			var dir = this.working_dir.strip();
-			
-			// If already absolute, return as-is
-			if (GLib.Path.is_absolute(dir)) {
-				return dir;
-			}
-			
-			// Special case: "playground" maps to $HOME/playground (bind mount in bwrap)
-			if (dir == "playground") {
-				return GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
-			}
-			
-			// Relative path: treat as relative to user's home directory
-			return GLib.Path.build_filename(GLib.Environment.get_home_dir(), dir);
-		}
-
-		/**
-		 * Short suffix when bubblewrap cannot be used (Flatpak or bwrap missing from PATH).
-		 * Does not repeat the confirm lead-in; callers state sandbox unavailable if needed.
-		 */
-		private string bwrap_unavailable_note ()
-		{
-			if (this.remote_wrap || OLLMbwrap.Bubble.can_wrap()) {
-				return "";
-			}
-#if G_OS_WIN32
-			return " (Windows: commands run unsandboxed.)";
-#else
-			if (GLib.Environment.get_variable ("FLATPAK_ID") != null) {
-				return " (Flatpak: bubblewrap is not used here.)";
-			}
-			return " (Install bubblewrap or add bwrap to PATH to enable sandboxing.)";
-#endif
 		}
 
 		/**
@@ -181,12 +140,15 @@ namespace OLLMtools.Bash
 
 			if (this.run_as_root) {
 				this.one_time_only = true;
-				this.permission_target_path = "run_as_root#" + GLib.get_real_time ().to_string ();
+				this.permission_target_path = "run_as_root#" + GLib.get_real_time().to_string();
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Confirm — Run as ROOT (high risk)\n\n"
-					+ "This command will run with root privileges on your system, outside the normal sandbox.\n\n"
-					+ "WARNING: This may damage your system. Only allow this if you understand exactly what the command does. If you get it wrong, you may not be able to log in tomorrow (or worse).\n\n"
-					+ "If asked, enter your password. After a successful check it is stored in the system keyring.";
+				this.permission_question = """Confirm — Run as ROOT (high risk)
+
+This command will run with root privileges on your system, outside the normal sandbox.
+
+WARNING: This may damage your system. Only allow this if you understand exactly what the command does. If you get it wrong, you may not be able to log in tomorrow (or worse).
+
+If asked, enter your password. After a successful check it is stored in the system keyring.""";
 				return true;
 			}
 
@@ -198,27 +160,25 @@ namespace OLLMtools.Bash
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
 				this.permission_question = "Confirm — Network access requested.\n\n"
 					+ "Allow this command to run with network access?"
-					+ this.bwrap_unavailable_note ();
+					+ this.bwrap_unavailable_note();
 				return true;
 			}
 
-			var can = this.remote_wrap || OLLMbwrap.Bubble.can_wrap();
 			var head0 = this.write_array.length > 0 ? this.write_array[0].down() : "";
 			var default_sandbox_writes = (head0 == "no" || head0 == "project");
 
-			if (can && !default_sandbox_writes) {
+			if (this.remote_wrap && !default_sandbox_writes) {
 				this.one_time_only = true;
-				this.permission_target_path = "allow_write_paths#" + GLib.get_real_time ().to_string ();
+				this.permission_target_path = "allow_write_paths#" + GLib.get_real_time().to_string();
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Confirm — Additional file write access requested.\n\n"
-					+ "This request asks for write permission to these folders: "
-					+ string.joinv (", ", this.write_array)
-					+ "?"
-					+ this.bwrap_unavailable_note ();
+				this.permission_question = """Confirm — Additional file write access requested.
+
+This request asks for write permission to these folders: """ +
+					string.joinv(", ", this.write_array) + "?" + this.bwrap_unavailable_note();
 				return true;
 			}
 
-			if (can && default_sandbox_writes) {
+			if (this.remote_wrap && default_sandbox_writes) {
 				this.permission_question = "";
 				this.permission_command = "";
 				this.is_complex_command = false;
@@ -231,7 +191,7 @@ namespace OLLMtools.Bash
 			this.permission_target_path = this.command;
 			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
 			this.permission_question = "Confirm (sandbox unavailable):\n\nRun this command?"
-				+ this.bwrap_unavailable_note ();
+				+ this.bwrap_unavailable_note();
 			return true;
 		}
 		
@@ -258,35 +218,21 @@ namespace OLLMtools.Bash
 			if (bash_tool.project_manager == null || !bash_tool.project_manager.rpc.connected) {
 				return "ERROR: bash needs the file daemon";
 			}
-			try {
-				var wrap = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
-					method = "Sandbox-Bubble.can_wrap"
-				});
-				if (wrap.msg != "1") {
-					return "ERROR: sandbox unavailable";
+			if (Request.wrap_status == "") {
+				try {
+					var wrap = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
+						method = "Sandbox-Bubble.can_wrap"
+					});
+					Request.wrap_status = wrap.msg;
+				} catch (GLib.Error e) {
+					return "ERROR: " + e.message;
 				}
-			} catch (GLib.Error e) {
-				return "ERROR: " + e.message;
+			}
+			if (Request.wrap_status != "1") {
+				return "ERROR: sandbox unavailable" + this.bwrap_unavailable_note();
 			}
 			this.remote_wrap = true;
-			
-			// Normalize and validate working_dir if provided
-			var normalized_working_dir = this.normalize_working_dir();
-			if (normalized_working_dir != "") {
-				// $HOME/playground may be created by Bubble.ensure_home_playground_mount_point(); skip host existence check for it
-				var home_playground = GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
-				if (normalized_working_dir != home_playground) {
-					var dir_file = GLib.File.new_for_path(normalized_working_dir);
-					if (!GLib.FileUtils.test(dir_file.get_path(), GLib.FileTest.EXISTS)) {
-						return "ERROR: Working directory does not exist: " + normalized_working_dir;
-					}
-					var file_type = dir_file.query_file_type(GLib.FileQueryInfoFlags.NONE, null);
-					if (file_type != GLib.FileType.DIRECTORY) {
-						return "ERROR: Working directory is not a directory: " + normalized_working_dir;
-					}
-				}
-				this.working_dir = normalized_working_dir;
-			}
+			this.working_dir = this.working_dir.strip();
 
 			this.write_array = {};
 			var run_command_tool = (Tool) this.tool;
@@ -294,19 +240,19 @@ namespace OLLMtools.Bash
 			var project = (project_manager != null && project_manager.active_project != null)
 				? project_manager.active_project
 				: (OLLMfiles.Folder?) null;
-			var aw_line = this.allow_write.strip ();
+			var aw_line = this.allow_write.strip();
 			aw_line = (aw_line == "") ? ((project != null) ? "project" : "no") : aw_line;
-			var ar = aw_line.split (":");
+			var ar = aw_line.split(":");
 			for (var i = 0; i < ar.length; i++) {
-				var piece = ar[i].strip ();
-				if (i == 0 && (piece.down () == "no" || piece.down () == "project")) {
-					this.write_array += piece.down ();
+				var piece = ar[i].strip();
+				if (i == 0 && (piece.down() == "no" || piece.down() == "project")) {
+					this.write_array += piece.down();
 					break;
 				}
 				if (piece == "") {
 					continue;
 				}
-				if (!GLib.Path.is_absolute (piece)) {
+				if (!GLib.Path.is_absolute(piece)) {
 					return "ERROR: allow_write: path must be absolute: " + piece;
 				}
 				this.write_array += piece;
@@ -328,7 +274,7 @@ namespace OLLMtools.Bash
 			}
 			
 			var run_status = "Running command (NOT IN SANDBOX)";
-			if (this.remote_wrap || OLLMbwrap.Bubble.can_wrap()) {
+			if (this.remote_wrap) {
 				run_status = "Running command in sandbox";
 			}
 			this.agent.notification(new OLLMrpc.Notification() {

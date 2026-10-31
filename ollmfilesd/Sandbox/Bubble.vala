@@ -67,13 +67,27 @@ namespace OLLMfilesd.Sandbox
 		 * ''Sandbox-Bubble.can_wrap'' — whether bubblewrap is usable
 		 * on this host.
 		 *
+		 * Reply ''msg'' is ''1'' when it can run. Otherwise ''windows'',
+		 * ''flatpak'', or ''0''.
+		 *
 		 * @param request inbound RPC
 		 */
 		public void can_wrap(OLLMrpc.Request request)
 		{
+			var msg = "1";
+			if (!OLLMbwrap.Bubble.can_wrap()) {
+				msg = "0";
+#if G_OS_WIN32
+				msg = "windows";
+#else
+				if (GLib.Environment.get_variable("FLATPAK_ID") != null) {
+					msg = "flatpak";
+				}
+#endif
+			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				msg = OLLMbwrap.Bubble.can_wrap() ? "1" : "0"
+				msg = msg
 			});
 		}
 

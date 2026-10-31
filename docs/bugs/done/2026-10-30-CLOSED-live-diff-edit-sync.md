@@ -1,8 +1,8 @@
 # Save live-diff edits to the file server
 
-**Status:** ✔️ paused save applied in `liboccoder/SourceView.vala` — not checked in the app
+**Status:** 🚫 CLOSED 2026-10-31. The paused save is in `liboccoder/SourceView.vala`. Not checked in the app.
 
-ℹ️ The paint hook is [`2026-10-29-CLOSED-change-view-render.md`](done/2026-10-29-CLOSED-change-view-render.md). The class record is [`2026-10-28-CLOSED-sandbox-edit-reloads-without-diff.md`](done/2026-10-28-CLOSED-sandbox-edit-reloads-without-diff.md). Save-then-resync is [`CODER-4.2.3.5.7`](../plans/done/CODER-4.2.3.5.7-DONE-source-view-diff-resync.md).
+ℹ️ The paint hook is [`2026-10-29-CLOSED-change-view-render.md`](2026-10-29-CLOSED-change-view-render.md). The class record is [`2026-10-28-CLOSED-sandbox-edit-reloads-without-diff.md`](2026-10-28-CLOSED-sandbox-edit-reloads-without-diff.md). Save-then-resync is [`CODER-4.2.3.5.7`](../plans/done/CODER-4.2.3.5.7-DONE-source-view-diff-resync.md).
 
 ## Problem
 
@@ -170,7 +170,4 @@ Skip each `diff-remove` line. A source file can be hundreds of lines, so the tex
 - ℹ️ 2026-10-31 — first fences tried to keep `ChangeView` in step with each keystroke and replay that edit onto the next paint. Rejected. The server file is the non-red text. A paused save writes that file and `rebuild_parts` refreshes the diff.
 - ℹ️ 2026-10-31 — red stays non-editable. Green and unchanged lines are what the save sends.
 - ✔️ 2026-10-31 — applied in `liboccoder/SourceView.vala`. Comments on the pause, the manual-save cancel, and the red-line skip. Not run in the app.
-
-## Next
-
-- ⏳ Try an edit on a green line, wait for the pause, and confirm the server file matches the buffer and the red lines are unchanged.
+- 🚫 2026-10-31 — closed. Not checked in the app.

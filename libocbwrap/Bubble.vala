@@ -543,8 +543,16 @@ namespace OLLMbwrap
 			}
 
 			if (working_dir != "") {
+				var dir = working_dir.strip();
+				if (!GLib.Path.is_absolute(dir)) {
+					dir = GLib.Path.build_filename(home, dir);
+				}
+				if (dir != GLib.Path.build_filename(home, "playground") &&
+					!GLib.FileUtils.test(dir, GLib.FileTest.IS_DIR)) {
+					throw new GLib.IOError.FAILED("Working directory does not exist: " + dir);
+				}
 				args += "--chdir";
-				args += working_dir;
+				args += dir;
 			} else if (this.overlay.overlay_map.size > 0) {
 				var entries = this.overlay.overlay_map.entries.to_array();
 				var first = entries[0].value;

@@ -122,6 +122,7 @@ namespace OLLMchat.Settings
 		 * @param port desktop port
 		 * @param pin six digits from the pairing window
 		 * @param force_register true to ignore a stored CA and sign again
+		 * @param requester device string stored as the desktop row title
 		 * @return zero when hello succeeds, otherwise an
 		 *   {@link OLLMrpc.RpcErrorCode} value
 		 */
@@ -129,7 +130,8 @@ namespace OLLMchat.Settings
 			string host,
 			uint16 port,
 			string pin,
-			bool force_register
+			bool force_register,
+			string requester
 		) {
 			var dir = GLib.Path.build_filename(
 				GLib.Environment.get_user_data_dir(), "ollmchat", this.server_id);
@@ -196,7 +198,7 @@ namespace OLLMchat.Settings
 				try {
 					bin.write(new OLLMrpc.Request() {
 						method = "ClientCert.request_registration",
-						args = OLLMrpc.args("sss", pin, csr, "ollmchat")
+						args = OLLMrpc.args("sss", pin, csr, requester)
 					});
 				} catch (GLib.Error e) {
 					GLib.warning("%s", e.message);

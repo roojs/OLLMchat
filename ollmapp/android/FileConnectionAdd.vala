@@ -16,6 +16,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+[CCode (cheader_filename = "android-pair-browse.h")]
+extern unowned string ollmapp_android_phone_label();
+
 namespace OLLMapp.SettingsDialog
 {
 	/**
@@ -205,7 +208,8 @@ namespace OLLMapp.SettingsDialog
 			var force_register = false;
 			while (true) {
 				var code = phone.try_connection(
-					host, (uint16) port, pin, force_register);
+					host, (uint16) port, pin, force_register,
+					ollmapp_android_phone_label());
 				if (code == (int) OLLMrpc.RpcErrorCode.CERT_NOT_REGISTERED
 					&& !force_register) {
 					force_register = true;

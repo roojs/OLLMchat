@@ -3,8 +3,10 @@ package org.roojs.ollmchat.androidpoc;
 import android.content.Context;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 
 public final class PairBrowse {
 	private static NsdManager manager;
@@ -19,11 +21,28 @@ public final class PairBrowse {
 	}
 
 	public static void bindLibrary(Context context, String library) {
+		Context app = context.getApplicationContext();
+		String model = Build.MODEL;
+		String brand = Build.MANUFACTURER;
+		String product = Settings.Global.getString(
+			app.getContentResolver(), "default_device_name");
+		String label = "Android " + model;
 		System.loadLibrary(library);
-		nativeBind(context.getApplicationContext());
+		nativeBind(app);
+		if (brand != null && brand.length() > 0
+			&& product != null && product.length() > 0
+			&& !product.equals(model)) {
+			label = label + " "
+				+ brand.substring(0, 1).toUpperCase()
+				+ brand.substring(1)
+				+ " " + product;
+		}
+		nativePhoneLabel(label);
 	}
 
 	private static native void nativeBind(Context context);
+
+	private static native void nativePhoneLabel(String label);
 
 	public static void start(Context context) {
 		found = "";

@@ -175,6 +175,8 @@ if get_option('android_poc') and host_machine.system() == 'android'
     'android/tools/EditMode/Request.vala',
     'android/tools/EditMode/Stream.vala',
     'android/tools/EditMode/Write.vala',
+    'android/tools/Bash/Tool.vala',
+    'android/tools/Bash/Request.vala',
   ] + android_poc_settings_sources
 
   android_poc = executable('ollmchat-android-poc',

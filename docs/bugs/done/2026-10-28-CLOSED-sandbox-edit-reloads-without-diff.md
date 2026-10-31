@@ -1,6 +1,6 @@
 # Sandbox edits reload the whole file and never paint the diff
 
-**Status:** 🚫 CLOSED 2026-10-30. The class is in the tree. The source-view call is [`2026-10-29-CLOSED-change-view-render.md`](2026-10-29-CLOSED-change-view-render.md). Editing that paint is [`2026-10-30-live-diff-edit-sync.md`](../2026-10-30-live-diff-edit-sync.md).
+**Status:** 🚫 CLOSED 2026-10-30. The class is in the tree. The source-view call is [`2026-10-29-CLOSED-change-view-render.md`](2026-10-29-CLOSED-change-view-render.md). Editing that paint is [`2026-10-30-CLOSED-live-diff-edit-sync.md`](2026-10-30-CLOSED-live-diff-edit-sync.md).
 
 Same run as [`2026-10-28-sandbox-git-status-truncates-index.md`](2026-10-28-sandbox-git-status-truncates-index.md). The model was told to bundle `FileConnectionAdd` onto the end of `examples/oc-test-source-diff.vala`. The `write` tool never applied a fence. Bash did change the live file. Each of those writes replaced the open buffer with the whole file. History rows were stored. The source view never loaded them, so nothing was highlighted.
 
@@ -652,7 +652,7 @@ Name the type that owns the buffer.
 - 🚫 2026-10-29 — assigning `FileDiffPart` fields after `new`. The unchanged run uses `new OLLMfiles.FileDiffPart() { … }`.
 - 🚫 2026-10-29 — the same gap text in `hunk_add` and `hunk_remove`. `unchanged` is the flag. The lines sit in `hunk_add` only.
 - 🔷 2026-10-29 — phase one is the approved class and the build. The render path is a separate log: [`2026-10-29-CLOSED-change-view-render.md`](2026-10-29-CLOSED-change-view-render.md).
-- 🚫 2026-10-30 — closed. The call is in that log. Live edits are [`2026-10-30-live-diff-edit-sync.md`](../2026-10-30-live-diff-edit-sync.md).
+- 🚫 2026-10-30 — closed. The call is in that log. Live edits are [`2026-10-30-CLOSED-live-diff-edit-sync.md`](2026-10-30-CLOSED-live-diff-edit-sync.md).
 - ✔️ 2026-10-29 — phase one landed: client `compare` and `update_sum`, `unchanged` on both parts, `liboccoder/ChangeView.vala`, meson, and the namespace list. `SourceView` still reloads the file.
 - ✔️ 2026-10-30 — `update` renamed to `proposal`. `apply` writes that proposal.
 - ✔️ 2026-10-29 — the delete checks `span > 0`, then calls `get_iter_at_line` on its own. Vala does not treat an `out` argument on the right of `&&` as assigned.

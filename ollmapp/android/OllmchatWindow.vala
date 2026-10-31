@@ -528,10 +528,15 @@ namespace OLLMapp
 				this.history_manager.register_tool(
 					new OLLMtools.ReadFile.Read(this.project_manager));
 			}
+			if (!this.history_manager.tools.has_key("bash")) {
+				this.history_manager.register_tool(
+					new OLLMtools.Bash.Tool(this.project_manager));
+			}
 			if (!this.history_manager.agent_factories.has_key("agent-pi")) {
 				var agent_pi = new OLLMcoder.AgentPi.Factory(this.project_manager,
 					this.is_tablet ? OLLMcoder.Form.TABLET : OLLMcoder.Form.PHONE);
 				this.history_manager.agent_factories.set(agent_pi.name, agent_pi);
+				agent_pi.register_config(config, this.history_manager.tools);
 			}
 
 			this.agent_dropdown.wire();
@@ -616,15 +621,17 @@ namespace OLLMapp
 				this, this.history_manager.session.is_running);
 
 			if (this.is_tablet) {
-				var columns = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				/* One column for chat, two for the pane: a 1:2 split. */
+				var columns = new Gtk.Grid() {
 					hexpand = true,
 					vexpand = true,
+					column_homogeneous = true,
 				};
 				this.chat_widget.hexpand = true;
 				this.chat_widget.vexpand = true;
-				columns.append(this.chat_widget);
+				columns.attach(this.chat_widget, 0, 0, 1, 1);
 				this.pane_stack.visible = false;
-				columns.append(this.pane_stack);
+				columns.attach(this.pane_stack, 1, 0, 2, 1);
 				this.chat_container.append(columns);
 			}
 			this.view_stack.visible_child_name = "chat";

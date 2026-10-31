@@ -5,6 +5,7 @@
 
 G_BEGIN_DECLS
 
+const char *ollmapp_android_phone_label (void);
 void ollmapp_android_pair_browse_start (GtkWindow *window);
 char *ollmapp_android_pair_browse_poll (void);
 void ollmapp_android_pair_browse_stop (GtkWindow *window);

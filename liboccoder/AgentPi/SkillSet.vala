@@ -43,6 +43,7 @@ namespace OLLMcoder.AgentPi
 			try {
 				var children = GLib.resources_enumerate_children(
 					"/pi-skills", GLib.ResourceLookupFlags.NONE);
+				GLib.debug("resource children=%s", string.joinv(",", children));
 				foreach (var child in children) {
 					if (!child.has_suffix("/")) {
 						continue;
@@ -53,11 +54,14 @@ namespace OLLMcoder.AgentPi
 					}
 					var skill = Skill.load(
 						"resource:///pi-skills/" + dir_name + "/SKILL.md");
-					if (skill != null) {
-						by_name.set(skill.name, skill);
+					if (skill == null) {
+						GLib.debug("skill load failed dir=%s", dir_name);
+						continue;
 					}
+					by_name.set(skill.name, skill);
 				}
 			} catch (GLib.Error e) {
+				GLib.debug("resource enumerate failed: %s", e.message);
 			}
 			string[] roots = {};
 			var global_root = GLib.Path.build_filename(
@@ -101,11 +105,16 @@ namespace OLLMcoder.AgentPi
 						}
 					}
 				} catch (GLib.Error e) {
+					GLib.debug("skill root failed path=%s error=%s", root, e.message);
 				}
 			}
+			string[] names = {};
 			foreach (var entry in by_name.entries) {
 				this.items.add(entry.value);
+				names += entry.value.name;
 			}
+			GLib.debug("scan project=%s items=%d names=%s",
+				project_path, this.items.size, string.joinv(",", names));
 		}
 
 		/**
@@ -134,6 +143,7 @@ namespace OLLMcoder.AgentPi
     <location>$(skill.path)</location>
   </skill>";
 			}
+			GLib.debug("listed=%d offered=%d", blocks.length, offered.size);
 			if (blocks.length == 0) {
 				return "";
 			}

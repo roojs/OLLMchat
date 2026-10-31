@@ -1,6 +1,6 @@
 # Phone file and project chrome
 
-**Status:** ✔️ proposals applied — await device check
+**Status:** ✅ 2026-10-31. Phone check passed with the folder tree.
 
 Phone only, unless an item says otherwise. Tablet keeps the pane on the right, so the footer item does not apply there.
 
@@ -489,4 +489,5 @@ Next to `view_stack`. The phone coder's pull-over is placed on this overlay.
 
 ## Next
 
-- ⏳ Phone check: file name has no icon and more room, save and markdown glyphs draw, the project line under the title is hidden, Recent/All and Tree/Recent show which is selected, a file row shows time and size, and the composer plus model bar stay covered while the project or file sheet is open. Tablet: hide that project line, and leave the footer rows visible.
+- ✅ 2026-10-31 — user closed this on the phone with the folder tree.
+- 🚫 None. Fixed.

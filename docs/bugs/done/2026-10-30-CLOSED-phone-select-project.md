@@ -2,7 +2,7 @@
 
 **Status:** 🚫 CLOSED 2026-10-30. Parked. §1–§2 are in the tree. The phone check (Select project covers the composer, then `rpc_activate_project`) was not run. The pull-over overlay is the open question this log leaves.
 
-ℹ️ Same button as [`2026-10-28-FIXED-phone-project-click-does-nothing.md`](done/2026-10-28-FIXED-phone-project-click-does-nothing.md). That fix parented `SelectorPull` on the phone coder. [`2026-10-29-phone-selector-chrome.md`](2026-10-29-phone-selector-chrome.md) took that overlay back off `CoderView` and parents it only from `AgentManager.on_editor`.
+ℹ️ Same button as [`2026-10-28-FIXED-phone-project-click-does-nothing.md`](done/2026-10-28-FIXED-phone-project-click-does-nothing.md). That fix parented `SelectorPull` on the phone coder. [`2026-10-29-FIXED-phone-selector-chrome.md`](2026-10-29-FIXED-phone-selector-chrome.md) took that overlay back off `CoderView` and parents it only from `AgentManager.on_editor`.
 
 ## Problem
 
