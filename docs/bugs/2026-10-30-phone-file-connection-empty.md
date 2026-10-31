@@ -1,6 +1,6 @@
 # Phone editor shows FileConnectionAdd.vala empty
 
-**Status:** ⏳ root cause written, fix not applied
+**Status:** ⏳ fix is on the phone (pid 25075, installed 08:52). Editor not checked. Pairing data was wiped with the reinstall.
 
 The open file is `examples/oc-test-source-diff/FileConnectionAdd.vala`. The phone has it open. The read returned the text. The editor on screen stayed empty.
 
@@ -54,7 +54,11 @@ The open file is `examples/oc-test-source-diff/FileConnectionAdd.vala`. The phon
 
 - ℹ️ 2026-10-30 16:15 — first note treated the empty screen as the missing crash-note path. Wrong file.
 - ℹ️ 2026-10-30 16:30 — phone log for pid 22048 at 16:18:53. `FileConnectionAdd.vala` loaded 7294 characters, then the view buffer rejected `set_language`, `set_text`, and `set_modified`. No product change.
+- ✔️ 2026-10-31 — applied the constructor fence in `liboccoder/SourceView.vala`. The view gets a `GtkSource.Buffer`, and that same object is passed to `ChangeView`.
+- ✔️ 2026-10-31 08:34 — `PIXIEWOOD_PHASE=build scripts/android/build-chat-poc-apk.sh` wrote `app-arm64-v8a-debug.apk`. Cert SHA-256 `26304203…` (`~/.android/debug.keystore`).
+- ℹ️ 08:34 — wireless adb was already `device` at `192.168.0.12:45747` (`adb-R5CY134DA0W`). The first `adb install` stalled. Reconnect, then `install -r` failed `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. Phone package from 2026-10-30 16:05 is cert `967ef8e8…`. That keystore is not on disk.
+- ✔️ 08:52 — uninstalled `org.roojs.ollmchat.androidpoc` and installed the new APK. Launched `ToplevelActivity`, pid 25075, `lastUpdateTime=2026-10-31 08:52:00`. On-device pairing data went with the old package.
 
 ## Next
 
-- 💩 ⏳ Apply the fence, rebuild the phone app, and open `examples/oc-test-source-diff/FileConnectionAdd.vala` again. The editor shows the `FileConnectionAdd` class.
+- 💩 ⏳ Pair the phone to the desktop again, then open `examples/oc-test-source-diff/FileConnectionAdd.vala`. The editor shows the `FileConnectionAdd` class.

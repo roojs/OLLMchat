@@ -85,6 +85,14 @@ namespace OLLMcoder
 			private uint scroll_save_timeout_id = 0;
 
 			/**
+			 * Id of the pause that writes the open file after
+			 * editing stops. Green lines and unchanged lines are
+			 * that file. Each keystroke resets the pause. Zero
+			 * while no pause is waiting.
+			 */
+			private uint save_timeout_id = 0;
+
+			/**
 			 * Currently active file.
 			 */
 			public OLLMfiles.File? current_file { get; private set; default = null; }
@@ -220,7 +228,9 @@ namespace OLLMcoder
 					hexpand = true,
 					vexpand = true
 				};
-				this.change_view = new ChangeView(this.source_view.buffer as GtkSource.Buffer);
+				var editor_buffer = new GtkSource.Buffer(null);
+				this.source_view.set_buffer(editor_buffer);
+				this.change_view = new ChangeView(editor_buffer);
 				// Add CSS class for monospace font styling
 				this.source_view.add_css_class("source-view");
 				this.font_css.load_from_string(".source-view { font-size: 14px; }");
@@ -442,12 +452,31 @@ namespace OLLMcoder
 					});
 				});
 			
-				// Connect to buffer modified signal
+				// The server file is the green lines and the unchanged
+				// lines. Two seconds after the last edit, write it.
+				// The next writer on the server then reads this text.
+				// Switching files or undoing the change drops the write.
 				var source_buffer = this.source_view.buffer as GtkSource.Buffer;
 				source_buffer.notify["modified"].connect(() => {
-					if (this.current_file != null) {
-						this.current_file.is_unsaved = source_buffer.get_modified();
+					if (this.current_file == null) {
+						return;
 					}
+					this.current_file.is_unsaved = source_buffer.get_modified();
+					if (!source_buffer.get_modified()) {
+						return;
+					}
+					if (this.save_timeout_id != 0) {
+						GLib.Source.remove(this.save_timeout_id);
+					}
+					var file = this.current_file;
+					this.save_timeout_id = GLib.Timeout.add(2000, () => {
+						this.save_timeout_id = 0;
+						if (this.current_file != file || !source_buffer.get_modified()) {
+							return false;
+						}
+						this.save_file.begin();
+						return false;
+					});
 				});
 			
 				// TODO: Clipboard feature needs proper design - see TODO.md
@@ -1003,12 +1032,23 @@ namespace OLLMcoder
 			// }
 		
 			/**
-			 * Save current file to disk.
+			 * Write the open file to the server and rebuild the diff.
+			 *
+			 * The text is every editor line without a ''diff-remove''
+			 * tag. Green lines and unchanged lines are the server
+			 * file, including edits. Red lines are the old text and
+			 * are left out. A waiting pause is cancelled first so
+			 * the timed save does not write the file a second time.
 			 */
 			public async void save_file()
 			{
 				if (this.current_file == null || this.current_file.buffer == null) {
 					return;
+				}
+				// A manual save takes the place of the waiting pause.
+				if (this.save_timeout_id != 0) {
+					GLib.Source.remove(this.save_timeout_id);
+					this.save_timeout_id = 0;
 				}
 			
 				// FIXME: User interaction needed - show warning dialog when trying to save deleted file
@@ -1022,24 +1062,35 @@ namespace OLLMcoder
 					return;
 				}
 			
-				// Sync buffer to file
+				// Copy every line that is not red. Red lines are the old
+				// text. They are not on the server, and the remove tag
+				// already refuses typing there.
 				var file = this.current_file;
-				var plain = true;
-				for (var i = 0; i < this.change_view.parts.size; i++) {
-					if (this.change_view.parts.get(i).unchanged) {
+				var editor = this.source_view.buffer as GtkSource.Buffer;
+				var remove_tag = editor.tag_table.lookup("diff-remove");
+				var kept = new GLib.StringBuilder();
+				Gtk.TextIter cursor;
+				editor.get_start_iter(out cursor);
+				while (!cursor.is_end()) {
+					var line_end = cursor;
+					if (!line_end.ends_line()) {
+						line_end.forward_to_line_end();
+					}
+					if (remove_tag != null && cursor.has_tag(remove_tag)) {
+						if (!cursor.forward_line()) {
+							break;
+						}
 						continue;
 					}
-					plain = false;
-					break;
+					if (kept.len > 0) {
+						kept.append_c('\n');
+					}
+					kept.append(editor.get_text(cursor, line_end, false));
+					if (!cursor.forward_line()) {
+						break;
+					}
 				}
-				if (plain) {
-					Gtk.TextIter start_iter;
-					Gtk.TextIter end_iter;
-					(this.source_view.buffer as GtkSource.Buffer).get_bounds(out start_iter, out end_iter);
-					(file.buffer as GtkSource.Buffer).set_text(
-						(this.source_view.buffer as GtkSource.Buffer).get_text(start_iter, end_iter, false),
-						-1);
-				}
+				(file.buffer as GtkSource.Buffer).set_text(kept.str, -1);
 				try {
 					yield file.buffer.sync_to_file();
 				} catch (Error e) {

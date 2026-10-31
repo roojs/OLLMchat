@@ -279,7 +279,7 @@ namespace OLLMcoder.Folder
 			var tree_model = new Gtk.TreeListModel(
 				new Gtk.SortListModel(new Gtk.FilterListModel(this.folders, this.filter), name_sorter),
 				false,
-				true,
+				false,
 				child_model
 			);
 			var tree_factory = new Gtk.SignalListItemFactory();
@@ -502,11 +502,6 @@ namespace OLLMcoder.Folder
 					tree_view.opacity = 0;
 					return;
 				}
-				this.tree_selection.model = new Gtk.TreeListModel(
-					new Gtk.SortListModel(new Gtk.FilterListModel(this.folders, this.filter),
-							name_sorter),
-					false, true, child_model
-				);
 				this.tree_selection.selected = Gtk.INVALID_LIST_POSITION;
 				tree_view.opacity = 1;
 				if (this.tree_selection.n_items > 0) {
