@@ -24,7 +24,9 @@ namespace OLLMcoder
 	 *
 	 * Back arrow, title, the current selection, a page stack, and
 	 * search at the bottom. The phone file page replaces the arrow
-	 * and title with path buttons and a close button. Opening it
+	 * and title with path buttons and a close button. The tablet
+	 * project page shows the header project button instead, and a
+	 * shadow marks the right edge. Opening it
 	 * does not focus search, so the keyboard stays down. Which edge
 	 * it uses is still open.
 	 *
@@ -101,6 +103,8 @@ namespace OLLMcoder
 				case Form.TABLET:
 					this.halign = Gtk.Align.START;
 					this.width_request = 420;
+					this.overflow = Gtk.Overflow.VISIBLE;
+					this.add_css_class("tablet");
 					break;
 
 				default:

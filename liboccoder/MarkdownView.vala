@@ -60,15 +60,14 @@ namespace OLLMcoder
 			this.hexpand = true;
 			this.vexpand = true;
 			this.box = new MarkdownGtk.RenderBox();
+			this.box.add_css_class("markdown-preview-body");
 			this.render = new MarkdownGtk.Render(this.box) {
 				scroll_to_end = false
 			};
 			this.scroller = new Gtk.ScrolledWindow() {
 				hexpand = true,
 				vexpand = true,
-				child = this.box,
-				margin_start = 4,
-				margin_top = 4
+				child = this.box
 			};
 			this.append(this.scroller);
 			this.link_button = new Gtk.Button.with_label("") {
@@ -145,6 +144,7 @@ namespace OLLMcoder
 			this.render.clear();
 			this.render.disconnect_box();
 			this.box = new MarkdownGtk.RenderBox();
+			this.box.add_css_class("markdown-preview-body");
 			this.scroller.set_child(this.box);
 			this.render.box = this.box;
 			this.render.box.on_link_click_released.connect(this.render.on_link_click_released);

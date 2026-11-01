@@ -28,9 +28,11 @@ namespace OLLMcoder.File
 	 * width. A click turns the file button into the search entry.
 	 * Tablet uses the same sheet. The left pane is {@link Folder.Browse}
 	 * with file loading off. The right pane stays the file list.
-	 * Tree and Recent sit above the folder location. On tablet that
-	 * location is each folder name as a plain button, with a slash
-	 * between them. A tap on a name opens that folder. When the
+	 * Tree and Recent sit above the folder location. On tablet the
+	 * close mark sits on that row and stays pressed. The location
+	 * hides on Recent. The location is each folder name as a
+	 * button, with a slash between them. A tap on a name opens
+	 * that folder. When the
 	 * names are wider than the row, folders after the project
 	 * become ''...'' from the second one, slashes stay between
 	 * them, until the row fits. Search stays
@@ -280,10 +282,18 @@ namespace OLLMcoder.File
 				right.append(close_files);
 				header.append(right);
 			}
+			if (this.form == Form.TABLET) {
+				close_files.margin_end = 6;
+				close_files.remove_css_class("flat");
+				close_files.add_css_class("page-picker");
+				close_files.add_css_class("picker-on");
+				header.append(close_files);
+			}
 			var place_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				margin_start = 6,
 				margin_end = 6,
 				margin_top = 6,
+				margin_bottom = 6,
 			};
 			if (this.form == Form.TABLET) {
 				var crumb_click = new Gtk.GestureClick() {
@@ -325,7 +335,6 @@ namespace OLLMcoder.File
 				place_row.valign = Gtk.Align.CENTER;
 				place_row.append(this.up);
 				place_row.append(this.path_box);
-				place_row.append(close_files);
 				this.path_box.notify["width"].connect(() => {
 					if (this.fitting_crumbs) {
 						return;
@@ -341,6 +350,9 @@ namespace OLLMcoder.File
 			}
 			this.pages.notify["visible-child-name"].connect(() => {
 				var on_tree = this.pages.visible_child_name == "tree";
+				if (this.form == Form.TABLET) {
+					place_row.visible = on_tree;
+				}
 				this.folder_tree.collapse.opacity = on_tree ? 1 : 0;
 				this.folder_tree.ghost.opacity = on_tree ? 1 : 0;
 				this.folder_tree.collapse.sensitive = on_tree;

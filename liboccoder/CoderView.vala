@@ -22,7 +22,11 @@ namespace OLLMcoder
 	 * Coder screen: header, editor, and the search bar along the bottom.
 	 *
 	 * The header is {@link ProjectSelector}, {@link File.Nav},
-	 * the editor save button, and the document toggle.
+	 * the editor save button, and the document toggle. On a
+	 * tablet the project button and the file button keep a
+	 * border, with a slash between the project and the file.
+	 * A spacer after the file button holds the save button
+	 * at the right.
 	 * The editor is {@link SourceView}. A rendered file shows
 	 * the active {@link DocView} in that column instead. The project
 	 * list is an overlay on that column. Project selection and
@@ -101,8 +105,26 @@ namespace OLLMcoder
 				hexpand = true,
 			};
 			header.append(this.projects);
-			header.append(spacer);
+			if (form != Form.TABLET) {
+				header.append(spacer);
+			}
+			if (form == Form.TABLET) {
+				header.add_css_class("tablet");
+				this.files.hexpand = false;
+				var path_sep = new Gtk.Label("/") {
+					valign = Gtk.Align.CENTER,
+					visible = false,
+					css_classes = { "path-sep" },
+				};
+				header.append(path_sep);
+				this.files.notify["visible"].connect(() => {
+					path_sep.visible = this.files.visible;
+				});
+			}
 			header.append(this.files);
+			if (form == Form.TABLET) {
+				header.append(spacer);
+			}
 			this.editor.save_button.valign = Gtk.Align.CENTER;
 			if (form == Form.DESKTOP) {
 				this.editor.save_button.add_css_class("flat");
@@ -127,29 +149,17 @@ namespace OLLMcoder
 				md_button.has_frame = false;
 				md_button.add_css_class("page-picker");
 			}
-			md_button.clicked.connect(() => {
-				if (showing_doc) {
-					showing_doc = false;
-					md_button.icon_name = "document-print-symbolic";
-					md_button.tooltip_text = "Change to markdown";
-					this.doc.visible = false;
-					this.editor.visible = true;
-					return;
-				}
-				var file = this.editor.current_file;
-				if (file == null) {
-					md_button.visible = false;
-					return;
-				}
-				showing_doc = true;
-				md_button.icon_name = "format-justify-left-symbolic";
-				md_button.tooltip_text = "Change to source view";
-				this.doc.show_file(file, false);
-				this.editor.visible = false;
-				this.doc.visible = true;
-			});
+			if (form == Form.TABLET) {
+				this.editor.save_button.width_request = 32;
+				this.editor.save_button.height_request = 32;
+				md_button.width_request = 32;
+				md_button.height_request = 32;
+			}
 			header.append(md_button);
 			this.files.notify["visible"].connect(() => {
+				if (form == Form.TABLET) {
+					return;
+				}
 				spacer.visible = !this.files.visible;
 			});
 			this.projects.opened.connect(() => {
@@ -266,6 +276,24 @@ namespace OLLMcoder
 				vexpand = true,
 				child = editor_column,
 			};
+			var open_epoch = 0;
+			var loading_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
+				visible = false,
+				halign = Gtk.Align.CENTER,
+				valign = Gtk.Align.CENTER,
+				can_target = false,
+			};
+			var loading_spinner = new Gtk.Spinner() {
+				width_request = 16,
+				height_request = 16,
+				valign = Gtk.Align.CENTER,
+			};
+			loading_row.append(loading_spinner);
+			loading_row.append(new Gtk.Label("Loading file") {
+				halign = Gtk.Align.START,
+				valign = Gtk.Align.CENTER,
+			});
+			editor_layer.add_overlay(loading_row);
 			editor_layer.add_overlay(this.projects.shade);
 			editor_layer.add_overlay(this.projects.list);
 			if (form == Form.DESKTOP) {
@@ -303,6 +331,55 @@ namespace OLLMcoder
 				this.append(header);
 				this.append(editor_layer);
 			}
+			this.editor.file_opening.connect(() => {
+				open_epoch++;
+				loading_spinner.spinning = true;
+				loading_row.visible = true;
+				editor_column.opacity = 0;
+				editor_column.sensitive = false;
+			});
+			md_button.clicked.connect(() => {
+				if (showing_doc) {
+					open_epoch++;
+					showing_doc = false;
+					md_button.icon_name = "document-print-symbolic";
+					md_button.tooltip_text = "Change to markdown";
+					this.doc.visible = false;
+					this.editor.visible = true;
+					loading_spinner.spinning = false;
+					loading_row.visible = false;
+					editor_column.opacity = 1;
+					editor_column.sensitive = true;
+					return;
+				}
+				var file = this.editor.current_file;
+				if (file == null) {
+					md_button.visible = false;
+					return;
+				}
+				open_epoch++;
+				var epoch = open_epoch;
+				showing_doc = true;
+				md_button.icon_name = "format-justify-left-symbolic";
+				md_button.tooltip_text = "Change to source view";
+				this.editor.visible = false;
+				this.doc.visible = true;
+				loading_spinner.spinning = true;
+				loading_row.visible = true;
+				editor_column.opacity = 0;
+				editor_column.sensitive = false;
+				GLib.Timeout.add(16, () => {
+					if (epoch != open_epoch) {
+						return false;
+					}
+					this.doc.show_file(file, false);
+					loading_spinner.spinning = false;
+					loading_row.visible = false;
+					editor_column.opacity = 1;
+					editor_column.sensitive = true;
+					return false;
+				});
+			});
 			this.files.chosen.connect((file) => {
 				this.editor.open_file.begin(file);
 			});
@@ -328,14 +405,29 @@ namespace OLLMcoder
 					md_button.tooltip_text = "Change to markdown";
 					this.doc.visible = false;
 					this.editor.visible = true;
+					loading_spinner.spinning = false;
+					loading_row.visible = false;
+					editor_column.opacity = 1;
+					editor_column.sensitive = true;
 					return;
 				}
+				var epoch = open_epoch;
 				showing_doc = true;
 				md_button.icon_name = "format-justify-left-symbolic";
 				md_button.tooltip_text = "Change to source view";
-				this.doc.show_file(file, true);
 				this.editor.visible = false;
 				this.doc.visible = true;
+				GLib.Timeout.add(16, () => {
+					if (epoch != open_epoch) {
+						return false;
+					}
+					this.doc.show_file(file, true);
+					loading_spinner.spinning = false;
+					loading_row.visible = false;
+					editor_column.opacity = 1;
+					editor_column.sensitive = true;
+					return false;
+				});
 			});
 			this.editor.find.connect(() => {
 				if (form == Form.PHONE) {

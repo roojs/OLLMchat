@@ -98,6 +98,14 @@ namespace OLLMcoder
 			public OLLMfiles.File? current_file { get; private set; default = null; }
 
 			/**
+			 * Emitted when opening a file starts.
+			 *
+			 * {@link CoderView} shows the loading overlay here. The
+			 * file read and the markdown render both run after this.
+			 */
+			public signal void file_opening();
+
+			/**
 			 * Emitted when the open file changes.
 			 *
 			 * {@link CoderView} owns project and file selection and listens
@@ -529,6 +537,7 @@ namespace OLLMcoder
 			 */
 			public async void open_file(OLLMfiles.File file, int line_number = -1)
 			{
+				this.file_opening();
 				// Leave diff before saving state (save reads source_view.buffer)
 				if (this.diff_active) {
 					this.clear_diff();

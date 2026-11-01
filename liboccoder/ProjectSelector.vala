@@ -29,6 +29,8 @@ namespace OLLMcoder
 	 * A project is recent when a file under it has been viewed.
 	 * That time is the newest file ''last_viewed'', not the project row.
 	 * All lists every name. Phone and tablet open {@link SelectorPull}.
+	 * On a tablet that page keeps the header project button, and
+	 * a click on it closes the list.
 	 *
 	 * == Example ==
 	 *
@@ -121,11 +123,7 @@ namespace OLLMcoder
 				ellipsize = this.form == Form.PHONE ? Pango.EllipsizeMode.END : Pango.EllipsizeMode.NONE,
 			};
 			var face = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
-			var project_icon = "folder-symbolic";
-			if (this.form != Form.DESKTOP) {
-				project_icon = "folder";
-			}
-			face.append(new Gtk.Image.from_icon_name(project_icon));
+			face.append(new Gtk.Image.from_icon_name("folder"));
 			face.append(this.label);
 			this.button = new Gtk.Button() {
 				child = face,
@@ -133,6 +131,40 @@ namespace OLLMcoder
 				valign = Gtk.Align.CENTER,
 				css_classes = { "flat" },
 			};
+			if (this.form == Form.TABLET) {
+				var toggle_label = new Gtk.Label(this.label.label) {
+					xalign = 0,
+					halign = Gtk.Align.START,
+				};
+				var toggle_face = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+				toggle_face.append(new Gtk.Image.from_icon_name("folder"));
+				toggle_face.append(toggle_label);
+				var project_toggle = new Gtk.Button() {
+					child = toggle_face,
+					hexpand = false,
+					valign = Gtk.Align.CENTER,
+					visible = false,
+					css_classes = { "project-toggle" },
+				};
+				((Gtk.Box) this.selector.get_first_child()).prepend(project_toggle);
+				project_toggle.clicked.connect(() => {
+					this.get_root().set_focus(null);
+					this.selector.visible = false;
+				});
+				this.label.notify["label"].connect(() => {
+					toggle_label.label = this.label.label;
+				});
+				this.button.clicked.connect(() => {
+					toggle_label.label = this.label.label;
+					project_toggle.visible = true;
+				});
+				this.selector.notify["visible"].connect(() => {
+					if (this.selector.visible) {
+						return;
+					}
+					project_toggle.visible = false;
+				});
+			}
 			this.entry = new Gtk.SearchEntry() {
 				placeholder_text = "Search projects",
 				hexpand = true,
@@ -244,6 +276,7 @@ namespace OLLMcoder
 				can_focus = false,
 				margin_start = 6,
 				margin_end = 6,
+				margin_top = 4,
 				margin_bottom = 6,
 				css_classes = { "horizontal", "linked" },
 			};
@@ -583,7 +616,8 @@ namespace OLLMcoder
 						this.selector.kind = "project";
 						this.selector.heading.label = "Projects";
 						this.selector.close.visible = false;
-						this.selector.previous.visible = true;
+						this.selector.previous.visible = this.form != Form.TABLET;
+						this.selector.heading.visible = this.form != Form.TABLET;
 						this.selector.current.visible = false;
 						this.selector.pages.visible_child_name = "project";
 						this.selector.search.placeholder_text = "Search projects";

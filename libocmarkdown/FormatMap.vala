@@ -331,16 +331,20 @@ namespace Markdown
 				return false;
 			}
 			chunk_pos = seq_pos;
-			chunk = this.parser.add_html(chunk.substring(chunk_pos, chunk.length - chunk_pos));
+			var html_in = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+			chunk = this.parser.add_html(html_in);
 			chunk_pos = 0;
-			if (chunk.length > 0 && chunk.get_char(0) == '<' && is_end_of_chunks) {
+			if (chunk.length == 0 || chunk.get_char(0) != '<') {
 				return false;
 			}
-			if (chunk.length > 0 && chunk.get_char(0) == '<') {
-				this.parser.leftover_chunk = str + chunk; // a bit werid as we have modified chunk in here
-				return true;
+			if (is_end_of_chunks) {
+				return false;
 			}
-			return false;
+			if (chunk != "<" && chunk != "<" + html_in) {
+				return false;
+			}
+			this.parser.leftover_chunk = str + chunk;
+			return true;
 		}
 	}
 }

@@ -385,6 +385,7 @@ namespace MarkdownGtk
 				vexpand = false,
 				can_focus = false,
 				focus_on_click = false,
+				tab_width = 4,
 				css_classes = { "code-editor" }
 			};
 			this.source_view.set_buffer(source_buffer);

@@ -190,7 +190,7 @@ namespace OLLMcoder.File
 			this.search_home = this.project;
 			this.level = this.project;
 			if (this.form != Form.DESKTOP) {
-				this.path_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+				this.path_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 10) {
 					hexpand = true,
 					valign = Gtk.Align.CENTER,
 					css_classes = { "horizontal", "path-box" },
@@ -301,7 +301,9 @@ namespace OLLMcoder.File
 		 * Once the row has a width, folders after the project show
 		 * as ''...'' from the second folder until the buttons and
 		 * slashes fit. The project name stays. A tap on ''...''
-		 * still opens that folder.
+		 * still opens that folder. Tablet buttons keep a border
+		 * and fill so they read as buttons. The slash between
+		 * them is its own label.
 		 */
 		protected void render_crumbs()
 		{
