@@ -323,15 +323,19 @@ namespace OLLMcoder.Folder
 			if (this.loaded.contains(folder.path)) {
 				return;
 			}
+			/* Before the project row. The row opens during this
+			 * fetch, and the child model has to stay in place for
+			 * the folders that arrive.
+			 */
+			if (!this.loading) {
+				this.loading = true;
+			}
 			if (folder.is_project && !this.path_map.has_key(folder.path)) {
 				this.append(null, folder);
 			}
 			var epoch = this.load_epoch;
 			this.loaded.add(folder.path);
 			this.pending++;
-			if (!this.loading) {
-				this.loading = true;
-			}
 			/* Leave the read callback so the file pane can draw the
 			 * spinner before this request.
 			 */

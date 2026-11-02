@@ -261,17 +261,24 @@ namespace OLLMcoder.Folder
 					return null;
 				}
 				var tip = folder;
+				var seen = new Gee.HashSet<string>();
 				while (!tip.is_project &&
+					!seen.contains(tip.path) &&
 					this.folders.segments.has_key(tip.path) &&
 					this.folders.segments.get(tip.path).get_n_items() == 1 &&
 					tip.folder_count == 1 &&
 					tip.file_count == 0) {
+					seen.add(tip.path);
 					tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
 				}
-				/* Empty is not a leaf. The project row is created
-				 * before the fetch fills this segment. Null would
-				 * tell the tree the row can never have children.
+				/* Still loading: an empty segment can gain folders.
+				 * Null would make the row a leaf forever. After the
+				 * fetch, empty is a leaf.
 				 */
+				if (!this.folders.loading &&
+					this.folders.segments.get(tip.path).get_n_items() == 0) {
+					return null;
+				}
 				return new Gtk.SortListModel(
 					new Gtk.FilterListModel(this.folders.segments.get(tip.path), this.filter),
 					name_sorter
@@ -337,11 +344,14 @@ namespace OLLMcoder.Folder
 				}
 				parts.add(shown);
 				var tip = folder;
+				var seen = new Gee.HashSet<string>();
 				while (!tip.is_project &&
+						!seen.contains(tip.path) &&
 						this.folders.segments.has_key(tip.path) &&
 						this.folders.segments.get(tip.path).get_n_items() == 1 &&
 						tip.folder_count == 1 &&
 						tip.file_count == 0) {
+					seen.add(tip.path);
 					tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
 					shown = tip.path_basename;
 					if (tip.points_to_id != 0) {
@@ -470,11 +480,14 @@ namespace OLLMcoder.Folder
 				}
 				tree_view.scroll_to(this.tree_selection.selected, Gtk.ListScrollFlags.FOCUS, null);
 				var folder = (OLLMfiles.Folder) ((Gtk.TreeListRow) this.tree_selection.selected_item).item;
+				var seen = new Gee.HashSet<string>();
 				while (!folder.is_project &&
+						!seen.contains(folder.path) &&
 						this.folders.segments.has_key(folder.path) &&
 						this.folders.segments.get(folder.path).get_n_items() == 1 &&
 						folder.folder_count == 1 &&
 						folder.file_count == 0) {
+					seen.add(folder.path);
 					folder = (OLLMfiles.Folder) this.folders.segments.get(folder.path).get_item(0);
 				}
 				this.selected(folder);
@@ -505,6 +518,11 @@ namespace OLLMcoder.Folder
 				}
 				this.tree_selection.selected = Gtk.INVALID_LIST_POSITION;
 				tree_view.opacity = 1;
+				/* Rows were bound while folders were still arriving,
+				 * so a one-folder chain stopped at the first name.
+				 * The walk runs again now that the store is complete.
+				 */
+				this.filter.changed(Gtk.FilterChange.DIFFERENT);
 				if (this.tree_selection.n_items > 0) {
 					tree_view.scroll_to(0, Gtk.ListScrollFlags.NONE, null);
 				}

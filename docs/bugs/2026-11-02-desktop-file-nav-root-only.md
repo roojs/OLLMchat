@@ -1,6 +1,6 @@
 # Desktop file nav shows only the project folder
 
-**Status:** ⏳ root cause confirmed; fix applied in the tree model — desktop binary not restarted
+**Status:** ⏳ children show; single-folder chains open after the fetch — desktop binary not restarted
 
 ## Problem
 
@@ -90,9 +90,16 @@ created before the fetch fills it.
 - ✔️ Debug added, then removed: `ollmfilesd/Folder.vala` logged
   `folder tree reply`. `liboccoder/Folder/TreeStore.vala` logged
   `folder tree stored`.
-- ✔️ `liboccoder/Folder/Tree.vala` now returns the empty segment
-  model. Same test after that change: `rows=240`, `shown=48`,
-  then `type=code shown=34` and `type=document shown=38`.
+- ✔️ `liboccoder/Folder/Tree.vala` returned the empty segment
+  model. Same test: `rows=240`, `shown=48`.
+- 🔷 That open ran while the segment was empty, so a folder that
+  holds one child folder stayed the first name.
+- ✔️ The project row opens during the fetch, and the child model
+  stays attached. When `loading` goes false the filter runs
+  again, so the one-folder walk sees the whole chain. A repeated
+  path stops the walk. The check logged
+  `contrib/seccomp-gir`, `.cursor/rules`, and
+  `.github/workflows`. `folders=240`, `shown=48`.
 
 ## Next
 
