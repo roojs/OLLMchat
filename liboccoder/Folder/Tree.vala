@@ -268,9 +268,10 @@ namespace OLLMcoder.Folder
 					tip.file_count == 0) {
 					tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
 				}
-				if (this.folders.segments.get(tip.path).get_n_items() == 0) {
-					return null;
-				}
+				/* Empty is not a leaf. The project row is created
+				 * before the fetch fills this segment. Null would
+				 * tell the tree the row can never have children.
+				 */
 				return new Gtk.SortListModel(
 					new Gtk.FilterListModel(this.folders.segments.get(tip.path), this.filter),
 					name_sorter

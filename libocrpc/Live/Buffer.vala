@@ -29,6 +29,38 @@ namespace OLLMrpc.Live
 			this.fd = fd;
 		}
 
+		/**
+		 * Memfd holding a copy of ''data'',
+		 * positioned at offset 0.
+		 *
+		 * @param data bytes to store
+		 * @param name memfd name, visible in ''/proc''
+		 * @throws GLib.Error when ''memfd_create'', the write,
+		 *   or ''lseek'' fails
+		 */
+		public Buffer.from_bytes(uint8[] data, string name) throws GLib.Error
+		{
+			var fd = Linux.memfd_create(name, Linux.MemfdFlags.CLOEXEC);
+			if (fd < 0) {
+				throw new GLib.IOError.FAILED("memfd_create");
+			}
+			var put = 0;
+			var length = data.length;
+			while (put < length) {
+				var n = Posix.write(fd, (void*) &data[put], length - put);
+				if (n <= 0) {
+					Posix.close(fd);
+					throw new GLib.IOError.FAILED("memfd short write");
+				}
+				put += (int) n;
+			}
+			if (Posix.lseek(fd, 0, Posix.SEEK_SET) < 0) {
+				Posix.close(fd);
+				throw new GLib.IOError.FAILED("memfd lseek");
+			}
+			this.fd = fd;
+		}
+
 		public void send(GLib.Socket socket) throws GLib.Error
 		{
 			uint8 tag = 0;
@@ -82,6 +114,32 @@ namespace OLLMrpc.Live
 					return;
 				}
 			}
+		}
+
+		/**
+		 * Read exactly ''length'' bytes from {@link fd} into
+		 * ''dest'', starting at offset 0.
+		 *
+		 * @param dest caller storage
+		 * @param length byte count
+		 * @return false when {@link fd} is closed or the read
+		 *   stops short
+		 */
+		public bool read_exact(uint8[] dest, int length)
+		{
+			if (this.fd < 0) {
+				return false;
+			}
+			Posix.lseek(this.fd, 0, Posix.SEEK_SET);
+			var got = 0;
+			while (got < length) {
+				var n = Posix.read(this.fd, (void*) &dest[got], length - got);
+				if (n <= 0) {
+					break;
+				}
+				got += (int) n;
+			}
+			return got == length;
 		}
 	}
 }
