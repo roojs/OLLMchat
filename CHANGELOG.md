@@ -9,7 +9,124 @@ for git tags (`v1.4.0`, etc.).
 Debian and RPM packaging notes are generated from this file at release time
 (see [Creating releases](docs/creating-releases.md)).
 
-## [1.4.0] - Unreleased
+## [1.4.1] - Unreleased
+
+Work since **1.4.0** (2026-10-02). The phone pairs with a desktop and uses that machine's file daemon. Agent Π opens the desktop's projects, reads and writes files there, and runs `bash` on `ollmfilesd`.
+
+That is the path this release makes work: pairing through to `LIVE`, the project and folder sheets, and opening a file. The other notes are the file browser, the editor, and `libocrpc` from the same span.
+
+### Added
+
+#### libocrpc
+
+- `Live.Buffer.from_bytes` writes a byte array into a new memfd
+- `Live.Buffer.read_exact` drains that memfd
+
+#### ollmfilesd
+
+- Allow New Device publishes `_rpc._tcp` while the PIN dialog is open
+- Those A records use `hostname-rpc.local`
+
+#### Android
+
+- Agent Π registers `bash` next to `read` and `write`
+- `bash` runs on the desktop file daemon
+- One agent manager owns which of editor, browser, and chat are visible
+- An unreachable desktop asks Retry or Close
+- Close leaves Agent Π and starts a Chatter session
+- Retry shows **Checking desktop environment…** until the probe finishes
+
+#### liboccoder
+
+- Pending edits paint through `ChangeView` instead of replacing the whole buffer
+- Edits on green and unchanged lines save back to the file server
+- Red lines stay read-only
+- The waiting row can show the assembled outbound message
+- A list longer than the system prompt plus one user message shows only the last message
+
+#### libollmchat
+
+- A missing codebase-search model names the Settings row, the model, and the connection
+
+### Changed
+
+#### libocrpc
+
+- Handler names outside the RPC daemon drop the `RPC-` prefix
+- `RPC-Daemon` and `RPC-Live-*` keep it
+
+#### Phone and tablet chrome
+
+- The file-name button has no icon
+- The project button and the file button sit closer together
+- Save and the markdown toggle use icons that exist on Android
+- The project list hides the subtitle under the selected project
+- Recent / All and Tree / Recent show which one is selected
+- A file row shows the modified time and the size
+- A folder row keeps the relative path
+- On the phone, the file sheet and the project sheet cover the composer and the model bar
+- An approved phone is titled with the handset name, not `ollmchat`
+
+#### Android editor
+
+- The source view uses Droid Sans Mono, then monospace
+- Pinch and Ctrl+wheel change that font, from 8 px to 64 px
+- Android leaves the search bar hidden
+- A file stays read-only until a long-press
+- The editing hint shows once when the text view is mapped, and once when a document opens
+- The editor button is only there for a coding agent, between browser and chat
+- Vala highlighting runs because the language schema is packed in the APK
+- Choosing a file leaves the caret out of the file field
+
+### Fixed
+
+#### libocrpc
+
+- `Live.Hook.emit` returns when the connection has already stopped
+- Opening Settings no longer crashes on the SSL host dropdown
+- A signal emit exports an object argument the connection had not leased
+- A private runtime type is sent as its declared public type
+- An unregistered runtime type walks up to a registered parent
+- A handler that returns bool finishes before that signal emission ends
+- A blocking void signal waits for the remote reply
+- `File.read` keeps strings longer than 32767 bytes
+
+#### Android pairing
+
+- The PIN dialog browses before it registers
+- A pair request stores the signed certificate and the CA
+- Hello gets past “certificate not registered”
+- The live client reads the socket with the shared `IOChannel` watch
+- A finished pair reaches `LIVE`, shows Agent Π, and loads project files
+
+#### Phone
+
+- A project tap opens the project list after Agent Π is live
+- Choosing a project or a folder does not focus the chat entry or raise the keyboard
+- Opening a file no longer aborts when the hunk list is empty
+- Opening a project leaves **Loading folders** and shows the first level
+- The chat scroll idle stops, so an idle handset is not held on one core
+
+#### Files
+
+- Opening the folder tree sends `Folder.fetch_children`
+- **All** lists every project
+- Selector search takes focus, and the file-search bar keeps its height
+- Clicking a folder loads that directory
+- An empty folder says **No files**
+- Switching back to a project reloads that project's tree
+- Opening a project no longer hangs on the folder-count query
+- Building the folder tree no longer takes about two seconds
+- The file grid shows the size from the last directory scan
+- The file sheet opens on the open file's folder and highlights that row
+- A folder linked into the project shows in the tree
+- Loading projects stays connected when a file row includes `size`
+- The tablet location row shows each folder name as a button
+- Scrolling the folder list leaves the file list where it is
+- Picking the open project from Recent keeps it in the list
+- Opening a project folder fills the file pane instead of leaving it on Loading
+
+## [1.4.0] - 2026-10-02
 
 Work since **1.3.0** (2026-08-22). `libocrpc` drops `CallParam` and uses bin protocol **v3.1**.
 
