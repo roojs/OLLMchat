@@ -68,6 +68,7 @@ pkgconfig_deps=(
   'pkgconfig(tree-sitter)'
   'pkgconfig(libseccomp)'
   'pkgconfig(libgit2-glib-1.0)'
+  'pkgconfig(avahi-gobject)'
   'pkgconfig(lapack)'
   'pkgconfig(llama)'
 )

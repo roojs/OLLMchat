@@ -29,6 +29,7 @@ BuildRequires: vala
 BuildRequires: desktop-file-utils
 BuildRequires: gobject-introspection
 BuildRequires: gobject-introspection-devel
+BuildRequires: pkgconfig(avahi-gobject)
 BuildRequires: faiss-devel
 BuildRequires: pkgconfig(gee-0.8)
 BuildRequires: pkgconfig(glib-2.0)

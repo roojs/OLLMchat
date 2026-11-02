@@ -37,7 +37,8 @@
             "libopenblas-dev",
             "liblapack-dev",
             "gobject-introspection",
-            "libgirepository1.0-dev"
+            "libgirepository1.0-dev",
+            "libavahi-gobject-dev"
           ]
         },
         "inherit_native_projects": false,
@@ -115,7 +116,8 @@
             "libopenblas-dev",
             "liblapack-dev",
             "gobject-introspection",
-            "libgirepository1.0-dev"
+            "libgirepository1.0-dev",
+            "libavahi-gobject-dev"
           ]
         },
         "inherit_native_projects": false,

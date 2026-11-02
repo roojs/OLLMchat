@@ -19,9 +19,9 @@
 namespace OLLMrpc.Transport
 {
 	/**
-	 * Pairing publish stub. Android has no Avahi.
+	 * Pairing publish stub. Android and Windows have no Avahi.
 	 *
-	 * The phone browses. The desktop publishes ''_rpc._tcp''.
+	 * The phone browses. The Linux desktop publishes ''_rpc._tcp''.
 	 */
 	public class PairPublish : GLib.Object
 	{

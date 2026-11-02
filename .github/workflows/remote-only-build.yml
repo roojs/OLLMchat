@@ -43,6 +43,7 @@ jobs:
             libffi-dev \
             libgee-0.8-dev \
             libgirepository1.0-dev \
+            libavahi-gobject-dev \
             libgit2-glib-1.0-dev \
             libglib2.0-dev \
             libgtk-4-dev \

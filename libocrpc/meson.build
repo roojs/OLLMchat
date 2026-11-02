@@ -164,7 +164,7 @@ ocrpc_src = ocrpc_core_src + files(['Client.vala']) + transport_socket_src + cli
 if is_windows
   ocrpc_src += files(['windows/CreatePipe.vala'])
 endif
-if is_android
+if is_android or is_windows
   ocrpc_src += files('android/PairPublish.vala')
 endif
 

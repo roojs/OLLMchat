@@ -37,6 +37,12 @@ gnome_proxy = 'disabled'
 environment_proxy = 'enabled'
 installed_tests = false
 
+# fontconfig 2.18 enables NLS from a cached host intl dependency, then
+# the NDK compile of its tests cannot find libintl.h.
+[fontconfig:project options]
+nls = 'disabled'
+tests = 'disabled'
+
 [libollmchat:project options]
 docs = false
 examples = false
