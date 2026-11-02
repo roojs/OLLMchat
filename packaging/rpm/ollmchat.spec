@@ -27,6 +27,8 @@ BuildRequires: gcc
 BuildRequires: gcc-c++
 BuildRequires: vala
 BuildRequires: desktop-file-utils
+# Retired in Fedora. scripts/ci/build-rpm.sh installs the openSUSE
+# noarch build there before rpmbuild.
 BuildRequires: humanity-icon-theme
 BuildRequires: gobject-introspection
 BuildRequires: gobject-introspection-devel
@@ -595,6 +597,8 @@ rm -rf %{buildroot}%{_datadir}/doc/ollmchat
 %{_bindir}/ollmfilesd
 %{_datadir}/applications/org.roojs.ollmchat.desktop
 %{_datadir}/icons/hicolor/scalable/apps/org.roojs.ollmchat.svg
+%dir %{_datadir}/icons/hicolor/scalable/mimetypes
+%{_datadir}/icons/hicolor/scalable/mimetypes/*.svg
 
 %files -n libocsqlite
 %{_libdir}/libocsqlite.so
@@ -730,6 +734,8 @@ rm -rf %{buildroot}%{_datadir}/doc/ollmchat
 %{_libdir}/liboll*.so*
 %{_datadir}/applications/org.roojs.ollmchat.desktop
 %{_datadir}/icons/hicolor/scalable/apps/org.roojs.ollmchat.svg
+%dir %{_datadir}/icons/hicolor/scalable/mimetypes
+%{_datadir}/icons/hicolor/scalable/mimetypes/*.svg
 %{_datadir}/gir-1.0/OC*.gir
 %{_datadir}/gir-1.0/OLL*.gir
 %{_libdir}/girepository-1.0/OC*.typelib

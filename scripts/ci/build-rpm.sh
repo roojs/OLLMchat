@@ -81,8 +81,22 @@ case "${ID}" in
       rpm-build rpmdevtools \
       meson ninja-build gcc gcc-c++ vala desktop-file-utils \
       gobject-introspection gobject-introspection-devel \
-      faiss-devel bubblewrap humanity-icon-theme \
+      faiss-devel bubblewrap \
       "${pkgconfig_deps[@]}"
+    # humanity-icon-theme is retired in Fedora. meson install copies its
+    # mime SVGs, so take the current openSUSE Tumbleweed noarch build.
+    humanity_base=https://download.opensuse.org/tumbleweed/repo/oss/noarch
+    humanity_list="$(curl -fsSL "${humanity_base}/" \
+      | grep -o 'humanity-icon-theme-[^"<> ]*\.noarch\.rpm' || true)"
+    humanity_rpm="${humanity_list%%$'\n'*}"
+    if [ -z "${humanity_rpm}" ]; then
+      echo "Could not find humanity-icon-theme on openSUSE Tumbleweed" >&2
+      exit 1
+    fi
+    run_root curl -fsSL -o /tmp/humanity-icon-theme.rpm \
+      "${humanity_base}/${humanity_rpm}"
+    run_root dnf -y install --setopt=install_weak_deps=False --nogpgcheck \
+      /tmp/humanity-icon-theme.rpm
     rpm_dist_args=()
     ;;
   opensuse* | opensuse-tumbleweed | slfo)
