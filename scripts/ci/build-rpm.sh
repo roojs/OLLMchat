@@ -81,7 +81,7 @@ case "${ID}" in
       rpm-build rpmdevtools \
       meson ninja-build gcc gcc-c++ vala desktop-file-utils \
       gobject-introspection gobject-introspection-devel \
-      faiss-devel bubblewrap \
+      faiss-devel bubblewrap humanity-icon-theme \
       "${pkgconfig_deps[@]}"
     rpm_dist_args=()
     ;;
@@ -98,7 +98,7 @@ case "${ID}" in
       rpm-build rpmdevtools \
       meson ninja gcc gcc-c++ vala desktop-file-utils \
       gobject-introspection gobject-introspection-devel \
-      faiss-devel bubblewrap ggml-devel \
+      faiss-devel bubblewrap humanity-icon-theme ggml-devel \
       libllama0 libggml0 libggml-base0 \
       "${pkgconfig_deps[@]}"
     # Repos publish openSUSE packages under rpm/tumbleweed/; omit %{dist}

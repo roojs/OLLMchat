@@ -27,6 +27,7 @@ BuildRequires: gcc
 BuildRequires: gcc-c++
 BuildRequires: vala
 BuildRequires: desktop-file-utils
+BuildRequires: humanity-icon-theme
 BuildRequires: gobject-introspection
 BuildRequires: gobject-introspection-devel
 BuildRequires: pkgconfig(avahi-gobject)
