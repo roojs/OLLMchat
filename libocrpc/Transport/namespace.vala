@@ -14,10 +14,12 @@
 /**
  * Server listen and connection layer for {@link OLLMrpc}.
  *
- * The OLLMrpc.Transport namespace owns daemon-side sockets: {@link Listen}
- * accept loops, {@link Connection} per peer, and helpers for Unix socket
- * ({@link SocketListen}) or TCP ({@link TcpListen}). HTTP JSON RPC uses
- * {@link HttpServer} with per-POST {@link HttpReply} write targets.
+ * The OLLMrpc.Transport namespace owns the sockets. {@link Listen}
+ * accept loops, {@link Connection} per peer, and helpers for Unix
+ * socket ({@link SocketListen}) or TCP ({@link TcpListen}). HTTP
+ * uses {@link HttpServer}, per-POST {@link HttpReply}, and
+ * {@link HttpClient}. {@link TlsClient} is the TCP TLS caller:
+ * one handshake, then one or more bin requests.
  * Each socket connection keeps one {@link OLLMrpc.Bin.Stream} for the peer
  * lifetime.
  *

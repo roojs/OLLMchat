@@ -40,9 +40,11 @@ lib_build_rpath = ':'.join([
 
 ocvector2_inc = include_directories('.')
 
+# Tumbleweed faiss headers use std::optional. The project default is C++11.
 ocvector2_base_lib = library('ocvector2',
   dependencies: [ocvector2_deps, ocvector_link_dep, ocsqlite_vapi_dep, ollmchat_vapi_dep],
   sources: ocvector2_src + faiss_wrapper_src,
+  override_options: ['cpp_std=c++17'],
   link_with: [ollmchat_base_lib],
   vala_header: 'ocvector2.h',
   vala_vapi: 'ocvector2-meson.vapi',

@@ -677,55 +677,14 @@ namespace OLLMapp
 					continue;
 				}
 				var host = line.substring(0, colon);
-				var client = new GLib.SocketClient();
-				client.timeout = 2;
-				GLib.SocketConnection conn;
+				/* avoid async vala ctor bug */
+				var link = new OLLMrpc.Transport.TlsClient(host, (uint16) port);
+				link.timeout = 2;
+				link.tls_certificate = tls.certificate;
+				link.tls_database = tls.trust;
+				OLLMrpc.Response hello;
 				try {
-					conn = yield client.connect_to_host_async(
-						host, (uint16) port, null);
-				} catch (GLib.Error e) {
-					GLib.warning("%s", e.message);
-					continue;
-				}
-				/* The async Android connect leaves this socket nonblocking.
-				 * The probe uses a synchronous TLS and bin reply exchange. */
-				try {
-					conn.socket.blocking = true;
-				} catch (GLib.Error e) {
-					GLib.warning("%s", e.message);
-					continue;
-				}
-				GLib.TlsClientConnection link;
-				try {
-					link = GLib.TlsClientConnection.@new(conn, null);
-				} catch (GLib.Error e) {
-					GLib.warning("%s", e.message);
-					continue;
-				}
-				link.certificate = tls.certificate;
-				link.database = tls.trust;
-				link.accept_certificate.connect((peer_cert, errors) => {
-					return peer_cert != null
-						&& (errors & ~GLib.TlsCertificateFlags.BAD_IDENTITY) == 0;
-				});
-				try {
-					link.handshake();
-				} catch (GLib.Error e) {
-					GLib.warning("%s", e.message);
-					continue;
-				}
-				OLLMrpc.Bin.Stream bin;
-				try {
-					bin = new OLLMrpc.Bin.Stream(
-						new GLib.DataInputStream(link.get_input_stream()),
-						new GLib.DataOutputStream(link.get_output_stream())
-					);
-				} catch (GLib.Error e) {
-					GLib.warning("%s", e.message);
-					continue;
-				}
-				try {
-					bin.write(new OLLMrpc.Request() {
+					hello = link.call(new OLLMrpc.Request() {
 						method = "RPC-Daemon.hello",
 						args = OLLMrpc.args("is", 1, "ollmchat")
 					});
@@ -733,39 +692,12 @@ namespace OLLMapp
 					GLib.warning("%s", e.message);
 					continue;
 				}
-				/* Android TLS can report WOULD_BLOCK until decrypted reply data
-				 * is buffered, even though the raw socket is blocking. Match the
-				 * registration exchange by polling and retrying with a deadline. */
-				OLLMrpc.Response? hello = null;
-				var hello_wait = GLib.get_monotonic_time() + 10 * 1000000;
-				while (hello == null) {
-					try {
-						hello = bin.parse() as OLLMrpc.Response;
-					} catch (GLib.IOError e) {
-						if (e.code != GLib.IOError.WOULD_BLOCK
-							|| GLib.get_monotonic_time() >= hello_wait) {
-							GLib.warning("%s", e.message);
-							break;
-						}
-						var hello_poll = GLib.PollFD();
-						hello_poll.fd = conn.socket.fd;
-						hello_poll.events = GLib.IOCondition.IN;
-						GLib.poll(new GLib.PollFD[] { hello_poll }, 200);
-					} catch (GLib.Error e) {
-						GLib.warning("%s", e.message);
-						break;
-					}
-				}
-				if (hello == null) {
-					continue;
-				}
 				if (hello.error != null) {
 					this.probe_code = hello.error.code;
 					GLib.warning("%s", hello.error.message);
 					continue;
 				}
-				config.filesd_client.url =
-					"tcp://" + host + ":" + port.to_string();
+				config.filesd_client.url = "tcp://" + host + ":" + port.to_string();
 				return true;
 			}
 			return false;

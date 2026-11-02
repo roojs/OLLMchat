@@ -21,6 +21,7 @@ That is the path this release makes work: pairing through to `LIVE`, the project
 
 - `Live.Buffer.from_bytes` writes a byte array into a new memfd
 - `Live.Buffer.read_exact` drains that memfd
+- `Transport.TlsClient` sends one or more requests on one TLS handshake
 
 #### ollmfilesd
 
@@ -54,6 +55,7 @@ That is the path this release makes work: pairing through to `LIVE`, the project
 
 - Handler names outside the RPC daemon drop the `RPC-` prefix
 - `RPC-Daemon` and `RPC-Live-*` keep it
+- Phone registration and the address probe send those requests through `Transport.TlsClient`
 
 #### Phone and tablet chrome
 
