@@ -33,7 +33,8 @@ namespace OLLMcoder.Folder
 	 * joins the names with ''/'', so ''scalable'' holding only ''apps''
 	 * reads ''scalable/apps''. ''libochf'' stays its own row because it
 	 * has files beside ''Param''. A folder with no child folder has no
-	 * expander. The project is the top row and it is expanded. Selecting
+	 * expander. Every folder is expanded once the list has arrived.
+	 * Selecting
 	 * it emits {@link selected} for that folder. A row whose first
 	 * folder is not a link draws the coloured ''folder'' icon at the
 	 * same size as the link mark. A link keeps that mark. An empty
@@ -325,7 +326,7 @@ namespace OLLMcoder.Folder
 				expander.list_row = tree_row;
 				var folder = (OLLMfiles.Folder) tree_row.item;
 				expander.hide_expander = folder.is_project;
-				if (folder.is_project && !tree_row.expanded) {
+				if (folder.is_project && !this.folders.loading && !tree_row.expanded) {
 					tree_row.expanded = true;
 				}
 				if (folder.is_project && tree_row.get_data<bool>("keep-open") != true) {
@@ -518,11 +519,20 @@ namespace OLLMcoder.Folder
 				}
 				this.tree_selection.selected = Gtk.INVALID_LIST_POSITION;
 				tree_view.opacity = 1;
-				/* Rows were bound while folders were still arriving,
-				 * so a one-folder chain stopped at the first name.
-				 * The walk runs again now that the store is complete.
+				/* Open every folder after the fetch. Opening during
+				 * the fetch stops at the first level.
 				 */
-				this.filter.changed(Gtk.FilterChange.DIFFERENT);
+				var model = (Gtk.TreeListModel) this.tree_selection.model;
+				model.autoexpand = true;
+				var index = 0;
+				while (index < model.n_items) {
+					var row = model.get_row(index);
+					index++;
+					if (row.expanded) {
+						continue;
+					}
+					row.expanded = true;
+				}
 				if (this.tree_selection.n_items > 0) {
 					tree_view.scroll_to(0, Gtk.ListScrollFlags.NONE, null);
 				}
