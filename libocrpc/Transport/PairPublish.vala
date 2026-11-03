@@ -45,6 +45,14 @@ namespace OLLMrpc.Transport
 		private Avahi.EntryGroupService? record = null;
 
 		/**
+		 * Lowest TCP port that may be published.
+		 *
+		 * The default retains the unprivileged-port validation. A service
+		 * that intentionally binds a system port may lower this value.
+		 */
+		public uint16 min_port { get; set; default = 1024; }
+
+		/**
 		 * Avahi failed after {@link start} had already returned.
 		 *
 		 * The dialog toasts. {@link start} itself returns false
@@ -55,8 +63,8 @@ namespace OLLMrpc.Transport
 		/**
 		 * Publish ''addresses'' on ''_rpc._tcp'' at ''port''.
 		 *
-		 * Returns false when the list is empty, the port is
-		 * outside 1024–65535, or Avahi rejects the records now.
+		 * Returns false when the list is empty, the port is below
+		 * {@link min_port}, or Avahi rejects the records now.
 		 * A later failure emits {@link failed}.
 		 *
 		 * @param addresses Listen-choice IPv4 addresses
@@ -66,7 +74,7 @@ namespace OLLMrpc.Transport
 		public bool start(string[] addresses, uint16 port)
 		{
 			this.stop();
-			if (addresses.length == 0 || port < 1024) {
+			if (addresses.length == 0 || port < this.min_port) {
 				this.failed();
 				return false;
 			}

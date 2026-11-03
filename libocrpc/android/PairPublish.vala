@@ -26,6 +26,11 @@ namespace OLLMrpc.Transport
 	public class PairPublish : GLib.Object
 	{
 		/**
+		 * Matches the desktop API. Publishing is unavailable on Android.
+		 */
+		public uint16 min_port { get; set; default = 1024; }
+
+		/**
 		 * Unused on Android. The desktop class emits this
 		 * when Avahi fails after {@link start} returns.
 		 */
@@ -40,7 +45,7 @@ namespace OLLMrpc.Transport
 		 */
 		public bool start(string[] addresses, uint16 port)
 		{
-			if (addresses.length == 0 || port < 1024) {
+			if (addresses.length == 0 || port < this.min_port) {
 				return false;
 			}
 			return false;
