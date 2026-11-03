@@ -56,13 +56,27 @@ namespace OLLMrpc
 
 		/**
 		 * Process repository. 2.0 holds the full reference from
-		 * {@link GI.Repository.dup_default}.
+		 * {@link GI.Repository.dup_default}. Null until
+		 * {@link repository}. Vala 0.56 runs a static construct
+		 * only from class_init, and the static methods do not
+		 * class-ref this type.
 		 */
-		internal static GI.Repository repository;
+		internal static GI.Repository? repo;
 
-		static construct
+		/**
+		 * Repository for this process, creating it on first use.
+		 *
+		 * @return the process {@link GI.Repository}
+		 */
+		internal static GI.Repository repository()
 		{
-			Gi.repository = GI.Repository.dup_default();
+			var repo = Gi.repo;
+			if (repo != null) {
+				return repo;
+			}
+			repo = GI.Repository.dup_default();
+			Gi.repo = repo;
+			return repo;
 		}
 
 		/**
@@ -183,10 +197,10 @@ namespace OLLMrpc
 			if (!namespaces.contains(ns)) {
 				namespaces.add(ns);
 			}
-			Gi.repository.require(ns, version, 0);
-			var n = Gi.repository.get_n_infos(ns);
+			Gi.repository().require(ns, version, 0);
+			var n = Gi.repository().get_n_infos(ns);
 			for (var i = 0; i < n; i++) {
-				var info = Gi.repository.get_info(ns, i);
+				var info = Gi.repository().get_info(ns, i);
 				if (!(info is GI.ObjectInfo) && !(info is GI.InterfaceInfo)) {
 					continue;
 				}
@@ -218,7 +232,7 @@ namespace OLLMrpc
 		 */
 		public static bool in_typelib(GLib.Type gtype)
 		{
-			return Gi.repository.find_by_gtype(gtype) != null;
+			return Gi.repository().find_by_gtype(gtype) != null;
 		}
 
 		/**
@@ -253,7 +267,7 @@ namespace OLLMrpc
 			if (by_name.has_key(vfunc_name)) {
 				return by_name.get(vfunc_name);
 			}
-			var info = Gi.repository.find_by_name(ns, class_name);
+			var info = Gi.repository().find_by_name(ns, class_name);
 			if (info == null || !(info is GI.ObjectInfo)) {
 				GLib.error("Gi.vfunc_offset: no object %s.%s", ns, class_name);
 			}
@@ -305,7 +319,7 @@ namespace OLLMrpc
 		 */
 		public static string[] vfunc_names(string ns, string class_name)
 		{
-			var info = Gi.repository.find_by_name(ns, class_name);
+			var info = Gi.repository().find_by_name(ns, class_name);
 			if (info == null || !(info is GI.ObjectInfo)) {
 				GLib.error("Gi.vfunc_names: no object %s.%s", ns, class_name);
 			}
@@ -341,7 +355,7 @@ namespace OLLMrpc
 			var method_name = this.request.method.substring(dot + 1);
 			GI.FunctionInfo fn;
 			if (types.has_key(object_name)) {
-				var info = Gi.repository.find_by_gtype(
+				var info = Gi.repository().find_by_gtype(
 					types.get(object_name));
 				if (info is GI.InterfaceInfo) {
 					fn = ((GI.InterfaceInfo) info).find_method(method_name);
@@ -365,7 +379,7 @@ namespace OLLMrpc
 				if (!namespaces.contains(object_name)) {
 					return false;
 				}
-				var info = Gi.repository.find_by_name(
+				var info = Gi.repository().find_by_name(
 					object_name, method_name);
 				if (info == null || !(info is GI.FunctionInfo)) {
 					this.request.connection.reply_error(

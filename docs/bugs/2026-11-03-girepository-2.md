@@ -28,7 +28,7 @@
 - ✔️ Vala 0.56.18 `vapigen` on that typelib:
   - `g-ir-generate` writes `<repository version="1.0">`. vapigen: `unsupported GIR version 1.0`.
   - Rewriting the version to `1.2` still fails: `<type name="any"/>` is parsed as `G.DataStreamNewlineType.ANY`.
-- ℹ️ Call sites of `GI.Repository.get_default()`:
+- ℹ️ Those call sites use `Gi.repository()`. On 1.0 that returns `GI.Repository.get_default()`. On 2.0 it returns `Gi.repo`.
   - `libocrpc/Gi.vala` — `require`, `get_n_infos`, `get_info`, `find_by_gtype`, `find_by_name`
   - `libocrpc/GiMock.vala` — `find_by_gtype`, `find_by_name`
   - `libocrpc/Live/namespace.vala` — `find_by_gtype`
@@ -63,7 +63,7 @@
 - 🔷 `Live/namespace.vala` stays one file. `boxed_ok` is the only `#if GIREPOSITORY_2`. Meson passes `--define=GIREPOSITORY_2` when `girepository-2.0` is found. No `namespace2.vala`.
 - 💩 Commit `vapi/girepository-2.0.vapi` from the recipe below. Meson does not run `vapigen`. 25.04 has no `GIRepository-3.0.typelib`.
 - 💩 Probe `girepository-2.0` first (`required: false`). Found: that dep and `--pkg=girepository-2.0`. Missing: today's `gobject-introspection-1.0`. A 2.0-only image never looks up the 1.0 pc file.
-- 💩 `Gi.repository` in `Gi2.vala` only. It stores one `dup_default()`. Call sites in that file use `Gi.repository`.
+- 💩 `Gi.repo` in `Gi2.vala` stores one `dup_default()`. Call sites use `Gi.repository()`, which fills `Gi.repo` on first use. `docs/bugs/2026-11-03-gi2-repository-null.md`.
 - 💩 The invoke extern in `Gi2.vala` uses cname `gi_function_info_invoke`. Do not call `CallableInfo.invoke`.
 - 💩 Metadata keeps `ArgInfo.get_type()` and `FieldInfo.get_type()` as the `TypeInfo` fetch. `arg.get_type().get_tag()` stays. `BaseInfo.get_type()` returning `GI.InfoType` is what the copy changes.
 - 🔷 `tests/meson.build` and `docs/meson.build` use the same dependency and the same `--pkg`. They do not add a second girepository.

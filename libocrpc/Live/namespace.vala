@@ -43,11 +43,7 @@ namespace OLLMrpc.Live
 		if (boxed_valid.has_key(gtype)) {
 			return;
 		}
-#if GIREPOSITORY_2
-		var gi = Gi.repository.find_by_gtype(gtype);
-#else
-		var gi = GI.Repository.get_default().find_by_gtype(gtype);
-#endif
+		var gi = Gi.repository().find_by_gtype(gtype);
 		if (gi == null) {
 			GLib.error("boxed type '%s' has no GI info", gtype.name());
 		}

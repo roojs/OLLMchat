@@ -77,7 +77,7 @@ namespace OLLMrpc
 			var method_name = this.request.method.substring(dot + 1);
 			GI.FunctionInfo fn;
 			if (Gi.types.has_key(object_name)) {
-				var info = Gi.repository.find_by_gtype(
+				var info = Gi.repository().find_by_gtype(
 					Gi.types.get(object_name));
 				if (info is GI.InterfaceInfo) {
 					fn = ((GI.InterfaceInfo) info).find_method(method_name);
@@ -101,7 +101,7 @@ namespace OLLMrpc
 				if (!Gi.namespaces.contains(object_name)) {
 					return false;
 				}
-				var info = Gi.repository.find_by_name(
+				var info = Gi.repository().find_by_name(
 					object_name, method_name);
 				if (info == null || !(info is GI.FunctionInfo)) {
 					this.request.connection.reply_error(

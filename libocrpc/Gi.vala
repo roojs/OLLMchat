@@ -55,6 +55,18 @@ namespace OLLMrpc
 		public static Gee.ArrayList<string> namespaces;
 
 		/**
+		 * Repository for this process.
+		 *
+		 * 1.0 returns the process default. Same call as the 2.0 copy.
+		 *
+		 * @return the process {@link GI.Repository}
+		 */
+		internal static unowned GI.Repository repository()
+		{
+			return GI.Repository.get_default();
+		}
+
+		/**
 		 * Vfunc offsets by name: ns → class → vfunc name → byte
 		 * offset. Real keys at every level — no composite strings.
 		 */
@@ -172,10 +184,10 @@ namespace OLLMrpc
 			if (!namespaces.contains(ns)) {
 				namespaces.add(ns);
 			}
-			GI.Repository.get_default().require(ns, version, 0);
-			var n = GI.Repository.get_default().get_n_infos(ns);
+			Gi.repository().require(ns, version, 0);
+			var n = Gi.repository().get_n_infos(ns);
 			for (var i = 0; i < n; i++) {
-				var info = GI.Repository.get_default().get_info(ns, i);
+				var info = Gi.repository().get_info(ns, i);
 				if (info.get_type() != GI.InfoType.OBJECT
 					&& info.get_type() != GI.InfoType.INTERFACE) {
 					continue;
@@ -208,7 +220,7 @@ namespace OLLMrpc
 		 */
 		public static bool in_typelib(GLib.Type gtype)
 		{
-			return GI.Repository.get_default().find_by_gtype(gtype) != null;
+			return Gi.repository().find_by_gtype(gtype) != null;
 		}
 
 		/**
@@ -243,7 +255,7 @@ namespace OLLMrpc
 			if (by_name.has_key(vfunc_name)) {
 				return by_name.get(vfunc_name);
 			}
-			var info = GI.Repository.get_default().find_by_name(ns, class_name);
+			var info = Gi.repository().find_by_name(ns, class_name);
 			if (info == null || info.get_type() != GI.InfoType.OBJECT) {
 				GLib.error("Gi.vfunc_offset: no object %s.%s", ns, class_name);
 			}
@@ -295,7 +307,7 @@ namespace OLLMrpc
 		 */
 		public static string[] vfunc_names(string ns, string class_name)
 		{
-			var info = GI.Repository.get_default().find_by_name(ns, class_name);
+			var info = Gi.repository().find_by_name(ns, class_name);
 			if (info == null || info.get_type() != GI.InfoType.OBJECT) {
 				GLib.error("Gi.vfunc_names: no object %s.%s", ns, class_name);
 			}
@@ -331,7 +343,7 @@ namespace OLLMrpc
 			var method_name = this.request.method.substring(dot + 1);
 			GI.FunctionInfo fn;
 			if (types.has_key(object_name)) {
-				var info = GI.Repository.get_default().find_by_gtype(
+				var info = Gi.repository().find_by_gtype(
 					types.get(object_name));
 				if (info.get_type() == GI.InfoType.INTERFACE) {
 					fn = ((GI.InterfaceInfo) info).find_method(method_name);
@@ -355,7 +367,7 @@ namespace OLLMrpc
 				if (!namespaces.contains(object_name)) {
 					return false;
 				}
-				var info = GI.Repository.get_default().find_by_name(
+				var info = Gi.repository().find_by_name(
 					object_name, method_name);
 				if (info == null || info.get_type() != GI.InfoType.FUNCTION) {
 					this.request.connection.reply_error(
