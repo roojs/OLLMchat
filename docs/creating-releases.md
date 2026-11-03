@@ -30,7 +30,7 @@ housekeeping.
 
 CI then:
 
-1. Builds **Debian** packages on Ubuntu 25.04 using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev`: split runtime/`-dev` libraries plus `ollmchat`, then a second **ollmchat-remote-only** all-in-one `.deb`.
+1. Builds **Debian** packages on Ubuntu 26.04 using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev` and GIRepository 2.0: split runtime/`-dev` libraries plus `ollmchat`, then a second **ollmchat-remote-only** all-in-one `.deb`.
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
 3. Builds Linux AppImages with sqgipkg (Ubuntu 25.04; FAISS is built from source for those bundles).
 4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**.

@@ -9,7 +9,25 @@ for git tags (`v1.4.0`, etc.).
 Debian and RPM packaging notes are generated from this file at release time
 (see [Creating releases](docs/creating-releases.md)).
 
-## [1.4.2] - Unreleased
+## [1.4.3] - Unreleased
+
+Work since **1.4.2** (2026-11-03).
+
+### Changed
+
+#### Packaging
+
+- Debian release packages are built on Ubuntu 26.04 with GIRepository 2.0
+- GIRepository 2.0 requires version 2.86 or newer; older distributions keep the GIRepository 1.0 implementation
+
+### Fixed
+
+#### Packaging
+
+- Native builds map all four `libocsqlite` outputs to their correct install destinations
+- Monolithic Debian and RPM packages include the installed `ocsqlite.h`
+
+## [1.4.2] - 2026-11-03
 
 Work since **1.4.1** (2026-11-02).
 

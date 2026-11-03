@@ -76,7 +76,7 @@ endif
 
 # 2.0 when that pc exists. 1.0 otherwise. Windows and Android do not
 # link either library; the 1.0 lookup is optional there.
-girepository_2 = dependency('girepository-2.0', required: false)
+girepository_2 = dependency('girepository-2.0', version: '>=2.86', required: false)
 if girepository_2.found()
   girepository_dep = girepository_2
   girepository_vapi = '--pkg=girepository-2.0'
