@@ -607,6 +607,7 @@ rm -rf %{buildroot}%{_datadir}/doc/ollmchat
 %files -n libocsqlite-devel
 %{_datadir}/vala/vapi/ocsqlite.vapi
 %{_datadir}/gir-1.0/OCSqlite-1.0.gir
+%{_includedir}/ocsqlite.h
 
 %files -n libocrpc
 %{_libdir}/libocrpc.so

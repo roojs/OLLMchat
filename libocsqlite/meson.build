@@ -42,6 +42,7 @@ if is_android_cross
     vala_args: ['--pkg=sqlite3'],
     build_rpath: lib_build_rpath,
     install: true,
+    install_dir: [true, true, false],
   )
 else
   ocsqlite_base_lib = library('ocsqlite',
@@ -53,6 +54,7 @@ else
     vala_args: ['--pkg=sqlite3'],
     build_rpath: lib_build_rpath,
     install: true,
+    install_dir: [true, true, false],
   )
 endif
 
