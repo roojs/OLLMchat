@@ -9,7 +9,37 @@ for git tags (`v1.4.0`, etc.).
 Debian and RPM packaging notes are generated from this file at release time
 (see [Creating releases](docs/creating-releases.md)).
 
-## [1.4.1] - Unreleased
+## [1.4.2] - Unreleased
+
+Work since **1.4.1** (2026-11-02).
+
+### Added
+
+#### libocrpc
+
+- Newer distributions can use GIRepository 2.0 while older distributions keep the GIRepository 1.0 implementation
+
+### Changed
+
+#### Chat
+
+- User-message quotes use the normal UI font and wrap long text
+
+### Fixed
+
+#### Packaging
+
+- The Debian `libocsqlite-dev` and RPM `libocsqlite-devel` packages include `ocsqlite.h`
+
+#### libocrpc
+
+- GIRepository 2.0 is initialized on first use, avoiding a null repository when static methods run before class initialization
+
+#### Android
+
+- The model dropdown stays open on tablets
+
+## [1.4.1] - 2026-11-02
 
 Work since **1.4.0** (2026-10-02). The phone pairs with a desktop and uses that machine's file daemon. Agent Π opens the desktop's projects, reads and writes files there, and runs `bash` on `ollmfilesd`.
 
