@@ -13,6 +13,7 @@ Canonical Vala style and patterns for this project and related codebases. Writte
 | **New methods** — `private`, `protected`, `internal`, or `public`; including `ensure_*`, `handle_*`, `build_*`, `merge_*`, wrappers, and “helpers” | Inline a few lines in the **existing** method the task already touches |
 | **New named constants** — `private const`, `public const`, `#define`-style magic names | Use the literal at the use site, or an existing constant already in the file |
 | **New fields** whose only job is to support a helper, throttle debug, or hold one-off refactor state | Use locals already in scope; extend an existing field only if the user or plan asks |
+| **Step-by-step JSON** — `Json.Parser`, `get_object()`, `get_array_member()`, `get_string_member()`, `get_object_element()`, or the same walk on `Json.Object` / `Json.Array` | `Json.Serializable` via `Json.gobject_from_data` or `Json.gobject_deserialize`. See `json-member-walking` |
 
 **Approval means:** the **user said so in chat**, or a **written plan** names the method/constant/field. Inferring approval from the task shape (“this needs waiting logic”) is **not** approval to extract a helper.
 
@@ -952,6 +953,14 @@ public class SerializableData : GLib.Object
     public List<string> items { get; set; default = new List<string>(); }
 }
 ```
+
+## JSON member walking <!-- section: json-member-walking -->
+
+**FORBIDDEN:** Do not walk a JSON document member by member unless the user has approved that read. This includes `Json.Parser`, then `get_root()`, `get_object()`, `get_array()`, `get_array_member()`, `get_string_member()`, `get_object_element()`, and the same calls on `Json.Object` or `Json.Array`.
+
+**Instead:** Declare the record as `Json.Serializable` and fill it with `Json.gobject_from_data` or `Json.gobject_deserialize`. Unknown members are skipped. A list of objects that json-glib cannot fill is read inside `deserialize_property`, and each element is `Json.gobject_deserialize`. Do not add a serialize path when the program only reads the document.
+
+Existing agent code that already walks a top-level array is not a pattern to copy.
 
 ## Avoiding Nullable Types <!-- section: avoiding-nullable-types -->
 

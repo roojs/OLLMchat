@@ -66,6 +66,7 @@ Answer each question for your task. **Yes** → add the section slug(s).
 | Call `query_info`, `query_exists`, or other file metadata? | `file-info-try-catch` |
 | Add or change `try` / `catch` blocks? | `try-catch-scope` |
 | Add or change GObject / `Json.Serializable` properties? | `property-initialization`, `serializable-classes` |
+| Read JSON (`Json.Parser`, `get_string_member`, `get_array_member`, `get_object`)? | `json-member-walking`, `serializable-classes` |
 | Use nullable types (`Type?`) or `if (x == null)`? | `avoiding-nullable-types`, `defensive-code-null-checks` |
 | Add `GLib.debug`, `GLib.warning`, or change logging? | `debug-warning-statements` |
 | Use `Gee.HashMap` with `[]` accessors? | `gee-hashmap-access` |
@@ -110,6 +111,7 @@ is authoritative. Hints below are for humans only.
 | `property-initialization` | 643 |
 | `gobject-construct-blocks` | 703 |
 | `serializable-classes` | 730 |
+| `json-member-walking` | 956 |
 | `avoiding-nullable-types` | 730 |
 | `defensive-code-null-checks` | 776 |
 | `line-length-breaking` | 859 |
