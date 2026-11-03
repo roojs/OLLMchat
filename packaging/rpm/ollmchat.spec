@@ -743,6 +743,7 @@ rm -rf %{buildroot}%{_datadir}/doc/ollmchat
 %{_libdir}/girepository-1.0/OLL*.typelib
 %{_datadir}/vala/vapi/oc*.vapi
 %{_datadir}/vala/vapi/oll*.vapi
+%{_includedir}/ocsqlite.h
 %{_includedir}/ocrpc.h
 %endif
 
