@@ -1,6 +1,6 @@
 # File list aborts on folder load
 
-**Status:** ⏳ root cause confirmed; fix applied — await device check
+**Status:** ✅ 2026-11-03. Opening a folder no longer aborts on the column-view row cast.
 
 ## Problem
 
@@ -114,4 +114,4 @@
 
 ## Next
 
-- ⏳ Reopen a folder in the file grid. The process should stay up, and the open file should still show `selector-mark`.
+- ✅ 2026-11-03 — user confirmed this is done.

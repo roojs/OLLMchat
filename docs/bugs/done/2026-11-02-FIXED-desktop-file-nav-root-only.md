@@ -1,6 +1,6 @@
 # Desktop file nav shows only the project folder
 
-**Status:** ⏳ every folder opens after the fetch — test depth 7, installed app not updated
+**Status:** ✅ 2026-11-03. Child folders open after the fetch.
 
 ## Problem
 
@@ -175,5 +175,4 @@ children exist. The child model cached then is one level deep.
 
 ## Next
 
-- 🔷 ⏳ Install `liboccoder` and restart `/usr/bin/ollmchat`.
-  The process that is open still has the 10:00 library.
+- ✅ 2026-11-03 — user confirmed the folder tree lists the children.

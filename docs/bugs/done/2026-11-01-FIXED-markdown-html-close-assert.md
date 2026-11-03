@@ -1,6 +1,6 @@
 # Markdown parser aborts on an empty HTML element
 
-**Status:** ✔️ parser change applied. Host markdown tests pass. Tablet open is still ⏳.
+**Status:** ✅ 2026-11-03. Opening a markdown file stays up. HTML elements in the file do not abort the process.
 
 ## Problem
 
@@ -107,4 +107,4 @@ Return true only when the tail is an unfinished tag. `html_in` is the string pas
 
 ## Next
 
-- 💩 ⏳ Open `README.md` from the tablet file sheet and confirm the process stays up.
+- ✅ 2026-11-03 — user confirmed markdown files open and stay open.

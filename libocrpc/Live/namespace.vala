@@ -17,6 +17,7 @@
  * Unix builds compile {@link Remote}, {@link Subscribe}, {@link Buffer}, etc.
  * from separate ''Live/'' sources. Windows and Android compile
  * ''Live/namespace.windows.vala'' instead (meson, not ''#if'').
+ * {@link boxed_ok} is the one ''#if GIREPOSITORY_2'' split.
  *
  * {@link Buffer} — Unix: {@link Buffer}; Windows: shell in that file.
  */
@@ -42,11 +43,19 @@ namespace OLLMrpc.Live
 		if (boxed_valid.has_key(gtype)) {
 			return;
 		}
+#if GIREPOSITORY_2
+		var gi = Gi.repository.find_by_gtype(gtype);
+#else
 		var gi = GI.Repository.get_default().find_by_gtype(gtype);
+#endif
 		if (gi == null) {
 			GLib.error("boxed type '%s' has no GI info", gtype.name());
 		}
+#if GIREPOSITORY_2
+		if (gi is GI.StructInfo) {
+#else
 		if (gi.get_type() == GI.InfoType.STRUCT || gi.get_type() == GI.InfoType.BOXED) {
+#endif
 			var si = (GI.StructInfo) gi;
 			if (!si.is_gtype_struct() && si.get_size() > 0) {
 				for (var fi = 0; fi < si.get_n_fields(); fi++) {
@@ -57,7 +66,11 @@ namespace OLLMrpc.Live
 				}
 			}
 		}
+#if GIREPOSITORY_2
+		if (gi is GI.UnionInfo) {
+#else
 		if (gi.get_type() == GI.InfoType.UNION) {
+#endif
 			var ui = (GI.UnionInfo) gi;
 			if (ui.get_size() > 0) {
 				for (var fi = 0; fi < ui.get_n_fields(); fi++) {

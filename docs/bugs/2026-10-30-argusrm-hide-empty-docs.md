@@ -1,6 +1,6 @@
 # Hide empty drops docs on argusrm
 
-**Status:** ⏳ root cause is the folder counts staying at 0 after the scan — fix not applied
+**Status:** ⏳ user believes the symptom is gone (2026-11-03). The `read_dir` count write from this note is still not in `ollmfilesd/Folder.vala`.
 
 ## Problem
 
@@ -72,4 +72,4 @@
 
 ## Next
 
-- 💩 ⏳ Apply the fence, then on the phone open `argusrm` with hide empty on. `docs` stays next to `README.txt`.
+- 💩 ⏳ The count fence is still not applied. If `docs` is showing, say so and this can close. Otherwise apply the fence, then on the phone open `argusrm` with hide empty on. `docs` stays next to `README.txt`.

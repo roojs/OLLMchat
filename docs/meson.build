@@ -28,6 +28,14 @@ valadoc_runner = find_program(
 # so we need to manually clean the directory before building to avoid "file already exists" errors.
 # This clean step should NOT be removed - meson's automatic cleaning doesn't handle this case.
 valadoc_dir = meson.project_build_root() / 'valadoc'
+valadoc_gi = '../libocrpc/Gi.vala'
+valadoc_gimock = '../libocrpc/GiMock.vala'
+gi_valadoc_args = [girepository_vapi]
+if girepository_2.found()
+  valadoc_gi = '../libocrpc/Gi2.vala'
+  valadoc_gimock = '../libocrpc/GiMock2.vala'
+  gi_valadoc_args += '--define=GIREPOSITORY_2'
+endif
 valadoc_clean = custom_target('valadoc-clean',
   output: 'valadoc-clean',
   command: [
@@ -61,8 +69,8 @@ valadoc_docs = custom_target('valadoc',
     '../libocrpc/Bin/Stream.vala',
     '../libocrpc/Bin/StreamValue.vala',
     '../libocrpc/Bin/Json.vala',
-    '../libocrpc/Gi.vala',
-    '../libocrpc/GiMock.vala',
+    valadoc_gi,
+    valadoc_gimock,
     '../libocrpc/Ffi.vala',
     '../libocrpc/Daemon.vala',
     '../libocrpc/Error.vala',
@@ -472,7 +480,7 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=gee-0.8',
     '--pkg=gio-2.0',
     '--pkg=gio-unix-2.0',  # Required for UnixInputStream in Bubble.vala
-    '--pkg=gobject-introspection-1.0',
+  ] + gi_valadoc_args + [
     '--pkg=glib-2.0',
     '--pkg=gobject-2.0',
     '--pkg=json-glib-1.0',

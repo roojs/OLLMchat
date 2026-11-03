@@ -1,6 +1,6 @@
 # One TLS request is copied instead of living in libocrpc
 
-**Status:** ✔️ `OLLMrpc.Transport.TlsClient` is in `libocrpc`. `FilesdClient.try_connection` and the Android address probe use it. ⏳ Argus `fetch`, `Identity.run`, and `Register.try_connection` still use their loops until the installed `ocrpc` exports this type.
+**Status:** ✅ 2026-11-03. `OLLMrpc.Transport.TlsClient` is in `libocrpc`. `FilesdClient.try_connection` and the Android address probe use it.
 
 ## Problem
 
@@ -587,5 +587,5 @@ No client certificate yet. The reply is still stored as `client.pem`, the CA, `d
 
 ## Next
 
-- 💩 `⏳` Confirm `Transport.TlsClient`, `open`, `accept_any`, and the class body before editing libocrpc.
-- ℹ️ Argus applies the three caller replacements after that export is installed. `FilesdClient` and the Android probe keep their loops until the same export.
+- ✅ 2026-11-03 — user confirmed this is done.
+- ℹ️ Argus `fetch`, `Identity.run`, and `Register.try_connection` were waiting on the installed `ocrpc` export. That follow-up stays in the Argus tree.

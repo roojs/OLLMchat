@@ -1,6 +1,6 @@
 # Pman.Admin file list is empty after Web Media Outreach
 
-**Status:** ✔️ daemon reply checked. UI not opened.
+**Status:** ✅ 2026-11-03. Opening Web Media Outreach no longer leaves the Pman.Admin file list empty.
 
 ## Problem
 

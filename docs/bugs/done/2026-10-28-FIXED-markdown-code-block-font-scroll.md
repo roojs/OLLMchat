@@ -1,6 +1,6 @@
 # Markdown code blocks: proportional font, no horizontal scroll
 
-**Status:** ⏳ fix applied — desktop check below; Android font still needs a device look
+**Status:** ✅ 2026-11-03. Fenced blocks use a fixed face and scroll sideways. Preview fences are 9pt.
 
 ## Problem
 
@@ -130,5 +130,4 @@ if (natural_height <= 0 || target_height >= max_height) {
 
 ## Next
 
-- ⏳ User checks a fenced block in the Android file preview: fixed face, long line scrolls inside the box.
-- ⏳ User checks the desktop file preview: fence text is about two points smaller than chat.
+- ✅ 2026-11-03 — user confirmed this is done.

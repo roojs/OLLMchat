@@ -62,7 +62,7 @@ namespace OLLMchat.History
 						if (last_msg != null && last_msg.role == "user-sent"
 							&& (msg.role != "ui" || !msg.content.contains("oc-frame-user You said:"))) {
 							this.messages.add(new Message("ui",
-								Message.fenced("text.oc-frame-primary.oc-frame-user You said:", last_msg.content)));
+								Message.fenced("raw.oc-frame-primary.oc-frame-user You said:", last_msg.content)));
 						}
 						this.messages.add(msg);
 						if (!this.can_replay && msg.role == "agent-stage") {

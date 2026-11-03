@@ -98,6 +98,9 @@ namespace MarkdownGtk
 			string[] frame_theme_classes = lang_parts.length > 1 ?
 				 lang_parts[1:lang_parts.length] : new string[0];
 			var is_user_frame = "oc-frame-user" in frame_theme_classes;
+			if (is_user_frame && this.code_language == "text") {
+				this.code_language = "raw";
+			}
 			var has_collapsed_style = "collapsed" in frame_theme_classes;
 			this.collapse_on_done = "collapsed-on-done" in frame_theme_classes;
 			// Title: use description when present; for oc-frame blocks without description use fallback (never show raw "text.oc-frame-...")
@@ -417,6 +420,12 @@ namespace MarkdownGtk
 				propagate_natural_width = false
 			};
 			this.source_scrolled.set_child(this.source_view);
+			if (this.code_language == "raw") {
+				this.source_view.wrap_mode = Gtk.WrapMode.WORD;
+				this.source_view.remove_css_class("code-editor");
+				this.source_view.add_css_class("oc-raw");
+				this.source_scrolled.hscrollbar_policy = Gtk.PolicyType.NEVER;
+			}
 			this.stack.add_named(this.source_scrolled, "source");
 
 			this.source_view.hexpand = true;

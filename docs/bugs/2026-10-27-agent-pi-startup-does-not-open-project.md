@@ -1,6 +1,6 @@
 # Agent Pi startup does not open the project filesystem
 
-**Status:** ⏳ open — reported; reproduction and root cause pending
+**Status:** ⏳ still a problem (2026-11-03). Reproduction and root cause pending.
 
 ## Problem
 

@@ -221,6 +221,11 @@ namespace OLLMchatGtk
 			if (popup != null) {
 				popup.set_offset(0, 10);
 				popup.show.connect(() => {
+#if ANDROID
+					// Android maps the surface after present. Raising the
+					// minimum fails the popover size check, so the menu closes.
+					return;
+#endif
 					var root = this.get_root();
 					if (root == null) {
 						return;

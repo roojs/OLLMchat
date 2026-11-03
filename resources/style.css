@@ -140,6 +140,12 @@ separator.horizontal.oc-table-body-sep {
   background-color: white;
 }
 
+/* User quote. UI face, not the code face. */
+.oc-raw {
+  padding: 4px;
+  background-color: white;
+}
+
 /* File preview fences only. Theme size is 11pt; chat stays there. */
 .markdown-preview .code-editor {
   font-size: 9pt;

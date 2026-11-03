@@ -1,6 +1,6 @@
 # Android phone — remote desktop row, Agent Pi, file load
 
-**Status:** ⏳ open — phone SM-S9380. ✅ on a heading is confirmed on the phone 2026-09-28. ✔️ is in the tree, not confirmed yet. Problems 3, 7, and 8 are still open. Problem 4 is in the tree.
+**Status:** 🚫 CLOSED 2026-11-03. Parked. Mostly done. Not in the current queue. Problems 3, 7, and 8 were still open when this was parked. Problem 4 was in the tree.
 
 **Logs:** Phone SM-S9380, `chat.androidpoc`, 2026-09-28 09:50–09:53. The buffer starts mid pid 24460. Pids 32608 and 32754 are full starts.
 
@@ -8,7 +8,7 @@
 
 **Related:**
 
-- **ℹ️** Earlier phone list: [`2026-09-27-android-phone-issues.md`](2026-09-27-android-phone-issues.md). Expanders and `session_fetch` stay there.
+- **ℹ️** Earlier phone list: [`2026-09-27-CLOSED-android-phone-issues.md`](2026-09-27-CLOSED-android-phone-issues.md). Expanders and `session_fetch` stay there.
 
 ---
 

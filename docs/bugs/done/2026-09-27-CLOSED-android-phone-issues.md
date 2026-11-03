@@ -1,6 +1,6 @@
 # Android phone — chrome, settings rows, session_fetch crash
 
-**Status:** ⏳ open — phone SM-S9380, wireless debugging
+**Status:** 🚫 CLOSED 2026-11-03. Parked. Mostly done. Not in the current queue.
 
 **Package:** `org.roojs.ollmchat.androidpoc` (APK `lastUpdateTime=2026-09-27 12:48:42`)
 
@@ -61,7 +61,7 @@
 ### Fix
 
 - **✔️** Both buttons set `list-add-symbolic` and a shorter label.
-- **🔷** 2026-09-28: the plus is not on the phone. The label is. Follow-up is [`2026-09-28-android-remote-desktop.md`](2026-09-28-android-remote-desktop.md).
+- **🔷** 2026-09-28: the plus is not on the phone. The label is. Follow-up is [`2026-09-28-CLOSED-android-remote-desktop.md`](2026-09-28-CLOSED-android-remote-desktop.md).
 
 ---
 

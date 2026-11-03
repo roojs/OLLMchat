@@ -1,6 +1,6 @@
 # Phone editor shows FileConnectionAdd.vala empty
 
-**Status:** ⏳ fix is on the phone (pid 25075, installed 08:52). Editor not checked. Pairing data was wiped with the reinstall.
+**Status:** ✅ 2026-11-03. The empty editor cannot be reproduced.
 
 The open file is `examples/oc-test-source-diff/FileConnectionAdd.vala`. The phone has it open. The read returned the text. The editor on screen stayed empty.
 
@@ -61,4 +61,4 @@ The open file is `examples/oc-test-source-diff/FileConnectionAdd.vala`. The phon
 
 ## Next
 
-- 💩 ⏳ Pair the phone to the desktop again, then open `examples/oc-test-source-diff/FileConnectionAdd.vala`. The editor shows the `FileConnectionAdd` class.
+- ✅ 2026-11-03 — user confirmed this cannot be reproduced. The editor is no longer empty.

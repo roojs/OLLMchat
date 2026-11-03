@@ -1,6 +1,6 @@
 # Phone Agent Pi prompt keeps skill and summary placeholders
 
-**Status:** ⏳ open. The bundled skill pack is in the phone binary. Literal `{skills_md}` / `{conversation_summary}` in the sent prompt is still unexplained.
+**Status:** ✅ 2026-11-03. Skills on the tablet work.
 
 ## Problem
 
@@ -96,4 +96,4 @@ if (!this.history_manager.tools.has_key("bash")) {
 ## Next
 
 - ✔️ Rebuilt and installed the debug APK on `emulator-5556`. Startup reached `initialize_model ok model=deepseek-r1:1.5b`, `agent list store n=3` with `agent-pi` first, and the process stayed up. No `required tool missing` abort.
-- ⏳ 💩 Send one Agent Pi turn on the tablet (the chat field does not take `adb` text). Record the `filled skills` line (`skills_token`, `catalog`, `from_file`).
+- ✅ 2026-11-03 — user confirmed skills on the tablet are working.

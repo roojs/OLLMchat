@@ -74,12 +74,21 @@ else
   ]
 endif
 
+# 2.0 when that pc exists. 1.0 otherwise. Windows and Android do not
+# link either library; the 1.0 lookup is optional there.
+girepository_2 = dependency('girepository-2.0', required: false)
+if girepository_2.found()
+  girepository_dep = girepository_2
+  girepository_vapi = '--pkg=girepository-2.0'
+else
+  girepository_dep = dependency('gobject-introspection-1.0', required: use_unix_sockets)
+  girepository_vapi = '--pkg=gobject-introspection-1.0'
+endif
+
 if use_unix_sockets
-  ocrpc_deps += dependency('gobject-introspection-1.0')
-  ocrpc_vapi_pkgs += '--pkg=gobject-introspection-1.0'
-  ocrpc_vapi_gen_pkgs += [
-    '--pkg', 'gobject-introspection-1.0',
-  ]
+  ocrpc_deps += girepository_dep
+  ocrpc_vapi_pkgs += girepository_vapi
+  ocrpc_vapi_gen_pkgs += ['--pkg', girepository_vapi.substring(6)]
   ocrpc_deps += dependency('avahi-gobject')
   ocrpc_vapi_pkgs += '--pkg=avahi-gobject'
   ocrpc_vapi_pkgs += '--pkg=linux'
@@ -91,6 +100,11 @@ if use_unix_sockets
   ])
   client_boot_src = files(['ClientBoot.vala'])
   gi_src = files(['Gi.vala', 'GiMock.vala'])
+  if girepository_2.found()
+    ocrpc_vapi_pkgs += '--define=GIREPOSITORY_2'
+    ocrpc_vapi_gen_pkgs += ['--define', 'GIREPOSITORY_2']
+    gi_src = files(['Gi2.vala', 'GiMock2.vala'])
+  endif
 endif
 
 if is_android

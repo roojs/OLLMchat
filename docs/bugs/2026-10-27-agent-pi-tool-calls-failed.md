@@ -1,6 +1,6 @@
 # Agent Pi bash and read calls failed
 
-**Status:** ✅ issues 2 and 3 are done. ✔️ issues 4, 5, and 6 applied — rebuild the chat app before checking them
+**Status:** ⏳ still open (2026-11-03). ✅ issues 2 and 3 are done. ✔️ issues 4, 5, and 6 applied — rebuild the chat app before checking them
 
 Agent Pi was asked to fold `FileConnectionAdd` into the source-diff test. It tried to list that folder and read the file. The commands and the path were fine. Two things in the harness stopped it.
 
