@@ -1,6 +1,7 @@
-/* Hand-maintained OO binding for libseccomp. Do not overwrite from vapigen;
- * see contrib/seccomp-gir/ for GIR regeneration reference.
- * Companion C for user-notify fd passing: seccomp-fd-pass.c + seccomp-fd-pass.h (link when using pass_unix_fd / receive_unix_fd). */
+/* Hand-maintained OO binding for libseccomp. Do not overwrite from
+ * vapigen. Companion C for user-notify fd passing:
+ * seccomp-fd-pass.c + seccomp-fd-pass.h (link when using
+ * pass_unix_fd / receive_unix_fd). */
 
 [CCode (lower_case_cprefix = "seccomp_", cheader_filename = "seccomp.h")]
 namespace Seccomp {
