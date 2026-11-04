@@ -194,6 +194,7 @@ namespace OLLMrpc.Transport
 				GLib.Source.remove(this.watch_id);
 				this.watch_id = 0;
 			}
+			this.socket.socket.blocking = true;
 			this.mutex.lock();
 			this.bin.write(request);
 			var reply_wait = GLib.get_monotonic_time() + 10 * 1000000;
@@ -241,8 +242,8 @@ namespace OLLMrpc.Transport
 		 *
 		 * A second call is ignored. {@link call} removes the
 		 * source and queues this again when {@link watching} is
-		 * set. Linux and Android use a unix channel. Windows
-		 * uses a win32 fd channel.
+		 * set. The source is a timeout. A would-block or
+		 * timed-out read keeps the source.
 		 */
 		public void watch()
 		{
@@ -251,43 +252,37 @@ namespace OLLMrpc.Transport
 			}
 			this.watching = true;
 			this.open();
-#if G_OS_WIN32
-			var channel = new GLib.IOChannel.win32_new_fd(this.fd);
-#else
-			var channel = new GLib.IOChannel.unix_new(this.fd);
-#endif
-			try {
-				channel.set_encoding(null);
-			} catch (GLib.Error e) {
-				GLib.warning("%s", e.message);
-				return;
-			}
-			channel.set_buffered(false);
-			this.watch_id = channel.add_watch(
-				GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
-				(ch, cond) => {
-					if ((cond & (GLib.IOCondition.HUP | GLib.IOCondition.ERR)) != 0) {
-						this.watch_id = 0;
-						return false;
-					}
-					this.mutex.lock();
-					try {
-						var parsed = this.bin.parse();
-						var notif = parsed as Notification;
-						if (notif != null) {
-							this.notification(notif);
-						}
-					} catch (GLib.Error e) {
-						if (e.code != GLib.IOError.WOULD_BLOCK) {
-							GLib.warning("%s", e.message);
-							this.watch_id = 0;
-							this.mutex.unlock();
-							return false;
-						}
-					}
+			this.socket.socket.blocking = false;
+			this.watch_id = GLib.Timeout.add(50, () => {
+				if (this.watch_id == 0) {
+					return false;
+				}
+				this.mutex.lock();
+				if (this.watch_id == 0) {
 					this.mutex.unlock();
-					return true;
-				});
+					return false;
+				}
+				this.socket.socket.blocking = false;
+				try {
+					var parsed = this.bin.parse();
+					var notif = parsed as Notification;
+					if (notif != null) {
+						this.notification(notif);
+					}
+				} catch (GLib.Error e) {
+					if (e.code == GLib.IOError.WOULD_BLOCK ||
+						e.code == GLib.IOError.TIMED_OUT) {
+						this.mutex.unlock();
+						return true;
+					}
+					GLib.warning("%s", e.message);
+					this.watch_id = 0;
+					this.mutex.unlock();
+					return false;
+				}
+				this.mutex.unlock();
+				return true;
+			});
 		}
 	}
 }

@@ -1,6 +1,6 @@
 # TlsClient drops notifications and has no idle read
 
-**Status:** ⏳ applied in OLLMchat; Argus Phase 2 not done
+**Status:** ✅ done — library hunks applied; later watch reports superseded the idle read
 
 **Pointer:** `docs/bug-fix-process.md`. `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala must follow `docs/coding-standards.md`.
 
@@ -309,6 +309,4 @@
 
 ## Next
 
-- 🔷 `✔️` `TlsClient` names and fences applied.
-- 💩 `⏳` Install `ocrpc` (`libocrpc.so`, `ocrpc.h`, `ocrpc.vapi`) to `/usr`.
-- ℹ️ Argus then applies [2.4-listen.md](/home/alan/gitlive/argusrm/docs/plans/2.4-listen.md) Phase 2 only.
+- ✅ Done. Follow-ons: `docs/bugs/done/2026-11-04-FIXED-tlsclient-watch-raw-fd.md`, `docs/bugs/done/2026-11-04-FIXED-tlsclient-watch-timeout.md`.
