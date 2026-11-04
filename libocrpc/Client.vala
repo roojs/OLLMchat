@@ -436,7 +436,8 @@ namespace OLLMrpc
 			this.input = new GLib.DataInputStream(bin_in);
 			this.output = new GLib.DataOutputStream(bin_out);
 			this.bin = new Bin.Stream(this.input, this.output) {
-				client = this
+				client = this,
+				live_handles = this.live_handles
 			};
 			if (this.live_handles && !this.socket_path.has_prefix("tcp://")) {
 				this.buffer_stream = new Live.BufferStream();

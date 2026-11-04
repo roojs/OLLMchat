@@ -248,8 +248,13 @@ namespace OLLMrpc.Bin
 			}
 			if (val.type().is_a(typeof(Gee.ArrayList))) {
 				var list = (Gee.ArrayList<GLib.Object>) val.get_object();
-				ctx.write_gtype(list.get(0).get_type(),
-					(uint8) GLib.Type.OBJECT | 0x80);
+				if (list.size == 0) {
+					ctx.out_stream.put_byte((uint8) GLib.Type.OBJECT | 0x80);
+					ctx.out_stream.put_byte(0);
+					return;
+				}
+				ctx.write_reg_gtype(list.get(0).get_type());
+				ctx.out_stream.put_byte((uint8) GLib.Type.OBJECT | 0x80);
 				if (list.size < 128) {
 					ctx.out_stream.put_byte((uint8) list.size);
 				} else {
@@ -257,8 +262,18 @@ namespace OLLMrpc.Bin
 						(uint8) (0x80 | ((list.size >> 8) & 0x7F)));
 					ctx.out_stream.put_byte((uint8) (list.size & 0xFF));
 				}
+				var reg_id = (uint) ctx.name_to_token.get(
+					gtype_to_alias.get(list.get(0).get_type())
+				);
+				if (reg_id < 128) {
+					ctx.out_stream.put_byte((uint8) reg_id);
+				} else {
+					ctx.out_stream.put_byte(
+						(uint8) (0x80 | ((reg_id >> 8) & 0x7F)));
+					ctx.out_stream.put_byte((uint8) (reg_id & 0xFF));
+				}
 				foreach (var child in list) {
-					if (!ctx.connection.live_handles || child.get_type().is_a(typeof(Serializable))) {
+					if (!ctx.live_handles || child.get_type().is_a(typeof(Serializable))) {
 						((Serializable) child).bin_write(ctx);
 						continue;
 					}
@@ -284,7 +299,7 @@ namespace OLLMrpc.Bin
 					return;
 				}
 				if (!val.get_object().get_type().is_a(typeof(Serializable))
-					&& ctx.connection.live_handles) {
+					&& ctx.live_handles) {
 					var live = val.get_object();
 					var schema_type = gtype_to_alias.has_key(live.get_type())
 						? live.get_type()

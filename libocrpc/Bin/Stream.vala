@@ -303,20 +303,24 @@ namespace OLLMrpc.Bin
 		}
 
 		/**
-		 * Homogeneous object-array body after wire byte ''0xD0'': element class,
-		 * count, then one property stream per element.
+		 * Homogeneous object-array body after wire byte ''0xD0'': count,
+		 * then element class when count is not 0, then one property stream
+		 * per element.
 		 *
 		 * @return decoded elements
 		 */
 		public Gee.ArrayList<GLib.Object> parse_object_array()
 			throws GLib.Error
 		{
-			var elem_gtype = this.read_gtype();
 			var count = (uint) this.in_stream.read_byte();
 			if ((count & 0x80) != 0) {
 				count = ((count & 0x7F) << 8) | this.in_stream.read_byte();
 			}
 			var list = new Gee.ArrayList<GLib.Object>();
+			if (count == 0) {
+				return list;
+			}
+			var elem_gtype = this.read_gtype();
 			for (var i = 0u; i < count; i++) {
 				list.add(this.parse_object(elem_gtype));
 			}
