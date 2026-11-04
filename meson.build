@@ -1,5 +1,5 @@
 project('ollmchat', 'vala', 'c', 'cpp',
-  version: '1.4.3',
+  version: '1.4.4',
   license: 'LGPL',
   default_options: [
     'default_library=shared',

@@ -9,7 +9,43 @@ for git tags (`v1.4.0`, etc.).
 Debian and RPM packaging notes are generated from this file at release time
 (see [Creating releases](docs/creating-releases.md)).
 
-## [1.4.3] - Unreleased
+## [1.4.4] - Unreleased
+
+Work since **1.4.3** (2026-11-03).
+
+### Changed
+
+#### libocrpc
+
+- Pair publish can lower the minimum advertised TCP port; the default stays 1024
+
+#### ollmfilesd
+
+- `ProjectManager.db_projects` replaces `rpc_load_projects_from_db`
+- Creating a project broadcasts `event.project.list_dirty` so other clients refresh the list
+
+### Fixed
+
+#### libocrpc
+
+- An empty object array encodes as count `0` with no element type, so a one-shot TLS call no longer aborts
+- `StreamValue` reads the stream live-handles flag instead of a missing connection
+
+#### File browser
+
+- Folder counts update when a folder is already in the tree, so hide-empty keeps non-empty folders
+- File nav reloads the project tree after the folder load finishes
+
+#### Android
+
+- Bash tool output stays white on black
+- Select project reloads when the daemon marks the project list dirty
+
+#### Bash
+
+- Long command output is spilled on the server, where the next `bash` call can open it
+
+## [1.4.3] - 2026-11-03
 
 Work since **1.4.2** (2026-11-03).
 

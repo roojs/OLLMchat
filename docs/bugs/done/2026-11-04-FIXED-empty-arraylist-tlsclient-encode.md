@@ -1,6 +1,6 @@
 # Empty ArrayList encode aborts; TlsClient hits a null connection
 
-**Status:** ✔️ applied — empty ArrayList is count `0` with no list type; `TlsClient` reads `Stream.live_handles`
+**Status:** ✅ 2026-11-04. User closed it. Empty write is count `0` with no list type. `TlsClient` reads `Stream.live_handles`.
 
 **Pointer:** `docs/bug-fix-process.md`. `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala must follow `docs/coding-standards.md`.
 
@@ -269,10 +269,13 @@
 - 🔷 User: empty array is count `0` and has no list type. That is a reader accept rule. Do not invent `element_type`.
 - ✔️ Applied `StreamValue` empty write (`0xD0` + count `0`), count-then-type for non-empty, `parse_object_array` accepts that, `live_handles` is the stream flag.
 - ✔️ `write_reg_gtype` stays before `0xD0` on the non-empty path. After count it would sit where `read_gtype` expects `reg_id`; a fresh `TlsClient` name table always introduces the alias first.
+- ✔️ `meson test -C build test-rpc-bin test-rpc-values test-rpc-http-routes test-rpc-live-handles` OK.
+- ✅ User closed the library log.
 
 ---
 
 ## Next
 
-- 🔷 `⏳` Rebuild / install `ocrpc`. Argus then rebuilds against it.
-- 🔷 `⏳` Confirm Argus `OSQuery.sync` with an empty table no longer kills `--service`.
+- ✅ Closed. Library fix is in `v1.4.4`.
+- ℹ️ Argus still rebuilds against the installed `ocrpc`.
+- ℹ️ `Bin/Json.vala` object-array still writes and reads gtype then count. That path is property/JSON conversion, not `TlsClient` `StreamValue`.

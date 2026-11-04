@@ -1,6 +1,6 @@
 # Release 1.4.2 package builds fail after installing ocsqlite.h
 
-**Status:** ⏳ fixes applied and locally verified; Ubuntu 26.04 release retry pending. 2026-11-03.
+**Status:** ✅ 2026-11-04. User closed it. `ocsqlite.h` install destinations and package lists shipped in `v1.4.3`.
 
 ## Problem
 
@@ -136,7 +136,8 @@ girepository_2 = dependency('girepository-2.0', version: '>=2.86', required: fal
 - ✔️ Moved the Debian release job to Ubuntu 26.04 Resolute, installed `libgirepository-2.0-dev`, and added a `pkg-config` 2.86 minimum gate.
 - ✔️ Updated all Debian control variants to prefer the 2.0 development package with 1.0 as the older-distribution alternative.
 - ✔️ The local host has `girepository-2.0` 2.84.1. Meson now rejects it as too old, selects `gobject-introspection-1.0`, and the complete `ninja -C build` succeeds.
+- ✔️ `v1.4.3` tagged on `9ce8da1a` (`gir 2.0 build on newer debian`). User closed the log.
 
 ## Next
 
-- ⏳ 🔷 Commit the corrections and release v1.4.3; confirm the Debian log selects `girepository-2.0`.
+- ✅ Closed. `v1.4.3` is the tagged packaging fix.
