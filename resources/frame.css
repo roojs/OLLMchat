@@ -93,6 +93,15 @@
     background-color: var(--frame-bg, var(--bs-warning-bg-subtle));
 }
 
+/* Shell output stays white on black. This file is a later provider
+   than style.css, so the rule above would cover that black fill.
+   White text then sits on the info frame and looks blank. */
+.oc-frame.tool-frame .tool-output,
+.oc-frame.tool-frame .tool-output text {
+    background-color: #000000;
+    color: #ffffff;
+}
+
 .oc-frame .oc-frame-header label {
     color: var(--frame-text-emphasis, inherit);
     font-weight: 500;

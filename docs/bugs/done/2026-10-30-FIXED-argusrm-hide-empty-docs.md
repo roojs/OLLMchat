@@ -1,6 +1,6 @@
 # Hide empty drops docs on argusrm
 
-**Status:** ⏳ root cause confirmed again (2026-11-04). Counts stay 0, so hide empty drops every folder. Fix is the `read_dir` count write plus copying those counts onto rows the phone already stored.
+**Status:** ✅ User closed it. Hide empty keeps the top-level folders in `argusrm`, including `docs`. Closed 2026-11-04.
 
 ## Problem
 
@@ -121,7 +121,8 @@
 - ℹ️ 2026-10-30 16:20 — disk listing, `files.sqlite` counts, daemon log around the 16:07 activate. No product change.
 - ℹ️ 2026-10-30 16:28 — proposed the `read_dir` count. Not applied.
 - ✔️ 2026-11-04 — user: hide empty shows no folders at all. DB counts for the top level are non-zero. Applied the `read_dir` count write, the `append` count copy, and the `scan_end` filter refresh.
+- ✅ 2026-11-04 — user closed it. Hide empty keeps the folders that have files or child folders.
 
 ## Next
 
-- 🔷 ⏳ On the phone, open `argusrm` with hide empty on. Top-level folders stay, including `docs`, `server`, and `controller`. `README.md` stays in the file list. Show empty is only for a folder that really has no files and no child folders.
+- ✅ Closed. No open work.
