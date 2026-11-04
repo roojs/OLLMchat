@@ -9,6 +9,8 @@ for git tags (`v1.4.0`, etc.).
 Debian and RPM packaging notes are generated from this file at release time
 (see [Creating releases](docs/creating-releases.md)).
 
+**AI agents:** Read that document before editing this file.
+
 ## [1.4.4] - Unreleased
 
 Work since **1.4.3** (2026-11-03).

@@ -20,7 +20,9 @@ namespace OLLMrpc.Transport
 {
 	/**
 	 * TCP TLS client that sends a {@link OLLMrpc.Request} and
-	 * returns that {@link OLLMrpc.Response}.
+	 * returns that {@link OLLMrpc.Response}. {@link watch} reads
+	 * {@link OLLMrpc.Notification} while idle. {@link call} emits
+	 * {@link notification} for those messages instead of dropping them.
 	 *
 	 * Peer to {@link HttpClient} for a raw socket. Not
 	 * {@link OLLMrpc.Client}: that type sends hello, drops the
@@ -96,8 +98,22 @@ namespace OLLMrpc.Transport
 		 */
 		public GLib.TlsDatabase? tls_database { get; set; default = null; }
 
+		/**
+		 * A notification parsed on this stream.
+		 *
+		 * {@link call} emits this when the next message is a
+		 * {@link OLLMrpc.Notification}. {@link watch} emits the
+		 * same signal while idle.
+		 *
+		 * @param notif the decoded notification
+		 */
+		public signal void notification(Notification notif);
+
 		private bool connected = false;
 		private int fd = -1;
+		private uint watch_id = 0;
+		private bool watching = false;
+		private GLib.Mutex mutex;
 		/* Keeps the handshake alive. The bin streams borrow the
 		 * TLS input stream; they do not own the connection. */
 		private GLib.SocketConnection? socket = null;
@@ -174,18 +190,42 @@ namespace OLLMrpc.Transport
 		public Response call(Request request) throws GLib.Error
 		{
 			this.open();
+			if (this.watch_id != 0) {
+				GLib.Source.remove(this.watch_id);
+				this.watch_id = 0;
+			}
+			this.mutex.lock();
 			this.bin.write(request);
 			var reply_wait = GLib.get_monotonic_time() + 10 * 1000000;
 			while (true) {
 				try {
 					var parsed = this.bin.parse();
+					var notif = parsed as Notification;
+					if (notif != null) {
+						this.notification(notif);
+						continue;
+					}
 					if (!(parsed is Response)) {
 						continue;
+					}
+					this.mutex.unlock();
+					if (this.watching) {
+						GLib.Idle.add(() => {
+							this.watch();
+							return false;
+						});
 					}
 					return (Response) parsed;
 				} catch (GLib.IOError e) {
 					if (e.code != GLib.IOError.WOULD_BLOCK ||
 						GLib.get_monotonic_time() >= reply_wait) {
+						this.mutex.unlock();
+						if (this.watching) {
+							GLib.Idle.add(() => {
+								this.watch();
+								return false;
+							});
+						}
 						throw e;
 					}
 					var reply_poll = GLib.PollFD();
@@ -194,6 +234,60 @@ namespace OLLMrpc.Transport
 					GLib.poll(new GLib.PollFD[] { reply_poll }, 200);
 				}
 			}
+		}
+
+		/**
+		 * Read notifications while no {@link call} is waiting.
+		 *
+		 * A second call is ignored. {@link call} removes the
+		 * source and queues this again when {@link watching} is
+		 * set. Linux and Android use a unix channel. Windows
+		 * uses a win32 fd channel.
+		 */
+		public void watch()
+		{
+			if (this.watch_id != 0) {
+				return;
+			}
+			this.watching = true;
+			this.open();
+#if G_OS_WIN32
+			var channel = new GLib.IOChannel.win32_new_fd(this.fd);
+#else
+			var channel = new GLib.IOChannel.unix_new(this.fd);
+#endif
+			try {
+				channel.set_encoding(null);
+			} catch (GLib.Error e) {
+				GLib.warning("%s", e.message);
+				return;
+			}
+			channel.set_buffered(false);
+			this.watch_id = channel.add_watch(
+				GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
+				(ch, cond) => {
+					if ((cond & (GLib.IOCondition.HUP | GLib.IOCondition.ERR)) != 0) {
+						this.watch_id = 0;
+						return false;
+					}
+					this.mutex.lock();
+					try {
+						var parsed = this.bin.parse();
+						var notif = parsed as Notification;
+						if (notif != null) {
+							this.notification(notif);
+						}
+					} catch (GLib.Error e) {
+						if (e.code != GLib.IOError.WOULD_BLOCK) {
+							GLib.warning("%s", e.message);
+							this.watch_id = 0;
+							this.mutex.unlock();
+							return false;
+						}
+					}
+					this.mutex.unlock();
+					return true;
+				});
 		}
 	}
 }

@@ -55,9 +55,9 @@ Release `.deb` files use the **split** Debian layout (runtime libraries, `-dev` 
 
 ### Changelog (single source of truth)
 
-Release notes live in [`CHANGELOG.md`](../CHANGELOG.md). `debian/changelog` and the RPM `%changelog` are **generated** from it — do not edit those by hand.
+Release notes live in [`CHANGELOG.md`](../CHANGELOG.md). `debian/changelog` and the RPM `%changelog` are **generated** from it — do not edit those by hand. Agents must not modify `CHANGELOG.md` without reading this section.
 
-While developing, add bullets under **`## [Unreleased]`**. When the release is ready, rename that heading to the version (Keep a Changelog still uses brackets), for example `## [1.2.5-alpha] - Unreleased`.
+Check the latest `v*` tag before editing. A versioned heading (for example `## [1.4.4] - Unreleased` or a dated `## [1.4.3] - 2026-11-03`) is that release’s notes. Do not append to it after the version is chosen or tagged. While developing, add bullets only under **`## [Unreleased]`**. When the release is ready, rename that heading to the version (Keep a Changelog still uses brackets), for example `## [1.2.5-alpha] - Unreleased`.
 
 Regenerate Debian packaging locally with:
 
