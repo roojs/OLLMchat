@@ -1,6 +1,6 @@
 # libocrpc binds girepository 1.0 when 2.0 is the one GJS uses
 
-**Status:** ✔️ applied. `Gi2.vala` / `GiMock2.vala` are the 2.0 copies. Class names stay `Gi` / `GiMock`. `Live.boxed_ok` is the one `#if GIREPOSITORY_2`. Not user-verified. 2026-11-03.
+**Status:** ✅ 2026-11-04. User confirmed fixed. `Gi2.vala` / `GiMock2.vala` are the 2.0 copies. Class names stay `Gi` / `GiMock`. `Live.boxed_ok` is the one `#if GIREPOSITORY_2`.
 
 ## Problem
 
@@ -63,7 +63,7 @@
 - 🔷 `Live/namespace.vala` stays one file. `boxed_ok` is the only `#if GIREPOSITORY_2`. Meson passes `--define=GIREPOSITORY_2` when `girepository-2.0` is found. No `namespace2.vala`.
 - 💩 Commit `vapi/girepository-2.0.vapi` from the recipe below. Meson does not run `vapigen`. 25.04 has no `GIRepository-3.0.typelib`.
 - 💩 Probe `girepository-2.0` first (`required: false`). Found: that dep and `--pkg=girepository-2.0`. Missing: today's `gobject-introspection-1.0`. A 2.0-only image never looks up the 1.0 pc file.
-- 💩 `Gi.repo` in `Gi2.vala` stores one `dup_default()`. Call sites use `Gi.repository()`, which fills `Gi.repo` on first use. `docs/bugs/2026-11-03-gi2-repository-null.md`.
+- ✔️ `Gi.repo` in `Gi2.vala` stores one `dup_default()`. Call sites use `Gi.repository()`, which fills `Gi.repo` on first use. `docs/bugs/done/2026-11-03-FIXED-gi2-repository-null.md`.
 - 💩 The invoke extern in `Gi2.vala` uses cname `gi_function_info_invoke`. Do not call `CallableInfo.invoke`.
 - 💩 Metadata keeps `ArgInfo.get_type()` and `FieldInfo.get_type()` as the `TypeInfo` fetch. `arg.get_type().get_tag()` stays. `BaseInfo.get_type()` returning `GI.InfoType` is what the copy changes.
 - 🔷 `tests/meson.build` and `docs/meson.build` use the same dependency and the same `--pkg`. They do not add a second girepository.
@@ -1048,7 +1048,8 @@ When `girepository_2.found()`, the `input:` list uses `Gi2.vala` and `GiMock2.va
 - ✔️ Applied the Gi2 / GiMock2 fences, `vapi/girepository-2.0.vapi`, and the meson probe. `Live/namespace2.vala` was not kept.
 - ✔️ Guest `192.168.122.115`: `girepository-2.0` 2.88.0 selected. `libocrpc.so` links `libgirepository-2.0.so.0` and not `libgirepository-1.0`. `ninja` compiled `Gi2.vala`. `meson test test-rpc-gi` passed (0.02s).
 - ✔️ This host: `girepository-2.0` absent, so the build stayed on `Gi.vala` and `gobject-introspection-1.0`. `libocrpc` compiled.
+- ✅ 2026-11-04 — user confirmed this is fixed. Moved to `docs/bugs/done/`.
 
 ## Next
 
-- ⏳ The gnome-shell-rpc gate stays the process check: 2.0 require, then `gjs_context_new`, no 1.0 call. Not run from this repo.
+- ✅ 2026-11-04 — user confirmed this is fixed.

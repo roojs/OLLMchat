@@ -176,10 +176,12 @@ namespace OLLMcoder.Folder
 
 		/**
 		 * Place ''folder'' under ''parent'', or on the top list when
-		 * ''parent'' is null. A folder already stored at that path is left
-		 * where it is. A child that has code or a document writes 1 into
-		 * each parent whose count for that type is zero. The walk stops
-		 * at the first parent that already has it, so a real count stays.
+		 * ''parent'' is null. A folder already stored at that path stays
+		 * there. Its file, folder, document, and code counts are copied
+		 * from ''folder''. A child that has code or a document writes 1
+		 * into each parent whose count for that type is zero. The walk
+		 * stops at the first parent that already has it, so a real count
+		 * stays.
 		 *
 		 * @param parent Parent folder, or null for a top row
 		 * @param folder Folder to attach
@@ -191,6 +193,22 @@ namespace OLLMcoder.Folder
 				return;
 			}
 			if (this.path_map.has_key(folder.path)) {
+				var stored = this.path_map.get(folder.path);
+				stored.file_count = folder.file_count;
+				stored.folder_count = folder.folder_count;
+				stored.document_count = folder.document_count;
+				stored.code_count = folder.code_count;
+				stored.notify_property("css-classes");
+				var need_document = stored.document_count > 0;
+				var need_code = stored.code_count > 0;
+				var above = stored.parent;
+				while (above != null && (need_document || need_code)) {
+					need_document = above.document_count > 0 ? false : need_document;
+					above.document_count = need_document ? 1 : above.document_count;
+					need_code = above.code_count > 0 ? false : need_code;
+					above.code_count = need_code ? 1 : above.code_count;
+					above = above.parent;
+				}
 				return;
 			}
 			var segment = this;

@@ -802,7 +802,7 @@ namespace OLLMapp
 	#endif
 				}
 				if (connected) {
-					yield manager.rpc_load_projects_from_db();
+					yield manager.db_projects();
 				}
 				var form = OLLMcoder.Form.DESKTOP;
 				if (opt_phone) {
@@ -929,9 +929,9 @@ namespace OLLMapp
 						}
 						saved.filesd_client.state = OLLMchat.Settings.FilesdClient.State.LIVE;
 						saved.save();
-						this.project_manager.rpc_load_projects_from_db.begin((load_obj, load_res) => {
+						this.project_manager.db_projects.begin((load_obj, load_res) => {
 							try {
-								this.project_manager.rpc_load_projects_from_db.end(load_res);
+								this.project_manager.db_projects.end(load_res);
 							} catch (GLib.Error e) {
 								GLib.warning("file server: %s", e.message);
 							}

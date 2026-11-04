@@ -1,6 +1,6 @@
 # Gi.repo stays NULL because the static construct never runs
 
-**Status:** ⏳ root cause confirmed; fix proposed. 2026-11-03. HEAD `4720779f`.
+**Status:** ✅ 2026-11-04. User confirmed fixed. `Gi.repository()` assigns `dup_default()` on first use. Call sites use that method.
 
 ## Problem
 
@@ -27,7 +27,7 @@ Reproduction on the Ubuntu 26.04 guest (`alan@192.168.122.115`, Vala 0.56.18, `l
 ## Root cause
 
 - ✔️ Vala 0.56.18 puts a `static construct` in `class_init` and does not class-ref the type from a static method. `Gi.repository = GI.Repository.dup_default()` therefore runs only after something else instantiates `Gi` or class-refs it. `register` and `vfunc_offset` do neither, so the field stays NULL.
-- 🚫 This is not the 1.0/2.0 `GIRepository` GType clash. That binary links 2.0 only. `docs/bugs/2026-11-03-girepository-2.md` is the port this build already uses.
+- 🚫 This is not the 1.0/2.0 `GIRepository` GType clash. That binary links 2.0 only. `docs/bugs/done/2026-11-03-FIXED-girepository-2.md` is the port this build already uses.
 - 🚫 A null check that skips the call hides the missing repository. The field has to be assigned on the path the static methods actually run.
 
 ## Proposed fix
@@ -152,7 +152,9 @@ Reproduction on the Ubuntu 26.04 guest (`alan@192.168.122.115`, Vala 0.56.18, `l
 - ✔️ Read the guest server log and core 37578. Confirmed the abort is `g_error` in `oll_mrpc_gi_vfunc_offset` after the `GI_IS_REPOSITORY` criticals, and that `class_init` is the only writer of `oll_mrpc_gi_repository`.
 - ✔️ Compiled `/tmp/static-construct.vala` with valac 0.56.18. Static method returned `0`. Static construct did not run.
 - ✔️ Ran the gnome-shell-rpc class-init gate against this `libocrpc.so`. Fail exit 1. Class-ref first, exit 0.
+- ✔️ `Gi2.vala` drops the static construct. `repository()` fills `Gi.repo` from `dup_default()` on first use. `GiMock2.vala` and `Live/namespace.vala` call `Gi.repository()`.
+- ✅ 2026-11-04 — user confirmed this is fixed. Moved to `docs/bugs/done/`.
 
 ## Next
 
-- ⏳ 💩 Apply the fences above, rebuild `libocrpc` on the 26.04 guest, and rerun `gi-class-init-gate-fail`. It should print `gi-class-init-gate: ok` without the class-ref.
+- ✅ 2026-11-04 — user confirmed this is fixed.

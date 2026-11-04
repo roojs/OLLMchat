@@ -93,6 +93,12 @@ namespace OLLMfiles
 		public bool disable_initial_scan { get; set; default = false; }
 
 		/**
+		 * Project list is stale. Phone and tablet Select project
+		 * calls {@link db_projects} on the next open.
+		 */
+		public bool is_project_dirty = false;
+
+		/**
 		 * File deletion facade — {@link File.rpc_delete} RPC on the daemon.
 		 */
 		public DeleteManager delete_manager { get; private set; }
@@ -142,7 +148,7 @@ namespace OLLMfiles
 		 * from ''rpc''.
 		 *
 		 * The caller then runs {@link OLLMrpc.Client.connect},
-		 * {@link rpc_load_projects_from_db} and
+		 * {@link db_projects} and
 		 * {@link restore_active_state}; this method does not touch the
 		 * network. Check {@link File.buffer} ''is_modified'' on
 		 * {@link active_file} ''before'' calling: the buffer is dropped.
@@ -303,17 +309,23 @@ namespace OLLMfiles
 		 *
 		 * @throws GLib.Error if the RPC fails
 		 */
-		public async void rpc_load_projects_from_db() throws GLib.Error
+		public async void db_projects() throws GLib.Error
 		{
-			var response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "ProjectManager.rpc_load_projects_from_db"
-			});
-			if (response.retval.type() == GLib.Type.INVALID) {
-				return;
-			}
-			foreach (var folder in (Gee.ArrayList<Folder>) response.retval.get_object()) {
-				folder.manager = this;
-				this.projects.append(folder);
+			this.is_project_dirty = false;
+			try {
+				var response = yield this.rpc.call(new OLLMrpc.Request() {
+					method = "ProjectManager.db_projects"
+				});
+				if (response.retval.type() == GLib.Type.INVALID) {
+					return;
+				}
+				foreach (var folder in (Gee.ArrayList<Folder>) response.retval.get_object()) {
+					folder.manager = this;
+					this.projects.append(folder);
+				}
+			} catch (GLib.Error e) {
+				this.is_project_dirty = true;
+				throw e;
 			}
 		}
 		

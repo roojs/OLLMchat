@@ -483,7 +483,7 @@ namespace OLLMcoder
 			});
 			try {
 				var win_cfg = host.window_config();
-				yield this.project_manager.rpc_load_projects_from_db();
+				yield this.project_manager.db_projects();
 				yield this.project_manager.restore_active_state(
 					win_cfg.project,
 					win_cfg.file

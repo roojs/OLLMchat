@@ -62,15 +62,11 @@ namespace OLLMtools.Bash
 		
 		/** When true, {@link execute} appends a unique suffix to {@link permission_target_path} so each prompt is distinct (used for non-bwrap runs). */
 		private bool is_complex_command = false;
-		private int output_lines = 0;
 		private bool stopped = false;
 		private bool timed_out = false;
 		private uint timeout_src = 0;
 		private string[] pending_output = {};
 		private uint pending_output_src = 0;
-		private GLib.FileOutputStream spill_stream;
-		private bool spill_active = false;
-		private string spill_path = "";
 
 		/**
 		 * Remembered ''Sandbox-Bubble.can_wrap'' reply. Empty until the
@@ -282,16 +278,6 @@ This request asks for write permission to these folders: """ +
 				message = this.command.strip(),
 				action = run_status,
 			});
-			this.spill_path = GLib.Path.build_filename(
-				this.agent.chat().agent.session.task_dir(),
-				"run_command-" + this.request_id.to_string() + ".log");
-			try {
-				this.spill_stream = GLib.File.new_for_path(this.spill_path).replace(
-					null, false, GLib.FileCreateFlags.PRIVATE, null);
-				this.spill_active = true;
-			} catch (GLib.Error e) {
-				this.spill_active = false;
-			}
 			try {
 				return yield this.bash_remote();
 			} catch (Error e) {
@@ -315,23 +301,6 @@ This request asks for write permission to these folders: """ +
 						id = this.request_id,
 					});
 					this.pending_output = {};
-				}
-				if (this.spill_active && !this.detached) {
-					try {
-						this.spill_stream.close(null);
-					} catch (GLib.Error e) {
-					}
-					this.spill_active = false;
-					if (this.output_lines <= 50) {
-						try {
-							GLib.File.new_for_path(this.spill_path).delete(null);
-						} catch (GLib.Error e) {
-						}
-						try {
-							GLib.File.new_for_path(GLib.Path.get_dirname(this.spill_path)).delete(null);
-						} catch (GLib.Error e) {
-						}
-					}
 				}
 				if (!this.detached) {
 					this.agent.notification(new OLLMrpc.Notification() {
@@ -409,7 +378,10 @@ This request asks for write permission to these folders: """ +
 			});
 			var state = (int) waited.retval.get_int();
 			if (state >= 0) {
-				return this.bash_finished_text(waited.msg);
+				return this.bash_finished_text(
+					waited.msg,
+					waited.args.get(0).get_string(),
+					(int) waited.args.get(1).get_int());
 			}
 			if (keep_stdin) {
 				this.detached = true;
@@ -420,7 +392,10 @@ This request asks for write permission to these folders: """ +
 				args = OLLMrpc.args("ix", pid, session_id)
 			});
 			this.timed_out = true;
-			return this.bash_finished_text(waited.msg);
+			return this.bash_finished_text(
+				waited.msg,
+				waited.args.get(0).get_string(),
+				(int) waited.args.get(1).get_int());
 		}
 
 		/**
@@ -470,7 +445,10 @@ This request asks for write permission to these folders: """ +
 						)
 					});
 					if ((int) waited.retval.get_int() >= 0) {
-						return this.bash_finished_text(waited.msg);
+						return this.bash_finished_text(
+							waited.msg,
+							waited.args.get(0).get_string(),
+							(int) waited.args.get(1).get_int());
 					}
 					return waited.msg + "\n" + this.pid_block(this.pid, false);
 				case "send":
@@ -553,23 +531,6 @@ $(reap)";
 						});
 						req.pending_output = {};
 					}
-					if (req.spill_active) {
-						try {
-							req.spill_stream.close(null);
-						} catch (GLib.Error e) {
-						}
-						req.spill_active = false;
-						if (req.output_lines <= 50) {
-							try {
-								GLib.File.new_for_path(req.spill_path).delete(null);
-							} catch (GLib.Error e) {
-							}
-							try {
-								GLib.File.new_for_path(GLib.Path.get_dirname(req.spill_path)).delete(null);
-							} catch (GLib.Error e) {
-							}
-						}
-					}
 					req.agent.notification(new OLLMrpc.Notification() {
 						method = "client.run_tool.end",
 						message = req.command.strip(),
@@ -581,14 +542,6 @@ $(reap)";
 				}
 				var line = notif.args.get(0).get_string();
 				req.pending_output += line;
-				req.output_lines++;
-				if (req.spill_active) {
-					try {
-						req.spill_stream.write_all((line + "\n").data, null);
-					} catch (GLib.Error e) {
-						req.spill_active = false;
-					}
-				}
 				if (req.pending_output_src != 0) {
 					return;
 				}
@@ -606,21 +559,24 @@ $(reap)";
 		}
 
 		/**
-		 * Command result, plus the spill footer when more than 50 lines arrived.
+		 * Command result, plus the spill footer when the daemon kept
+		 * the spill file.
 		 *
 		 * @param msg last lines, or ''command has ended''
+		 * @param path server spill path, empty when the file was not kept
+		 * @param lines daemon line count
 		 * @return text the agent reads
 		 */
-		private string bash_finished_text(string msg)
+		private string bash_finished_text(string msg, string path, int lines)
 		{
-			if (this.output_lines <= 50) {
+			if (path == "") {
 				return msg;
 			}
 			return msg + @"
 
-**Below are the last 50 of $(this.output_lines) lines.**
-Full output: $(this.spill_path)
-Do not read this file whole — it is $(this.output_lines) lines. Use grep, head, or tail on it with this tool to find the part you need.
+**Below are the last 50 of $(lines) lines.**
+Full output: $(path)
+Do not read this file whole — it is $(lines) lines. Use grep, head, or tail on it with this tool to find the part you need.
 ";
 		}
 

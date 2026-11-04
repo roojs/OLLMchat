@@ -36,7 +36,7 @@ namespace OLLMfilesd
 			OLLMrpc.Request.add_class(
 				"ProjectManager", typeof(ProjectManager),
 				"remove_project", "s",
-				"rpc_load_projects_from_db", "",
+				"db_projects", "",
 				"rpc_create_project", "s",
 				"rpc_activate_project", "sb"
 			);
@@ -195,12 +195,12 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * ''ProjectManager.rpc_load_projects_from_db'' — load project
+		 * ''ProjectManager.db_projects'' — load project
 		 * rows from SQLite, then reply with the list.
 		 *
 		 * @param request inbound RPC; no extra args
 		 */
-		public void rpc_load_projects_from_db(OLLMrpc.Request request)
+		public void db_projects(OLLMrpc.Request request)
 		{
 			this.load_projects_from_db.begin((obj, res) => {
 				this.load_projects_from_db.end(res);
@@ -521,6 +521,9 @@ namespace OLLMfilesd
 			this.projects.append(project);
 			project.saveToDB(this.db, null, false);
 			this.db.is_dirty = true;
+			this.notification(new OLLMrpc.Notification() {
+				method = "event.project.list_dirty"
+			});
 		
 			return project;
 		}

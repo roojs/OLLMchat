@@ -193,6 +193,28 @@ namespace OLLMbwrap
 		 * Last 50 output lines. The ''tail'' verb reads this.
 		 */
 		public string[] tail { get; private set; default = {}; }
+
+		/**
+		 * Absolute server path of this run's spill file.
+		 *
+		 * Empty until the daemon opens the file. Empty again when
+		 * the run wrote 50 lines or fewer and the file was removed.
+		 * A later bash or read uses this path on the daemon host.
+		 */
+		public string spill_path = "";
+
+		/**
+		 * Open spill stream. The daemon appends one line each time
+		 * {@link output} fires, while {@link spill_open} is true.
+		 */
+		public GLib.FileOutputStream spill_stream;
+
+		/**
+		 * True after the spill file is opened, false after it is
+		 * closed.
+		 */
+		public bool spill_open = false;
+
 		private GLib.Subprocess child;
 		private bool child_active = false;
 		

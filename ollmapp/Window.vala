@@ -676,9 +676,9 @@ namespace OLLMapp
 					this.notification(new OLLMrpc.Notification() {
 						method = "client.project.load_start",
 					});
-					this.project_manager.rpc_load_projects_from_db.begin((obj, res) => {
+					this.project_manager.db_projects.begin((obj, res) => {
 						try {
-							this.project_manager.rpc_load_projects_from_db.end(res);
+							this.project_manager.db_projects.end(res);
 						} catch (GLib.Error e) {
 							GLib.critical ("session project load: %s", e.message);
 							if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {

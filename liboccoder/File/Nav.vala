@@ -236,7 +236,10 @@ namespace OLLMcoder.File
 					return;
 				}
 				this.folder_tree.folders.loaded.remove(this.project.path);
-				this.folder_tree.folders.load.begin(this.project);
+				this.folder_tree.folders.load.begin(this.project, (obj, res) => {
+					this.folder_tree.folders.load.end(res);
+					this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
+				});
 			});
 			this.documents = new Gtk.ToggleButton() {
 				icon_name = "x-office-document-symbolic",

@@ -477,6 +477,9 @@ namespace OLLMapp
 				this.startup_status_label.label = "Opening chat…";
 			}
 			this.project_manager.notification.connect((notif) => {
+				if (notif.method == "event.project.list_dirty") {
+					this.project_manager.is_project_dirty = true;
+				}
 				GLib.Idle.add(() => {
 					this.notification(notif);
 					return false;
@@ -762,7 +765,7 @@ namespace OLLMapp
 					method = "client.project.load_start"
 				});
 				try {
-					yield this.project_manager.rpc_load_projects_from_db();
+					yield this.project_manager.db_projects();
 				} catch (GLib.Error e) {
 					if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
 						this.notification(new OLLMrpc.Notification() {

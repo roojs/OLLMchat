@@ -191,9 +191,86 @@ namespace OLLMfilesd.Sandbox
 				});
 				return;
 			}
+			var spill_dir = GLib.Path.build_filename(
+				GLib.Environment.get_user_data_dir(),
+				"ollmchat", "bash-spill");
+			try {
+				GLib.File.new_for_path(spill_dir).make_directory_with_parents(null);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			var spill_file = GLib.Path.build_filename(spill_dir,
+				"run_command-" + bubble.session_id.to_string() + "-" +
+				GLib.get_real_time().to_string() + ".log");
+			try {
+				bubble.spill_stream = GLib.File.new_for_path(spill_file).replace(
+					null, false, GLib.FileCreateFlags.PRIVATE, null);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			bubble.spill_path = spill_file;
+			bubble.spill_open = true;
+			bubble.output.connect((line) => {
+				if (!bubble.spill_open) {
+					return;
+				}
+				try {
+					bubble.spill_stream.write_all((line + "\n").data, null);
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					bubble.spill_open = false;
+					try {
+						bubble.spill_stream.close(null);
+					} catch (GLib.Error close_error) {
+						GLib.warning("%s", close_error.message);
+					}
+					try {
+						GLib.File.new_for_path(bubble.spill_path).delete(null);
+					} catch (GLib.Error delete_error) {
+						GLib.warning("%s", delete_error.message);
+					}
+					bubble.spill_path = "";
+				}
+			});
 			var ended = "";
 			bubble.finished.connect((output) => {
 				ended = output;
+				if (!bubble.spill_open) {
+					return;
+				}
+				try {
+					bubble.spill_stream.close(null);
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					bubble.spill_open = false;
+					bubble.spill_path = "";
+					return;
+				}
+				bubble.spill_open = false;
+				if (bubble.output_lines > 50) {
+					return;
+				}
+				try {
+					GLib.File.new_for_path(bubble.spill_path).delete(null);
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					return;
+				}
+				bubble.spill_path = "";
 			});
 			bubble.exec.begin(bubble.command, bubble.working_dir, (obj, res) => {
 				try {
@@ -281,6 +358,8 @@ namespace OLLMfilesd.Sandbox
 		 *
 		 * Seconds below 1 means 60. Retval is the exit code once the
 		 * job has ended, or the negative pid while it is still running.
+		 * args[0] is the spill path, empty unless the run has more
+		 * than 50 lines. args[1] is the line count.
 		 *
 		 * @param request inbound RPC
 		 * @param pid bwrap pid from {@link rpc_run}
@@ -299,6 +378,9 @@ namespace OLLMfilesd.Sandbox
 		 *
 		 * A finished job replies with its exit code. A live job replies
 		 * with the negative pid, including when it is waiting on stdin.
+		 * Every success reply puts the spill path in args[0] (empty
+		 * unless the run has more than 50 lines) and the line count
+		 * in args[1].
 		 *
 		 * @param request inbound RPC
 		 */
@@ -310,45 +392,14 @@ namespace OLLMfilesd.Sandbox
 			var left = seconds < 1 ? 60 : seconds;
 			while (left > 0) {
 				if (OLLMbwrap.Bubble.jobs == null || !OLLMbwrap.Bubble.jobs.has_key(pid)) {
-					if (OLLMbwrap.Bubble.ended.has_key(pid)
-						&& OLLMbwrap.Bubble.ended.get(pid).session_id == session_id) {
-						var done = OLLMbwrap.Bubble.ended.get(pid);
-						var msg = string.joinv("\n", done.tail);
-						if (msg != "") {
-							msg += "\n";
-						}
-						msg += "Exit code: " + done.exit_status.to_string();
-						OLLMbwrap.Bubble.ended.unset(pid);
-						request.reply(new OLLMrpc.Response() {
-							id = request.id,
-							retval = OLLMrpc.val("i", done.exit_status),
-							msg = msg
-						});
-						return;
-					}
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						retval = OLLMrpc.val("i", 0),
-						msg = "command has ended"
-					});
-					return;
+					break;
 				}
 				var bubble = OLLMbwrap.Bubble.jobs.get(pid);
 				if (bubble.session_id != session_id) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						retval = OLLMrpc.val("i", 0),
-						msg = "command has ended"
-					});
-					return;
+					break;
 				}
 				if (bubble.waiting_stdin()) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						retval = OLLMrpc.val("i", -pid),
-						msg = string.joinv("\n", bubble.tail)
-					});
-					return;
+					break;
 				}
 				var step = left < 5 ? left : 5;
 				GLib.Timeout.add_seconds(step, () => {
@@ -358,43 +409,63 @@ namespace OLLMfilesd.Sandbox
 				yield;
 				left -= step;
 			}
-			if (OLLMbwrap.Bubble.jobs == null || !OLLMbwrap.Bubble.jobs.has_key(pid)) {
-				if (OLLMbwrap.Bubble.ended.has_key(pid)
-					&& OLLMbwrap.Bubble.ended.get(pid).session_id == session_id) {
-					var done = OLLMbwrap.Bubble.ended.get(pid);
-					var msg = string.joinv("\n", done.tail);
-					if (msg != "") {
-						msg += "\n";
-					}
-					msg += "Exit code: " + done.exit_status.to_string();
-					OLLMbwrap.Bubble.ended.unset(pid);
+			if (OLLMbwrap.Bubble.jobs != null && OLLMbwrap.Bubble.jobs.has_key(pid)) {
+				var bubble = OLLMbwrap.Bubble.jobs.get(pid);
+				if (bubble.session_id != session_id) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						retval = OLLMrpc.val("i", done.exit_status),
-						msg = msg
+						retval = OLLMrpc.val("i", 0),
+						msg = "command has ended",
+						args = OLLMrpc.args("si", "", 0)
 					});
 					return;
 				}
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					retval = OLLMrpc.val("i", 0),
-					msg = "command has ended"
+					retval = OLLMrpc.val("i", -pid),
+					msg = string.joinv("\n", bubble.tail),
+					args = OLLMrpc.args(
+						"si",
+						bubble.output_lines > 50 ? bubble.spill_path : "",
+						bubble.output_lines
+					)
 				});
 				return;
 			}
-			var still = OLLMbwrap.Bubble.jobs.get(pid);
-			if (still.session_id != session_id) {
+			if (!OLLMbwrap.Bubble.ended.has_key(pid)) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					retval = OLLMrpc.val("i", 0),
-					msg = "command has ended"
+					msg = "command has ended",
+					args = OLLMrpc.args("si", "", 0)
 				});
 				return;
 			}
+			var done = OLLMbwrap.Bubble.ended.get(pid);
+			if (done.session_id != session_id) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("i", 0),
+					msg = "command has ended",
+					args = OLLMrpc.args("si", "", 0)
+				});
+				return;
+			}
+			var msg = string.joinv("\n", done.tail);
+			if (msg != "") {
+				msg += "\n";
+			}
+			msg += "Exit code: " + done.exit_status.to_string();
+			OLLMbwrap.Bubble.ended.unset(pid);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				retval = OLLMrpc.val("i", -pid),
-				msg = string.joinv("\n", still.tail)
+				retval = OLLMrpc.val("i", done.exit_status),
+				msg = msg,
+				args = OLLMrpc.args(
+					"si",
+					done.output_lines > 50 ? done.spill_path : "",
+					done.output_lines
+				)
 			});
 		}
 

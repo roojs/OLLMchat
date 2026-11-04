@@ -907,7 +907,33 @@ namespace OLLMfilesd
 				yield this.read_dir_update(new_item, old_child_map, check_time);
 			}
 			yield this.read_dir_remove(new_items, old_children, check_time);
-			
+			this.folder_count = 0;
+			this.file_count = 0;
+			this.document_count = 0;
+			this.code_count = 0;
+			foreach (var child in this.children.items) {
+				if (child.delete_id != 0 || child.is_ignored) {
+					continue;
+				}
+				if (child.base_type == "d") {
+					this.folder_count++;
+					continue;
+				}
+				if (child.base_type != "f" && child.base_type != "fa") {
+					continue;
+				}
+				this.file_count++;
+				if (!child.is_text) {
+					continue;
+				}
+				var kind = child.language.down();
+				if (kind == "" || kind == "markdown" || kind == "txt" ||
+					kind == "text" || kind == "plaintext") {
+					this.document_count++;
+					continue;
+				}
+				this.code_count++;
+			}
 			this.manager.scanning.set(this.path, this);
 			
 			// If not recursing, do backup and return early

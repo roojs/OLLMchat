@@ -98,6 +98,13 @@ namespace OLLMcoder
 		public bool project_recent { get; private set; default = true; }
 
 		/**
+		 * A project reload from this selector is in flight.
+		 * The {@link OLLMfiles.ProjectManager.is_project_dirty}
+		 * notify ignores that call's own flag write.
+		 */
+		private bool loading_projects = false;
+
+		/**
 		 * Build the project button, the editor list, and the pull-over page.
 		 *
 		 * @param manager Connected manager whose projects are already loaded
@@ -116,6 +123,40 @@ namespace OLLMcoder
 			this.manager = manager;
 			this.form = form;
 			this.selector = selector;
+			this.manager.notify["is-project-dirty"].connect(() => {
+				if (this.loading_projects) {
+					return;
+				}
+				if (!this.manager.is_project_dirty) {
+					return;
+				}
+				if (this.form == Form.DESKTOP) {
+					return;
+				}
+				if (!this.selector.visible || this.selector.kind != "project") {
+					return;
+				}
+				this.loading_projects = true;
+				this.manager.db_projects.begin((obj, res) => {
+					try {
+						this.manager.db_projects.end(res);
+					} catch (GLib.Error e) {
+						if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+							this.manager.notification(new OLLMrpc.Notification() {
+								method = "client.filesd.unreachable",
+								id = e.code
+							});
+							this.loading_projects = false;
+							return;
+						}
+						this.manager.notification(new OLLMrpc.Notification() {
+							method = "Alert.show",
+							message = "Could not load projects: " + e.message
+						});
+					}
+					this.loading_projects = false;
+				});
+			});
 			this.label = new Gtk.Label("Select project") {
 				xalign = 0,
 				halign = Gtk.Align.START,
@@ -610,37 +651,56 @@ namespace OLLMcoder
 			});
 			this.entry.add_controller(focus);
 			this.button.clicked.connect(() => {
-				switch (this.form) {
-					case Form.PHONE:
-					case Form.TABLET:
-						this.selector.kind = "project";
-						this.selector.heading.label = "Projects";
-						this.selector.close.visible = false;
-						this.selector.previous.visible = this.form != Form.TABLET;
-						this.selector.heading.visible = this.form != Form.TABLET;
-						this.selector.current.visible = false;
-						this.selector.pages.visible_child_name = "project";
-						this.selector.search.placeholder_text = "Search projects";
-						this.selector.visible = true;
-						this.selector.search.text = "";
+				if (this.form == Form.DESKTOP) {
+					if (this.list.visible) {
+						this.list.visible = false;
 						return;
-					default:
-						break;
-				}
-				if (this.list.visible) {
-					this.list.visible = false;
+					}
+					this.opened();
+					if (!project_recent_toggle.active) {
+						project_recent_toggle.active = true;
+					}
+					this.stack.visible_child_name = "entry";
+					this.entry.text = "";
+					this.list.visible = true;
+					this.entry.grab_focus();
+					this.entry.set_position(-1);
+					this.entry.select_region(-1, -1);
 					return;
 				}
-				this.opened();
-				if (!project_recent_toggle.active) {
-					project_recent_toggle.active = true;
+				this.selector.kind = "project";
+				this.selector.heading.label = "Projects";
+				this.selector.close.visible = false;
+				this.selector.previous.visible = this.form != Form.TABLET;
+				this.selector.heading.visible = this.form != Form.TABLET;
+				this.selector.current.visible = false;
+				this.selector.pages.visible_child_name = "project";
+				this.selector.search.placeholder_text = "Search projects";
+				this.selector.visible = true;
+				this.selector.search.text = "";
+				if (!this.manager.is_project_dirty) {
+					return;
 				}
-				this.stack.visible_child_name = "entry";
-				this.entry.text = "";
-				this.list.visible = true;
-				this.entry.grab_focus();
-				this.entry.set_position(-1);
-				this.entry.select_region(-1, -1);
+				this.loading_projects = true;
+				this.manager.db_projects.begin((obj, res) => {
+					try {
+						this.manager.db_projects.end(res);
+					} catch (GLib.Error e) {
+						if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+							this.manager.notification(new OLLMrpc.Notification() {
+								method = "client.filesd.unreachable",
+								id = e.code
+							});
+							this.loading_projects = false;
+							return;
+						}
+						this.manager.notification(new OLLMrpc.Notification() {
+							method = "Alert.show",
+							message = "Could not load projects: " + e.message
+						});
+					}
+					this.loading_projects = false;
+				});
 			});
 		}
 

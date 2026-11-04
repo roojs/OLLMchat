@@ -203,7 +203,7 @@ Examples:
 		}
 
 		var load_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "ProjectManager.rpc_load_projects_from_db"
+			method = "ProjectManager.db_projects"
 		});
 
 		var fetch_response = yield this.rpc.call(new OLLMrpc.Request() {

@@ -420,7 +420,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 				throw new GLib.IOError.FAILED("%s", msg);
 			}
 
-			yield this.project_manager.rpc_load_projects_from_db();
+			yield this.project_manager.db_projects();
 
 			if (opt_project == "") {
 				return;

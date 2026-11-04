@@ -108,7 +108,7 @@ namespace OLLMchat
 		 *
 		 * Looked up with this window's ''uuid''. Creates the map entry
 		 * on first use. Factories read ''project'' / ''file'' after
-		 * ''rpc_load_projects_from_db''.
+		 * ''db_projects''.
 		 *
 		 * @return the {@link Settings.Window} for this GTK window
 		 */
