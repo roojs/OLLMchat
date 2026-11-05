@@ -135,6 +135,39 @@ namespace OLLMrpc.Transport
 			return (uint64) id;
 		}
 
+		/**
+		 * Complete the callback wait identified by ''correlation''.
+		 *
+		 * Nested {@link Live.Hook.emit} calls own correlation frames.
+		 * Blocking {@link Live.Subscription} signals use the hook row itself
+		 * as their waiter.
+		 *
+		 * @param args values returned by the peer
+		 * @param correlation reply id sent to the peer
+		 * @return true when a callback wait accepted the reply
+		 */
+		public bool complete_callback(
+			int correlation,
+			Gee.ArrayList<GLib.Value?> args
+		) {
+			foreach (var id in this.callbacks.keys) {
+				var row = this.callbacks.get(id);
+				if (row.complete(correlation, args)) {
+					return true;
+				}
+				if (row.reply_id != correlation) {
+					continue;
+				}
+				row.reply_args.clear();
+				foreach (var arg in args) {
+					row.reply_args.add(arg);
+				}
+				row.replied = true;
+				return true;
+			}
+			return false;
+		}
+
 		public virtual void start()
 		{
 			if (this.running || this.stream == null) {

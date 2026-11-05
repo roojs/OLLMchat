@@ -111,11 +111,7 @@ namespace OLLMrpc.Live
 			for (var i = 1; i < request.args.size; i++) {
 				values.add(request.args.get(i));
 			}
-			foreach (var id in request.connection.callbacks.keys) {
-				var row = request.connection.callbacks.get(id);
-				if (!row.complete(correlation, values)) {
-					continue;
-				}
+			if (request.connection.complete_callback(correlation, values)) {
 				request.reply(new Response());
 				return;
 			}

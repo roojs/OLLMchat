@@ -69,12 +69,17 @@ namespace OLLMrpcTests
 			if (!this.auto_reply) {
 				return;
 			}
+			var request = new OLLMrpc.Request() {
+				method = "RPC-Live-Callback.reply",
+				args = OLLMrpc.args("t", (uint64) this.last.reply_id),
+				connection = this
+			};
 			if (this.reply_uint) {
 				var reply = GLib.Value(typeof(uint));
 				reply.set_uint(7);
-				this.callbacks.get(this.next_handle - 2).reply_args.add(reply);
+				request.args.add(reply);
 			}
-			this.callbacks.get(this.next_handle - 2).replied = true;
+			request.dispatch();
 		}
 	}
 
@@ -97,8 +102,11 @@ namespace OLLMrpcTests
 			};
 			OLLMrpc.Live.Remote.rpc_register();
 			OLLMrpc.Live.Subscribe.rpc_register();
+			OLLMrpc.Live.Callback.rpc_register();
 			OLLMrpc.Request.register_live("RPC-Live-Remote", new OLLMrpc.Live.Remote());
 			OLLMrpc.Request.register_live("RPC-Live-Subscribe", new OLLMrpc.Live.Subscribe());
+			OLLMrpc.Request.register_live(
+				"RPC-Live-Callback", new OLLMrpc.Live.Callback());
 			var probe = new Probe();
 			var id = conn.export(probe);
 			var sub = new OLLMrpc.Request() {
