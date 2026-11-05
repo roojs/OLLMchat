@@ -65,5 +65,95 @@ namespace OLLMrpc
 		{
 			return this.get_class().find_property(name);
 		}
+
+		/**
+		 * Build a JSON-RPC parse error.
+		 *
+		 * @param message wire error message
+		 */
+		public Error.PARSE_ERROR(string message)
+		{
+			Object(code: (int) RpcErrorCode.PARSE_ERROR, message: message);
+		}
+
+		/**
+		 * Build a JSON-RPC invalid request error.
+		 *
+		 * @param message wire error message
+		 */
+		public Error.INVALID_REQUEST(string message)
+		{
+			Object(code: (int) RpcErrorCode.INVALID_REQUEST, message: message);
+		}
+
+		/**
+		 * Build a JSON-RPC method not found error.
+		 *
+		 * @param message wire error message
+		 */
+		public Error.METHOD_NOT_FOUND(string message)
+		{
+			Object(code: (int) RpcErrorCode.METHOD_NOT_FOUND, message: message);
+		}
+
+		/**
+		 * Build a JSON-RPC invalid parameters error.
+		 *
+		 * @param message wire error message
+		 */
+		public Error.INVALID_PARAMS(string message)
+		{
+			Object(code: (int) RpcErrorCode.INVALID_PARAMS, message: message);
+		}
+
+		/**
+		 * Build a JSON-RPC internal error.
+		 *
+		 * @param message wire error message
+		 */
+		public Error.INTERNAL_ERROR(string message)
+		{
+			Object(code: (int) RpcErrorCode.INTERNAL_ERROR, message: message);
+		}
+
+		/**
+		 * Build an RPC operation not implemented error.
+		 *
+		 * @param message wire error message
+		 */
+		public Error.NOT_IMPLEMENTED(string message)
+		{
+			Object(code: (int) RpcErrorCode.NOT_IMPLEMENTED, message: message);
+		}
+
+		/**
+		 * Build an unregistered TLS client certificate error.
+		 *
+		 * @param message wire error message
+		 */
+		public Error.CERT_NOT_REGISTERED(string message)
+		{
+			Object(code: (int) RpcErrorCode.CERT_NOT_REGISTERED, message: message);
+		}
+
+		/**
+		 * Build an RPC transport not connected error.
+		 *
+		 * @param message wire error message
+		 */
+		public Error.NOT_CONNECTED(string message)
+		{
+			Object(code: (int) RpcErrorCode.NOT_CONNECTED, message: message);
+		}
+
+		/**
+		 * Build an RPC query returned too many results error.
+		 *
+		 * @param message wire error message
+		 */
+		public Error.TOO_MANY_RESULTS(string message)
+		{
+			Object(code: (int) RpcErrorCode.TOO_MANY_RESULTS, message: message);
+		}
 	}
 }

@@ -520,7 +520,7 @@ namespace OLLMrpc
 					entry.request.method, entry.request.id, this.socket_path);
 				entry.done_response = new Response() {
 					id = entry.request.id,
-					error = new Error((int) RpcErrorCode.INTERNAL_ERROR, "Client: disconnected")
+					error = new Error.INTERNAL_ERROR("Client: disconnected")
 				};
 				entry.promise.set_value(entry.done_response);
 			}
@@ -700,7 +700,7 @@ namespace OLLMrpc
 						entry.request.method, id, error.message);
 					entry.done_response = new Response() {
 						id = entry.request.id,
-						error = new Error((int) RpcErrorCode.INTERNAL_ERROR, error.message)
+						error = new Error.INTERNAL_ERROR(error.message)
 					};
 					entry.promise.set_value(entry.done_response);
 				} else {
@@ -792,10 +792,7 @@ namespace OLLMrpc
 		{
 			request.id = this.next_id++;
 			if (!this.connected) {
-				this.failed(request, new OLLMrpc.Error(
-					(int) RpcErrorCode.NOT_CONNECTED,
-					""
-				));
+				this.failed(request, new OLLMrpc.Error.NOT_CONNECTED(""));
 				throw new RpcErrorCode.NOT_CONNECTED("");
 			}
 
@@ -807,10 +804,7 @@ namespace OLLMrpc
 			try {
 				response = yield this.wait_response(entry, request.method);
 			} catch (GLib.Error e) {
-				var transport_error = new Error(
-					(int) RpcErrorCode.INTERNAL_ERROR,
-					e.message
-				);
+				var transport_error = new Error.INTERNAL_ERROR(e.message);
 				transport_error.domain = e.domain.to_string();
 				transport_error.gerror_code = e.code;
 				this.failed(request, transport_error);
@@ -862,10 +856,7 @@ namespace OLLMrpc
 			}
 			request.id = this.next_id++;
 			if (!this.connected) {
-				this.failed(request, new OLLMrpc.Error(
-					(int) RpcErrorCode.NOT_CONNECTED,
-					""
-				));
+				this.failed(request, new OLLMrpc.Error.NOT_CONNECTED(""));
 				throw new RpcErrorCode.NOT_CONNECTED("");
 			}
 
@@ -1046,10 +1037,7 @@ namespace OLLMrpc
 			}
 			request.id = this.next_id++;
 			if (!this.connected) {
-				this.failed(request, new OLLMrpc.Error(
-					(int) RpcErrorCode.NOT_CONNECTED,
-					""
-				));
+				this.failed(request, new OLLMrpc.Error.NOT_CONNECTED(""));
 				throw new RpcErrorCode.NOT_CONNECTED("");
 			}
 

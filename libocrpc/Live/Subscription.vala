@@ -11,6 +11,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/*
+ * Vala's GLib.Value.copy() requires a non-null ref destination.
+ * This marshaller receives a nullable GValue* because void signals pass
+ * a null return value.
+ */
+[CCode (cheader_filename = "glib-object.h")]
+private extern void g_value_copy(GLib.Value? src_value, GLib.Value? dest_value);
+
 namespace OLLMrpc.Live
 {
 	/**
@@ -43,8 +51,8 @@ namespace OLLMrpc.Live
 		/**
 		 * Wait for the remote handler before the signal emission returns.
 		 *
-		 * Boolean signals copy the handler result into the return value.
-		 * Void signals only wait.
+		 * Non-void signals copy the first typed handler result into the
+		 * return value. Void signals only wait.
 		 */
 		public bool blocking { get; set; default = false; }
 
@@ -118,10 +126,11 @@ namespace OLLMrpc.Live
 		 * ''live_handles'', each non-Serializable GObject arg is exported
 		 * first, so objects the peer has not seen yet get a handle.
 		 * {@link blocking} writes {@link Notification.reply_id} and waits
-		 * for ''RPC-Live-Callback.reply'', then stores the handler bool.
+		 * for ''RPC-Live-Callback.reply'', then copies the first typed
+		 * handler result into a non-void signal return value.
 		 *
 		 * @param closure unused GObject slot
-		 * @param return_value handler bool; null on void signals
+		 * @param return_value initialized signal return; null on void signals
 		 * @param param_values instance then signal arguments
 		 * @param invocation_hint unused GObject slot
 		 * @param marshal_data the {@link Subscription}
@@ -169,10 +178,8 @@ namespace OLLMrpc.Live
 				subscription.connection.emit_wait_poll();
 			}
 			subscription.connection.callbacks.unset(waiter.id);
-			if (return_value != null) {
-				return_value.set_boolean(waiter.reply_args.size > 0 &&
-					waiter.reply_args.get(0).type() == GLib.Type.BOOLEAN &&
-					waiter.reply_args.get(0).get_boolean());
+			if (return_value != null && waiter.reply_args.size > 0) {
+				g_value_copy(waiter.reply_args.get(0), return_value);
 			}
 		}
 	}

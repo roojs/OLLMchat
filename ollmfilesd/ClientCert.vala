@@ -162,23 +162,20 @@ namespace OLLMfilesd
 			var rpc = request.connection as SslConnection;
 			if (rpc == null) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "socket registration only")
+					error = new OLLMrpc.Error.INVALID_REQUEST("socket registration only")
 				});
 				return;
 			}
 			var listen = this.app.ssl_listen;
 			if (listen == null) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "SSL listener is off")
+					error = new OLLMrpc.Error.INVALID_REQUEST("SSL listener is off")
 				});
 				return;
 			}
 			if (pin != listen.pin) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "number rejected")
+					error = new OLLMrpc.Error.INVALID_REQUEST("number rejected")
 				});
 				this.app.broadcast(new OLLMrpc.Notification() {
 					method = "event.pair",
@@ -189,8 +186,7 @@ namespace OLLMfilesd
 			var init_ret = GnuTLS.global_init();
 			if (init_ret < 0) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+					error = new OLLMrpc.Error.INTERNAL_ERROR("could not sign")
 				});
 				return;
 			}
@@ -201,16 +197,14 @@ namespace OLLMfilesd
 			var crq = GnuTLS.X509.CertificateRequest.create();
 			if (crq.import(ref csr_datum, GnuTLS.X509.CertificateFormat.PEM) < 0) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "bad csr")
+					error = new OLLMrpc.Error.INVALID_REQUEST("bad csr")
 				});
 				return;
 			}
 			var crt = GnuTLS.X509.Certificate.create();
 			if (gnutls_x509_crt_set_crq(crt, crq) < 0 || crt.set_version(3) < 0) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "bad csr")
+					error = new OLLMrpc.Error.INVALID_REQUEST("bad csr")
 				});
 				return;
 			}
@@ -223,8 +217,7 @@ namespace OLLMfilesd
 				|| crt.set_activation_time(now) < 0
 				|| crt.set_expiration_time(now + (time_t) (3650 * 24 * 60 * 60)) < 0) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+					error = new OLLMrpc.Error.INTERNAL_ERROR("could not sign")
 				});
 				return;
 			}
@@ -238,8 +231,7 @@ namespace OLLMfilesd
 					GLib.Path.build_filename(tls_dir, "ollmrpc-ca-key.pem"), out ca_key_pem);
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+					error = new OLLMrpc.Error.INTERNAL_ERROR("could not sign")
 				});
 				return;
 			}
@@ -257,8 +249,7 @@ namespace OLLMfilesd
 				|| ca_key.import(ref key_datum, GnuTLS.X509.CertificateFormat.PEM) < 0
 				|| crt.sign2(ca_crt, ca_key, GnuTLS.DigestAlgorithm.SHA256, 0) < 0) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+					error = new OLLMrpc.Error.INTERNAL_ERROR("could not sign")
 				});
 				return;
 			}
@@ -267,8 +258,7 @@ namespace OLLMfilesd
 			var crt_buf = new uint8[crt_len];
 			if (crt.export(GnuTLS.X509.CertificateFormat.PEM, crt_buf, ref crt_len) < 0) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+					error = new OLLMrpc.Error.INTERNAL_ERROR("could not sign")
 				});
 				return;
 			}
@@ -280,8 +270,7 @@ namespace OLLMfilesd
 					GLib.ChecksumType.SHA256, issued.certificate.data);
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+					error = new OLLMrpc.Error.INTERNAL_ERROR("could not sign")
 				});
 				return;
 			}
@@ -336,8 +325,7 @@ namespace OLLMfilesd
 			var listen = this.app.ssl_listen;
 			if (listen == null) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "SSL listener is off")
+					error = new OLLMrpc.Error.INVALID_REQUEST("SSL listener is off")
 				});
 				return;
 			}
@@ -350,8 +338,7 @@ namespace OLLMfilesd
 			}
 			if (pin != listen.pin) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "number rejected")
+					error = new OLLMrpc.Error.INVALID_REQUEST("number rejected")
 				});
 				this.app.broadcast(new OLLMrpc.Notification() {
 					method = "event.pair",

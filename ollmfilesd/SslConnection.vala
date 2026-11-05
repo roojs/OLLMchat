@@ -54,8 +54,7 @@ namespace OLLMfilesd
 			switch (request.method) {
 				case "ClientCert.client_cert":
 					this.reply(request, new OLLMrpc.Response() {
-						error = new OLLMrpc.Error(
-							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "local admin only")
+						error = new OLLMrpc.Error.INVALID_REQUEST("local admin only")
 					});
 					return false;
 			}
@@ -66,8 +65,7 @@ namespace OLLMfilesd
 			}
 			if (this.cert_fingerprint == "") {
 				this.reply(request, new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "client certificate required")
+					error = new OLLMrpc.Error.INVALID_REQUEST("client certificate required")
 				});
 				return false;
 			}
@@ -82,8 +80,7 @@ namespace OLLMfilesd
 				return true;
 			}
 			this.reply(request, new OLLMrpc.Response() {
-				error = new OLLMrpc.Error((int) OLLMrpc.RpcErrorCode.CERT_NOT_REGISTERED,
-					"certificate not registered")
+				error = new OLLMrpc.Error.CERT_NOT_REGISTERED("certificate not registered")
 			});
 			return false;
 		}

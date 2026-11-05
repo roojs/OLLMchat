@@ -13,6 +13,7 @@ namespace OLLMrpcTests
 		public GLib.DateTime stamp { get; set; default = new GLib.DateTime.now_utc(); }
 		public signal void closed();
 		public signal void pinged(string payload);
+		public signal uint counted();
 	}
 
 	public class StampOverride : OLLMrpc.Bin.TypeOverride
@@ -52,6 +53,8 @@ namespace OLLMrpcTests
 	{
 		public OLLMrpc.Notification last { get; set; default = new OLLMrpc.Notification(); }
 		public int writes { get; set; default = 0; }
+		public bool auto_reply { get; set; default = false; }
+		public bool reply_uint { get; set; default = false; }
 
 		public override void write(
 			GLib.Object gobject,
@@ -63,6 +66,15 @@ namespace OLLMrpcTests
 			}
 			this.last = (OLLMrpc.Notification) gobject;
 			this.writes++;
+			if (!this.auto_reply) {
+				return;
+			}
+			if (this.reply_uint) {
+				var reply = GLib.Value(typeof(uint));
+				reply.set_uint(7);
+				this.callbacks.get(this.next_handle - 2).reply_args.add(reply);
+			}
+			this.callbacks.get(this.next_handle - 2).replied = true;
 		}
 	}
 
@@ -251,6 +263,40 @@ namespace OLLMrpcTests
 			direct_probe.closed();
 			this.check(command_line, direct.writes == 2, "direct closed did not notify");
 			this.check(command_line, direct.last.method == "closed", "direct closed method mismatch");
+
+			var uint_conn = new Capture() {
+				live_handles = true,
+				auto_reply = true,
+				reply_uint = true
+			};
+			var uint_probe = new Probe();
+			var uint_id = (int) uint_conn.export(uint_probe);
+			var uint_sub = new OLLMrpc.Live.Subscription() {
+				connection = uint_conn,
+				method = "counted",
+				id = uint_id,
+				blocking = true
+			};
+			this.check(command_line, uint_sub.connect(), "connect counted failed");
+			this.check(command_line, uint_probe.counted() == 7, "counted return mismatch");
+			this.check(command_line, uint_conn.writes == 1, "counted marshaller did not write");
+
+			var void_conn = new Capture() {
+				live_handles = true,
+				auto_reply = true
+			};
+			var void_probe = new Probe();
+			var void_id = (int) void_conn.export(void_probe);
+			var void_sub = new OLLMrpc.Live.Subscription() {
+				connection = void_conn,
+				method = "closed",
+				id = void_id,
+				blocking = true
+			};
+			this.check(command_line, void_sub.connect(), "connect blocking closed failed");
+			void_probe.closed();
+			this.check(command_line, void_conn.writes == 1, "blocking void marshaller did not write");
+			this.check(command_line, void_conn.last.method == "closed", "blocking void method mismatch");
 		}
 	}
 }

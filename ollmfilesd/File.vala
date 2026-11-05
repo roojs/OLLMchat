@@ -79,10 +79,7 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}
@@ -131,10 +128,7 @@ namespace OLLMfilesd
 				} catch (GLib.Error e) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
+						error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 					});
 					return;
 				}
@@ -180,10 +174,7 @@ namespace OLLMfilesd
 				} catch (GLib.Error e) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
+						error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 					});
 					return;
 				}
@@ -252,10 +243,7 @@ namespace OLLMfilesd
 			if (Posix.chmod(path, (Posix.mode_t) (unix_mode & 0777)) != 0) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						GLib.strerror(Posix.errno)
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(GLib.strerror(Posix.errno))
 				});
 				return;
 			}
@@ -287,10 +275,7 @@ namespace OLLMfilesd
 				} catch (GLib.Error e) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
+						error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 					});
 					return;
 				}
@@ -465,10 +450,7 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}

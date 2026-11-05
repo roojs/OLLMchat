@@ -263,6 +263,14 @@ namespace OLLMrpc.Transport
 					return false;
 				}
 				this.socket.socket.blocking = false;
+				if (this.bin.in_stream.get_available() < 1) {
+					var pollable = this.link.get_input_stream()
+						as GLib.PollableInputStream;
+					if (pollable == null || !pollable.is_readable()) {
+						this.mutex.unlock();
+						return true;
+					}
+				}
 				try {
 					var parsed = this.bin.parse();
 					var notif = parsed as Notification;

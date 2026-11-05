@@ -493,9 +493,7 @@ namespace OLLMfilesd
 			if (histories.size == 0) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"history row not found"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("history row not found")
 				});
 				return;
 			}
@@ -504,10 +502,7 @@ namespace OLLMfilesd
 			if (file == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"file not found"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("file not found")
 				});
 				return;
 			}
@@ -526,10 +521,7 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}
@@ -555,10 +547,7 @@ namespace OLLMfilesd
 			if (!this.live.has_key((int) id)) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"diff items are not loaded"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("diff items are not loaded")
 				});
 				return;
 			}
@@ -593,10 +582,7 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}
@@ -761,10 +747,7 @@ namespace OLLMfilesd
 			if (file == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"file not found"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("file not found")
 				});
 				return;
 			}
@@ -776,10 +759,7 @@ namespace OLLMfilesd
 			if (rows.size == 0) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"history row not found"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("history row not found")
 				});
 				return;
 			}
@@ -814,10 +794,7 @@ namespace OLLMfilesd
 			if (rows.size == 0) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"history row not found"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("history row not found")
 				});
 				return;
 			}
@@ -877,20 +854,14 @@ namespace OLLMfilesd
 			if (file == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"file not found"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("file not found")
 				});
 				return;
 			}
 			if (this.change_type == "added") {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"Cannot revert added files"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("Cannot revert added files")
 				});
 				return;
 			}
@@ -901,10 +872,7 @@ namespace OLLMfilesd
 				)) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"backup file does not exist"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("backup file does not exist")
 				});
 				return;
 			}
@@ -921,10 +889,7 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}
@@ -944,10 +909,7 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}

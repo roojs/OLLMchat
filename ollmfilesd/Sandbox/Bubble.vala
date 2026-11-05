@@ -113,20 +113,14 @@ namespace OLLMfilesd.Sandbox
 			if (command == "") {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"Command cannot be empty"
-					)
+					error = new OLLMrpc.Error.INVALID_PARAMS("Command cannot be empty")
 				});
 				return;
 			}
 			if (!OLLMbwrap.Bubble.can_wrap()) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"sandbox unavailable"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("sandbox unavailable")
 				});
 				return;
 			}
@@ -184,10 +178,7 @@ namespace OLLMfilesd.Sandbox
 			if (bubble == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"unknown sandbox handle"
-					)
+					error = new OLLMrpc.Error.INVALID_PARAMS("unknown sandbox handle")
 				});
 				return;
 			}
@@ -218,10 +209,7 @@ namespace OLLMfilesd.Sandbox
 			if (spill_mkdir_error != "") {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						spill_mkdir_error
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(spill_mkdir_error)
 				});
 				return;
 			}
@@ -234,10 +222,7 @@ namespace OLLMfilesd.Sandbox
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}
@@ -310,10 +295,7 @@ namespace OLLMfilesd.Sandbox
 			if (bubble.pid == 0) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						ended
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(ended)
 				});
 				return;
 			}

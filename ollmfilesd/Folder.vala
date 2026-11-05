@@ -158,10 +158,7 @@ namespace OLLMfilesd
 			if (project == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"project not found"
-					)
+					error = new OLLMrpc.Error.INVALID_PARAMS("project not found")
 				});
 				return;
 			}
@@ -204,10 +201,7 @@ namespace OLLMfilesd
 			if (parents.size < 1) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-						"no folders"
-					)
+					error = new OLLMrpc.Error.INVALID_REQUEST("no folders")
 				});
 				return;
 			}
@@ -507,10 +501,7 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}
@@ -571,10 +562,7 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}
@@ -679,10 +667,7 @@ namespace OLLMfilesd
 			if (parents.size < 1) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-						"no folders"
-					)
+					error = new OLLMrpc.Error.INVALID_REQUEST("no folders")
 				});
 				return;
 			}

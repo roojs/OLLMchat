@@ -342,10 +342,7 @@ namespace OLLMrpc.Transport
 						parser.load_from_data((string) bytes.get_data(), (ssize_t) bytes.get_size());
 					} catch (GLib.Error e) {
 						reply.write(new Response() {
-							error = new OLLMrpc.Error(
-								(int) OLLMrpc.RpcErrorCode.PARSE_ERROR,
-								"invalid JSON: " + e.message
-							)
+							error = new OLLMrpc.Error.PARSE_ERROR("invalid JSON: " + e.message)
 						});
 						msg.set_status(400, null);
 						return;
@@ -353,10 +350,7 @@ namespace OLLMrpc.Transport
 					var root = parser.get_root();
 					if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
 						reply.write(new Response() {
-							error = new OLLMrpc.Error(
-								(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-								"JSON root must be an object"
-							)
+							error = new OLLMrpc.Error.INVALID_REQUEST("JSON root must be an object")
 						});
 						msg.set_status(400, null);
 						return;
@@ -368,10 +362,7 @@ namespace OLLMrpc.Transport
 						encode_ctx.out_stream.close();
 					} catch (GLib.Error e) {
 						reply.write(new Response() {
-							error = new OLLMrpc.Error(
-								(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-								"request decode failed: " + e.message
-							)
+							error = new OLLMrpc.Error.INVALID_REQUEST("request decode failed: " + e.message)
 						});
 						msg.set_status(400, null);
 						return;
@@ -388,10 +379,7 @@ namespace OLLMrpc.Transport
 						parsed = read_ctx.parse();
 					} catch (GLib.Error e) {
 						reply.write(new Response() {
-							error = new OLLMrpc.Error(
-								(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-								"request parse failed: " + e.message
-							)
+							error = new OLLMrpc.Error.INVALID_REQUEST("request parse failed: " + e.message)
 						});
 						msg.set_status(400, null);
 						return;
@@ -495,10 +483,7 @@ namespace OLLMrpc.Transport
 			GLib.debug("client ip %s", reply.client_ip != "" ? reply.client_ip : "empty");
 			if (msg.get_method() != "POST") {
 				reply.write(new Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-						"POST required, got " + msg.get_method()
-					)
+					error = new OLLMrpc.Error.INVALID_REQUEST("POST required, got " + msg.get_method())
 				});
 				msg.set_status(405, null);
 				return;
@@ -522,10 +507,7 @@ namespace OLLMrpc.Transport
 					parsed = reply.session.bin.parse();
 				} catch (GLib.Error e) {
 					reply.write(new Response() {
-						error = new OLLMrpc.Error(
-							(int) OLLMrpc.RpcErrorCode.PARSE_ERROR,
-							"invalid bin: " + e.message
-						)
+						error = new OLLMrpc.Error.PARSE_ERROR("invalid bin: " + e.message)
 					});
 					msg.set_status(400, null);
 					return;
@@ -534,10 +516,7 @@ namespace OLLMrpc.Transport
 				request = parsed as OLLMrpc.Request;
 				if (request == null) {
 					reply.write(new Response() {
-						error = new OLLMrpc.Error(
-							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-							"body did not decode to a Request"
-						)
+						error = new OLLMrpc.Error.INVALID_REQUEST("body did not decode to a Request")
 					});
 					msg.set_status(400, null);
 					return;
@@ -549,10 +528,7 @@ namespace OLLMrpc.Transport
 					parser.load_from_data((string) bytes.get_data(), (ssize_t) bytes.get_size());
 				} catch (GLib.Error e) {
 					reply.write(new Response() {
-						error = new OLLMrpc.Error(
-							(int) OLLMrpc.RpcErrorCode.PARSE_ERROR,
-							"invalid JSON: " + e.message
-						)
+						error = new OLLMrpc.Error.PARSE_ERROR("invalid JSON: " + e.message)
 					});
 					msg.set_status(400, null);
 					return;
@@ -560,10 +536,7 @@ namespace OLLMrpc.Transport
 				var root = parser.get_root();
 				if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
 					reply.write(new Response() {
-						error = new OLLMrpc.Error(
-							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-							"JSON root must be an object"
-						)
+						error = new OLLMrpc.Error.INVALID_REQUEST("JSON root must be an object")
 					});
 					msg.set_status(400, null);
 					return;
@@ -575,10 +548,7 @@ namespace OLLMrpc.Transport
 					encode_ctx.out_stream.close();
 				} catch (GLib.Error e) {
 					reply.write(new Response() {
-						error = new OLLMrpc.Error(
-							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-							"request decode failed: " + e.message
-						)
+						error = new OLLMrpc.Error.INVALID_REQUEST("request decode failed: " + e.message)
 					});
 					msg.set_status(400, null);
 					return;
@@ -595,10 +565,7 @@ namespace OLLMrpc.Transport
 					parsed = read_ctx.parse();
 				} catch (GLib.Error e) {
 					reply.write(new Response() {
-						error = new OLLMrpc.Error(
-							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-							"request parse failed: " + e.message
-						)
+						error = new OLLMrpc.Error.INVALID_REQUEST("request parse failed: " + e.message)
 					});
 					msg.set_status(400, null);
 					return;
@@ -606,10 +573,7 @@ namespace OLLMrpc.Transport
 				request = parsed as OLLMrpc.Request;
 				if (request == null) {
 					reply.write(new Response() {
-						error = new OLLMrpc.Error(
-							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-							"body did not decode to a Request"
-						)
+						error = new OLLMrpc.Error.INVALID_REQUEST("body did not decode to a Request")
 					});
 					msg.set_status(400, null);
 					return;

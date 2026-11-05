@@ -148,10 +148,7 @@ namespace OLLMfilesd
 			if (!this.history.part.has_key((int) id)) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"diff item is not loaded"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("diff item is not loaded")
 				});
 				return;
 			}
@@ -162,10 +159,7 @@ namespace OLLMfilesd
 				} catch (GLib.Error e) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
+						error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 					});
 					return;
 				}

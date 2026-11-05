@@ -165,10 +165,7 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}
@@ -178,10 +175,7 @@ namespace OLLMfilesd
 				} catch (GLib.Error e) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
+						error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 					});
 					return;
 				}
@@ -256,10 +250,7 @@ namespace OLLMfilesd
 			if (project == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"No active project. Please open a project first."
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("No active project. Please open a project first.")
 				});
 				return;
 			}
@@ -541,10 +532,7 @@ namespace OLLMfilesd
 			if (project == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"No active project. Please open a project first."
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("No active project. Please open a project first.")
 				});
 				return;
 			}
@@ -557,10 +545,7 @@ namespace OLLMfilesd
 			if (file_ids.size == 0) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"No files found in folder"
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("No files found in folder")
 				});
 				return;
 			}
@@ -575,10 +560,7 @@ namespace OLLMfilesd
 			if (rows.size == 0) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"No vector found for AST path: " + ast_path
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR("No vector found for AST path: " + ast_path)
 				});
 				return;
 			}
@@ -591,10 +573,7 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
 			}
