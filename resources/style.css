@@ -205,10 +205,13 @@ separator.horizontal.oc-table-body-sep {
   font-size: 1.25em;
 }
 
+/* Shell output. One absolute size: 0.9em on the view and again
+   on its text node shrinks twice. 10pt is just under the 11pt
+   chat face. Droid Sans Mono is the Android fixed face. */
 .tool-frame .tool-output,
 .tool-frame .tool-output text {
-  font-family: monospace;
-  font-size: 0.9em;
+  font-family: "Droid Sans Mono", monospace;
+  font-size: 10pt;
   background-color: #000000;
   color: #ffffff;
 }

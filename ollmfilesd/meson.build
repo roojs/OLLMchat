@@ -70,6 +70,7 @@ ollmfilesd_src = files(
   'SQT/VectorMetadata.vala',
   'FileVerification.vala',
   'Sandbox/Bubble.vala',
+  'Cleanup.vala',
   'Daemon.vala',
   'ClientCert.vala',
   'SslListen.vala',

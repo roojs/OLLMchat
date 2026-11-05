@@ -1,6 +1,6 @@
 # Tablet bash tells the model to read a file bash cannot open
 
-**Status:** ⏳ proposal applied; desktop daemon and Bash client compiled — tablet check still open
+**Status:** 🚫 CLOSED 2026-11-05. Server spill path is in the tree (§1–§5 applied 2026-11-04). The `bash-spill` directory, the date folders, and boot cleanup are a separate bug: [`2026-11-05-bash-tools-spill.md`](../2026-11-05-bash-tools-spill.md).
 
 Agent Pi on the tablet ran a long string of `bash` calls. Every one exited 0. When the output was longer than 50 lines, the tool returned the tail and told the model to `grep`, `head`, or `tail` a log file. That log is on the tablet. Bash runs on the desktop, so the follow-up cannot work. The model then treated the tail as the file.
 
@@ -848,6 +848,11 @@ Do not read this file whole — it is $(lines) lines. Use grep, head, or tail on
 		}
 ```
 
+## Close
+
+- 🚫 CLOSED 2026-11-05. §1–§5, the server spill path, are in the tree. This log stops there.
+- ℹ️ `bash-spill`, `tools/bash/YYYY/MM/DD`, and boot cleanup are [`2026-11-05-bash-tools-spill.md`](../2026-11-05-bash-tools-spill.md).
+
 ## Attempts / changelog
 
 - ✔️ 2026-11-03 — read the tablet session json and logcat for pid 20434. No product change.
@@ -855,7 +860,4 @@ Do not read this file whole — it is $(lines) lines. Use grep, head, or tail on
 - 💩 2026-11-04 — replacement proposal: spill file under the daemon host data dir, `wait` args carry the path and the line count, both Bash clients stop writing a local log. No product change.
 - 💩 2026-11-04 — `wait_run` in that proposal sleeps in the loop and replies once after it. The finished-job reply is one block at the method's own indent.
 - ✔️ 2026-11-04 — applied §1–§5. `ninja -C build` built `libocbwrap.so`, `ollmfilesd`, and `liboctools.so`. This build does not compile `ollmapp/android/tools/Bash/Request.vala`; that file matches `liboctools/Bash/Request.vala`.
-
-## Next
-
-- ⏳ 💩 Rebuild the daemon and the tablet app and repeat a long `cat`. The footer must name `{user_data_dir}/ollmchat/bash-spill/run_command-….log`. `head` / `sed` through `bash`, and `read`, must both return the start of that server file.
+- 🚫 2026-11-05 — closed. Later `bash-spill` mkdir work is the new bug, not this one.

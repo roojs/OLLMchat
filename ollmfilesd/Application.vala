@@ -250,6 +250,9 @@ Examples:
 
 		private async void initialize() throws GLib.Error
 		{
+			new Cleanup(GLib.Path.build_filename(
+				GLib.Environment.get_user_cache_dir(),
+				"ollmchat", "tools", "bash"));
 			this.ensure_data_dir();
 
 			this.project_manager = new ProjectManager(

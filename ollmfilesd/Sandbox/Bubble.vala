@@ -191,17 +191,36 @@ namespace OLLMfilesd.Sandbox
 				});
 				return;
 			}
+			var spill_now = new GLib.DateTime.now_local();
 			var spill_dir = GLib.Path.build_filename(
-				GLib.Environment.get_user_data_dir(),
-				"ollmchat", "bash-spill");
-			try {
-				GLib.File.new_for_path(spill_dir).make_directory_with_parents(null);
-			} catch (GLib.Error e) {
+				GLib.Environment.get_user_cache_dir(),
+				"ollmchat", "tools", "bash",
+				spill_now.format("%Y"),
+				spill_now.format("%m"),
+				spill_now.format("%d"));
+			var spill_dir_file = GLib.File.new_for_path(spill_dir);
+			var spill_mkdir_error = "";
+			if (spill_dir_file.query_file_type(GLib.FileQueryInfoFlags.NONE)
+			    != GLib.FileType.DIRECTORY) {
+				try {
+					spill_dir_file.make_directory_with_parents(null);
+				} catch (GLib.IOError e) {
+					spill_mkdir_error = e.message;
+					if (e.code == GLib.IOError.EXISTS &&
+					    spill_dir_file.query_file_type(GLib.FileQueryInfoFlags.NONE)
+					    == GLib.FileType.DIRECTORY) {
+						spill_mkdir_error = "";
+					}
+				} catch (GLib.Error e) {
+					spill_mkdir_error = e.message;
+				}
+			}
+			if (spill_mkdir_error != "") {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
+						spill_mkdir_error
 					)
 				});
 				return;
