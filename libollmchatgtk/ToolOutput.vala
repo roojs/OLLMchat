@@ -94,8 +94,9 @@ namespace OLLMchatGtk
 			this.view = new Gtk.TextView() {
 				editable = false,
 				cursor_visible = false,
-				wrap_mode = Gtk.WrapMode.CHAR,
+				wrap_mode = Gtk.WrapMode.NONE,
 				monospace = true,
+				hexpand = true,
 				css_classes = { "tool-output" }
 			};
 			this.view.buffer.text = command + "\n";
@@ -103,6 +104,8 @@ namespace OLLMchatGtk
 				min_content_height = 200,
 				max_content_height = 480,
 				propagate_natural_height = true,
+				propagate_natural_width = false,
+				hscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
 				hexpand = true,
 				vexpand = false,
 				margin_top = 4,
