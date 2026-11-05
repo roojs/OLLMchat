@@ -1,6 +1,6 @@
 # Bash spill folders
 
-**Status:** ⏳ code applied; daemon restart and a tablet `ls -l` still open
+**Status:** 🚫 CLOSED 2026-11-05. Bash commands run. Cleanup and the date folders are in the tree. Restored rendering stays [`2026-11-05-restore-bash-tool-output.md`](../2026-11-05-restore-bash-tool-output.md). Line wrap stays as it is for now: [`2026-11-05-bash-output-wrap.md`](../2026-11-05-bash-output-wrap.md).
 
 - 💩 A later change may keep a span other than two months. Not this change.
 
@@ -241,7 +241,8 @@ The EXISTS-tolerant mkdir that follows `spill_dir` stays. It creates the day fol
 - ✔️ 2026-11-05 — applied `Cleanup`, the two call sites, and the day directory under `{user_cache_dir}/ollmchat/tools/bash`.
 - ✔️ 2026-11-05 — moved that call to `ollmfilesd` `initialize()`. The application no longer constructs `Cleanup`.
 - ✔️ 2026-11-05 — `Cleanup` now lives in `ollmfilesd/Cleanup.vala` and takes the directory. Removed from `liboctools` and dropped the symlink.
+- 🚫 2026-11-05 — closed. A bash command returns its listing.
 
 ## Next
 
-- ⏳ 🔷 Restart `ollmfilesd` and the tablet app, then run `ls -l` in the open project. The listing must come back.
+- 🚫 2026-11-05 — closed. Rendering and wrap are the two logs in the status line.

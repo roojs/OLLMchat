@@ -11,7 +11,34 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.4] - Unreleased
+## [1.4.5] - Unreleased
+
+Work since **1.4.4** (2026-11-04).
+
+### Changed
+
+#### ollmfilesd
+
+- Long bash output spills under `tools/bash/YYYY/MM/DD` in the cache
+- Starting the file daemon keeps the current spill month and the previous month, and deletes the rest
+
+#### Bash
+
+- Tool output uses Droid Sans Mono at 10pt
+
+### Fixed
+
+#### libocrpc
+
+- `Transport.TlsClient` delivers a server notification that arrives during `call`, and `watch` keeps reading notifications while the socket is idle
+- That idle read uses the TLS stream, stays up when the read times out, and skips the read when the stream is not readable so the next `call` is not held for the socket timeout
+- A blocking subscription returns the remote handler's value in the signal's declared type, and `Callback.reply` completes that wait
+
+#### Security
+
+- Packages no longer embed a CA private key. Each server generates its own CA, and pairing returns only the public certificate
+
+## [1.4.4] - 2026-11-04
 
 Work since **1.4.3** (2026-11-03).
 

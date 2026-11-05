@@ -1,10 +1,12 @@
 # Agent Pi bash and read calls failed
 
-**Status:** ⏳ still open (2026-11-03). ✅ issues 2 and 3 are done. ✔️ issues 4, 5, and 6 applied — rebuild the chat app before checking them
+**Status:** ✅ FIXED 2026-11-05. Bash calls run. Issues 1 through 6 stay in the tree. Restored rendering is [`2026-11-05-restore-bash-tool-output.md`](../2026-11-05-restore-bash-tool-output.md).
 
 Agent Pi was asked to fold `FileConnectionAdd` into the source-diff test. It tried to list that folder and read the file. The commands and the path were fine. Two things in the harness stopped it.
 
-## Issue 1 — Shell commands never run
+## ✅ Issue 1 — Shell commands never run
+
+**Status:** ✅ Done. Bash calls run. Confirmed 2026-11-05. Do not revisit.
 
 - 🔷 The shell tool does not run `ls` or `pwd` itself. It asks the file daemon to start a sandbox, then to listen for what the command prints. The daemon can start the sandbox. Listening was never switched on when the daemon started, so the command never runs.
 - 🔷 The model only sees `ERROR:` and tries another command. All five `bash` calls died this way: `ls`, `ls` again, `find`, `pwd && ls`, and `pwd`. The reply is an error code with an empty message, which is what `RpcErrorCode.to_error` sends. `Bash.Request` prints `e.message` and drops the code.
@@ -374,11 +376,12 @@ Open height 200 instead of 80. Cap 480 instead of 280. Four pixels around the ou
 - 🚫 2026-10-27 — removing the black shell was wrong. The user requires white text on a black output.
 - ✔️ 2026-10-28 — `.tool-output` is `#000000` with `#ffffff` text again.
 - ✔️ 2026-10-28 — issue 6: `Sending message` is emitted only when the last outbound message has role `user`.
+- ✅ 2026-11-05 — user confirmed bash calls succeed. Moved to `docs/bugs/done/`.
 
 ## Next
 
-- ✅ Issues 2 and 3. Do not revisit.
-- 🔷 ⏳ Rebuild the chat app and run one `codebase_search` plus one `bash` command. The file daemon already registers `rpc_search`, so it does not need a restart for issue 4.
+- ✅ Issues 1, 2, and 3. Do not revisit.
+- ✅ 2026-11-05 — bash calls succeed. This log stops here.
 - ℹ️ Restarting the file daemon while this chat stays open is a separate failure: `docs/bugs/2026-10-27-filesd-restart-drops-client.md`.
 - ℹ️ The same prompt at 08:43 and 08:58 died in the UI as `Unexpected error: Exception has been thrown` before any tool call. The debug log has no matching line. That is a separate failure.
 

@@ -1,6 +1,6 @@
 # Adding a project does not refresh the Android list
 
-**Status:** ⏳ user closed 2026-11-04. Fences are applied. The tablet rebuild is the build to test. Adding a project still has to wait until the next one is created.
+**Status:** 🚫 CLOSED 2026-11-05. Fences are in the tree. The project list refresh is fine as it stands.
 
 The desktop Add button creates the project on the daemon and shows it in that window. A tablet or phone that is already connected keeps the list it loaded at startup. Nothing tells it the list changed.
 
@@ -241,7 +241,8 @@ On the phone and tablet branch of `button.clicked`, before `this.selector.visibl
 
 - ✔️ 2026-11-04 — applied the fences in `ollmfilesd/ProjectManager.vala`, `libocfiles/ProjectManager.vala`, `ollmapp/android/OllmchatWindow.vala`, and `liboccoder/ProjectSelector.vala`.
 - ⏳ 2026-11-04 — user closed this. The add-project check waits until the next project is created. Open Select project after that add. The new project is in the list. An add while Select project is already open shows the row without closing the list.
+- 🚫 2026-11-05 — closed. Left as it is.
 
 ## Next
 
-- ⏳ When the next project is created on the desktop, open Select project on the tablet. The new project is in the list.
+- 🚫 2026-11-05 — closed.

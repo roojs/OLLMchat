@@ -13,7 +13,7 @@
 
 ## Evidence
 
-- ℹ️ Reported on 2026-10-27 while restarting the daemon for `docs/bugs/2026-10-27-agent-pi-tool-calls-failed.md`.
+- ℹ️ Reported on 2026-10-27 while restarting the daemon for `docs/bugs/done/2026-10-27-FIXED-agent-pi-tool-calls-failed.md`.
 - ℹ️ `~/.cache/ollmchat/ollmfilesd.debug.log` starts over at 16:09:56 with `listening on …/ollmfilesd.sock`.
 - ℹ️ A `RPC-Daemon.hello` arrives at 16:10:01.
 - ℹ️ `~/.cache/ollmchat/ollmchat.debug.log` starts over at 16:11:00.

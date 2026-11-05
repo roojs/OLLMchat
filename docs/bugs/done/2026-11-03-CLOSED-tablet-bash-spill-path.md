@@ -1,6 +1,6 @@
 # Tablet bash tells the model to read a file bash cannot open
 
-**Status:** 🚫 CLOSED 2026-11-05. Server spill path is in the tree (§1–§5 applied 2026-11-04). The `bash-spill` directory, the date folders, and boot cleanup are a separate bug: [`2026-11-05-bash-tools-spill.md`](../2026-11-05-bash-tools-spill.md).
+**Status:** 🚫 CLOSED 2026-11-05. Server spill path is in the tree (§1–§5 applied 2026-11-04). The `bash-spill` directory, the date folders, and boot cleanup are a separate bug: [`2026-11-05-CLOSED-bash-tools-spill.md`](2026-11-05-CLOSED-bash-tools-spill.md).
 
 Agent Pi on the tablet ran a long string of `bash` calls. Every one exited 0. When the output was longer than 50 lines, the tool returned the tail and told the model to `grep`, `head`, or `tail` a log file. That log is on the tablet. Bash runs on the desktop, so the follow-up cannot work. The model then treated the tail as the file.
 
@@ -851,7 +851,7 @@ Do not read this file whole — it is $(lines) lines. Use grep, head, or tail on
 ## Close
 
 - 🚫 CLOSED 2026-11-05. §1–§5, the server spill path, are in the tree. This log stops there.
-- ℹ️ `bash-spill`, `tools/bash/YYYY/MM/DD`, and boot cleanup are [`2026-11-05-bash-tools-spill.md`](../2026-11-05-bash-tools-spill.md).
+- ℹ️ `bash-spill`, `tools/bash/YYYY/MM/DD`, and boot cleanup are [`2026-11-05-CLOSED-bash-tools-spill.md`](2026-11-05-CLOSED-bash-tools-spill.md).
 
 ## Attempts / changelog
 
