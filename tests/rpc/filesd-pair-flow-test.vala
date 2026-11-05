@@ -99,6 +99,16 @@ namespace OLLMrpcTests
 				}
 				this.check(command_line, ready,
 					"daemon did not listen: " + err_text);
+				this.check(command_line,
+					GLib.FileUtils.test(GLib.Path.build_filename(
+						daemon_dir, "tls", "server-ca.pem"), GLib.FileTest.EXISTS),
+					"daemon generated no server CA");
+				var ca_key_info = GLib.File.new_for_path(GLib.Path.build_filename(
+					daemon_dir, "tls", "server-ca-key.pem")).query_info(
+						GLib.FileAttribute.UNIX_MODE, GLib.FileQueryInfoFlags.NONE);
+				this.check(command_line,
+					(ca_key_info.get_attribute_uint32(GLib.FileAttribute.UNIX_MODE) & 0777) == 0600,
+					"daemon CA key mode is not 0600");
 
 				var phone = new OLLMchat.Settings.FilesdClient();
 				phone.server_id = "dfbfedc5-7de0-460f-bfca-06e65357b036";
@@ -172,9 +182,9 @@ namespace OLLMrpcTests
 					key_pem = "client-key.pem",
 					cn = "ollmchat-stranger",
 					ca_pem_path = GLib.Path.build_filename(
-						daemon_dir, "tls", "ollmrpc-ca.pem"),
+						daemon_dir, "tls", "server-ca.pem"),
 					ca_key_path = GLib.Path.build_filename(
-						daemon_dir, "tls", "ollmrpc-ca-key.pem"),
+						daemon_dir, "tls", "server-ca-key.pem"),
 				};
 				stranger.ensure();
 				var stranger_pem = "";

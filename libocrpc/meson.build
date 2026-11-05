@@ -183,16 +183,9 @@ if is_android or is_windows
   ocrpc_src += files('android/PairPublish.vala')
 endif
 
-ocrpc_resources = gnome.compile_resources(
-  'ollmrpc-resources',
-  'data/ollmrpc.gresource.xml',
-  source_dir: 'data',
-  c_name: 'ollmrpc_resources',
-)
-
 ocrpc_base_lib = library('ocrpc',
   dependencies: ocrpc_deps,
-  sources: ocrpc_src + ocrpc_c_src + ocrpc_resources,
+  sources: ocrpc_src + ocrpc_c_src,
   include_directories: include_directories('.'),
   vala_header: 'ocrpc.h',
   vala_vapi: 'ocrpc-meson.vapi',

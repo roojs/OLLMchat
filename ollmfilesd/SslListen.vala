@@ -101,25 +101,27 @@ namespace OLLMfilesd
 			if (!GLib.FileUtils.test(tls_dir, GLib.FileTest.IS_DIR)) {
 				GLib.DirUtils.create_with_parents(tls_dir, 0700);
 			}
-			var ca_pem = GLib.Path.build_filename(tls_dir, "ollmrpc-ca.pem");
-			var ca_key = GLib.Path.build_filename(tls_dir, "ollmrpc-ca-key.pem");
-			if (!GLib.FileUtils.test(ca_pem, GLib.FileTest.EXISTS)) {
-				try {
-					GLib.FileUtils.set_contents(ca_pem,
-						(string) GLib.resources_lookup_data("/ollmrpc/ollmrpc-ca.pem",
-							GLib.ResourceLookupFlags.NONE).get_data());
-				} catch (GLib.Error e) {
-					GLib.error("extract CA PEM: %s", e.message);
-				}
+			var ca_pem = GLib.Path.build_filename(tls_dir, "server-ca.pem");
+			var ca_key = GLib.Path.build_filename(tls_dir, "server-ca-key.pem");
+			if (!GLib.FileUtils.test(ca_pem, GLib.FileTest.EXISTS) ||
+				!GLib.FileUtils.test(ca_key, GLib.FileTest.EXISTS)) {
+				GLib.FileUtils.remove(ca_pem);
+				GLib.FileUtils.remove(ca_key);
+				GLib.FileUtils.remove(GLib.Path.build_filename(tls_dir, "server.pem"));
+				GLib.FileUtils.remove(GLib.Path.build_filename(tls_dir, "server-key.pem"));
+				GLib.FileUtils.remove(GLib.Path.build_filename(tls_dir, "server.csr"));
 			}
-			if (!GLib.FileUtils.test(ca_key, GLib.FileTest.EXISTS)) {
-				try {
-					GLib.FileUtils.set_contents(ca_key,
-						(string) GLib.resources_lookup_data("/ollmrpc/ollmrpc-ca-key.pem",
-							GLib.ResourceLookupFlags.NONE).get_data());
-				} catch (GLib.Error e) {
-					GLib.error("extract CA key: %s", e.message);
-				}
+			var ca = new OLLMrpc.Transport.Cert() {
+				dir = tls_dir,
+				cert_pem = "server-ca.pem",
+				key_pem = "server-ca-key.pem",
+				trust_pem = "server-ca.pem",
+				cn = "OLLMrpc Server CA",
+				certificate_authority = true,
+			};
+			ca.ensure();
+			if (Posix.chmod(ca_key, 0600) != 0) {
+				GLib.error("chmod %s failed", ca_key);
 			}
 			var cert = new OLLMrpc.Transport.Cert() {
 				dir = tls_dir,

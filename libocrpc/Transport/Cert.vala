@@ -25,7 +25,7 @@ namespace OLLMrpc.Transport
 	 * makes the client's. Configure with construct properties, then call
 	 * {@link ensure} once: it creates the files if needed and sets
 	 * {@link certificate} (this program's own) and {@link trust} (the
-	 * product CA the other end must be signed by). When
+	 * configured CA the other end must be signed by). When
 	 * {@link ca_pem_path} and {@link ca_key_path} are set the certificate
 	 * is signed with that CA; otherwise it is self-signed.
 	 *
@@ -65,6 +65,14 @@ namespace OLLMrpc.Transport
 	 */
 	public class Cert : GLib.Object
 	{
+		[CCode (cname = "gnutls_x509_crt_set_basic_constraints",
+			cheader_filename = "gnutls/x509.h")]
+		private static extern int gnutls_x509_crt_set_basic_constraints(
+			GnuTLS.X509.Certificate crt,
+			uint ca,
+			int pathlen
+		);
+
 		/** Directory the key, certificate and trust files live in. */
 		public string dir { get; set; default = ""; }
 
@@ -81,7 +89,14 @@ namespace OLLMrpc.Transport
 		public bool server_san { get; set; default = false; }
 
 		/**
-		 * Product CA certificate file used to sign our certificate.
+		 * Whether a newly generated self-signed certificate is a CA.
+		 *
+		 * Set only for a server installation's CA certificate.
+		 */
+		public bool certificate_authority { get; set; default = false; }
+
+		/**
+		 * CA certificate file used to sign our certificate.
 		 * Empty (with empty {@link ca_key_path}) means self-signed.
 		 */
 		public string ca_pem_path { get; set; default = ""; }
@@ -99,7 +114,7 @@ namespace OLLMrpc.Transport
 		public GLib.TlsCertificate certificate { get; private set; }
 
 		/**
-		 * Product CA trust store for {@link HttpClient.tls_database},
+		 * CA trust store for {@link HttpClient.tls_database},
 		 * set by {@link ensure} from {@link ca_pem_path} or the
 		 * {@link trust_pem} file under {@link dir}. Null when neither
 		 * exists (system trust), matching
@@ -267,6 +282,9 @@ namespace OLLMrpc.Transport
 			var ver_ret = crt.set_version(3);
 			if (ver_ret < 0) {
 				GLib.error("set_version: %s", ((GnuTLS.ErrorCode)ver_ret).to_string());
+			}
+			if (this.certificate_authority && gnutls_x509_crt_set_basic_constraints(crt, 1, -1) < 0) {
+				GLib.error("set_basic_constraints");
 			}
 			var serial = new uint8[16];
 			for (var i = 0; i < serial.length; i++) {

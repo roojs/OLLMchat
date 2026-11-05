@@ -19,7 +19,15 @@
 namespace OLLMrpc.Transport
 {
 	[CCode (cname = "ocrpc_cert_create_pem_files", cheader_filename = "android/cert-openssl.h")]
-	extern bool ocrpc_cert_create_pem_files(string cert_path, string key_path, string cn, bool server_san, string ca_pem_path, string ca_key_path) throws GLib.Error;
+	extern bool ocrpc_cert_create_pem_files(
+		string cert_path,
+		string key_path,
+		string cn,
+		bool server_san,
+		bool certificate_authority,
+		string ca_pem_path,
+		string ca_key_path
+	) throws GLib.Error;
 
 	[CCode (cname = "ocrpc_cert_write_csr", cheader_filename = "android/cert-openssl.h")]
 	extern bool ocrpc_cert_write_csr(string key_path, string csr_path, string cn) throws GLib.Error;
@@ -34,7 +42,7 @@ namespace OLLMrpc.Transport
 	 * makes the client's. Configure with construct properties, then call
 	 * {@link ensure} once: it creates the files if needed and sets
 	 * {@link certificate} (this program's own) and {@link trust} (the
-	 * product CA the other end must be signed by). When
+	 * configured CA the other end must be signed by). When
 	 * {@link ca_pem_path} and {@link ca_key_path} are set the certificate
 	 * is signed with that CA; otherwise it is self-signed.
 	 *
@@ -80,7 +88,14 @@ namespace OLLMrpc.Transport
 		public bool server_san { get; set; default = false; }
 
 		/**
-		 * Product CA certificate file used to sign our certificate.
+		 * Whether a newly generated self-signed certificate is a CA.
+		 *
+		 * Set only for a server installation's CA certificate.
+		 */
+		public bool certificate_authority { get; set; default = false; }
+
+		/**
+		 * CA certificate file used to sign our certificate.
 		 * Empty (with empty {@link ca_key_path}) means self-signed.
 		 */
 		public string ca_pem_path { get; set; default = ""; }
@@ -98,7 +113,7 @@ namespace OLLMrpc.Transport
 		public GLib.TlsCertificate certificate { get; private set; }
 
 		/**
-		 * Product CA trust store for {@link HttpClient.tls_database},
+		 * CA trust store for {@link HttpClient.tls_database},
 		 * set by {@link ensure} from {@link ca_pem_path} or the
 		 * {@link trust_pem} file under {@link dir}. Null when neither
 		 * exists (system trust), matching
@@ -202,7 +217,9 @@ namespace OLLMrpc.Transport
 		private void create_pem_files(string cert_path, string key_path)
 		{
 			try {
-				ocrpc_cert_create_pem_files(cert_path, key_path, this.cn, this.server_san, this.ca_pem_path, this.ca_key_path);
+				ocrpc_cert_create_pem_files(cert_path, key_path, this.cn,
+					this.server_san, this.certificate_authority,
+					this.ca_pem_path, this.ca_key_path);
 				this.certificate = new GLib.TlsCertificate.from_files(cert_path, key_path);
 			} catch (GLib.Error e) {
 				GLib.error("write %s: %s", cert_path, e.message);

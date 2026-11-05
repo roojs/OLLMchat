@@ -226,9 +226,9 @@ namespace OLLMfilesd
 			var ca_key_pem = "";
 			try {
 				GLib.FileUtils.get_contents(
-					GLib.Path.build_filename(tls_dir, "ollmrpc-ca.pem"), out ca_pem);
+					GLib.Path.build_filename(tls_dir, "server-ca.pem"), out ca_pem);
 				GLib.FileUtils.get_contents(
-					GLib.Path.build_filename(tls_dir, "ollmrpc-ca-key.pem"), out ca_key_pem);
+					GLib.Path.build_filename(tls_dir, "server-ca-key.pem"), out ca_key_pem);
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					error = new OLLMrpc.Error.INTERNAL_ERROR("could not sign")

@@ -294,10 +294,6 @@ test('test-rpc-http-https',
   test_rpc_http_https,
   suite: 'rpc',
   timeout: 30,
-  env: {
-    'OLLM_RPC_CA_PEM': meson.project_source_root() / 'libocrpc' / 'data' / 'ollmrpc-ca.pem',
-    'OLLM_RPC_CA_KEY': meson.project_source_root() / 'libocrpc' / 'data' / 'ollmrpc-ca-key.pem',
-  },
 )
 test_rpc_filesd_pair = executable('test-rpc-filesd-pair',
   'rpc/filesd-pair-test.vala',

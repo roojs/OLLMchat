@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
  *
- * HTTPS Rpc smoke — product CA + HttpServer + HttpClient trust.
+ * HTTPS RPC smoke — generated CA + HttpServer + HttpClient trust.
  */
 
 namespace RpcDummy
@@ -49,14 +49,35 @@ namespace OLLMrpcTests
 			OLLMrpc.Request.register("Hello", new RpcDummy.Hello());
 
 			var tls_dir = GLib.DirUtils.make_tmp("ollmrpc-https-XXXXXX");
-			var ca_pem = GLib.Environment.get_variable("OLLM_RPC_CA_PEM");
-			var ca_key = GLib.Environment.get_variable("OLLM_RPC_CA_KEY");
-			this.check(command_line, ca_pem != null && ca_pem != "", "OLLM_RPC_CA_PEM");
-			this.check(command_line, ca_key != null && ca_key != "", "OLLM_RPC_CA_KEY");
+			var ca = new OLLMrpc.Transport.Cert() {
+				dir = tls_dir,
+				cert_pem = "server-ca.pem",
+				key_pem = "server-ca-key.pem",
+				cn = "OLLMrpc Test CA",
+				certificate_authority = true,
+			};
+			ca.ensure();
+			var ca_fingerprint = GLib.Checksum.compute_for_data(
+				GLib.ChecksumType.SHA256, ca.certificate.certificate.data);
+			ca.ensure();
+			this.check(command_line, ca_fingerprint == GLib.Checksum.compute_for_data(
+				GLib.ChecksumType.SHA256, ca.certificate.certificate.data),
+				"reinitializing changed CA");
+			var second_ca = new OLLMrpc.Transport.Cert() {
+				dir = GLib.DirUtils.make_tmp("ollmrpc-https-second-XXXXXX"),
+				cert_pem = "server-ca.pem",
+				key_pem = "server-ca-key.pem",
+				cn = "OLLMrpc Test CA",
+				certificate_authority = true,
+			};
+			second_ca.ensure();
+			this.check(command_line, ca_fingerprint != GLib.Checksum.compute_for_data(
+				GLib.ChecksumType.SHA256, second_ca.certificate.certificate.data),
+				"clean directories generated the same CA");
 			var cert = new OLLMrpc.Transport.Cert() {
 				dir = tls_dir,
-				ca_pem_path = ca_pem,
-				ca_key_path = ca_key,
+				ca_pem_path = GLib.Path.build_filename(tls_dir, "server-ca.pem"),
+				ca_key_path = GLib.Path.build_filename(tls_dir, "server-ca-key.pem"),
 				server_san = true,
 			};
 			cert.ensure();

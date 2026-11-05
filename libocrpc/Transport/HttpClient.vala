@@ -94,8 +94,8 @@ namespace OLLMrpc.Transport
 		}
 
 		/**
-		 * Trust store for product-CA HTTPS ({@link Cert.trust} /
-		 * bundled ''ollmrpc-ca.pem''). Null → Soup platform default.
+		 * Trust store for a server installation's CA
+		 * ({@link Cert.trust}). Null → Soup platform default.
 		 */
 		public GLib.TlsDatabase? tls_database { get; set; default = null; }
 

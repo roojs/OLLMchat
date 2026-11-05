@@ -92,9 +92,9 @@
 
 ### Certificates
 
-- **🔷** Stop building the CA into the application. Remove `ollmrpc-ca.pem` and `ollmrpc-ca-key.pem` from `libocrpc/data/ollmrpc.gresource.xml`. The phone stops loading that public cert through `product_ca_resource`.
-- **🔷** If `{data_dir}/tls/ollmrpc-ca.pem` is still that bundled certificate, delete it and `ollmrpc-ca-key.pem`, then generate a new CA unique to this server and store it in those same paths. A CA that is already unique to the server stays.
-- **🔷** The server leaf is issued by that new CA. The old leaf, signed by the bundled CA, is replaced in the same step.
+- **🔷** `✔️` Stop building the CA into the application. Remove `ollmrpc-ca.pem` and `ollmrpc-ca-key.pem` from `libocrpc/data/ollmrpc.gresource.xml`. The phone stops loading that public cert through `product_ca_resource`.
+- **🔷** `✔️` Generate a unique CA under `{data_dir}/tls/server-ca.pem` and `server-ca-key.pem`. The renamed server-only paths never select the legacy packaged CA files.
+- **🔷** `✔️` The server leaf is issued by that new CA. When the renamed CA pair is absent, replace the old leaf signed by the bundled CA in the same step.
 - **🔷** A valid certificate and a registered certificate stay different. Steady-state RPC needs a registered one.
 - **🔷** The open handshake exists only while pair mode is on. Then the phone needs no valid client certificate: `TlsAuthenticationMode.REQUESTED`, `accept_certificate` returns true, and registration may run with an empty fingerprint.
 - **🔷** The phone side is still closed. `HttpClient` accepts the server certificate only when the errors are `BAD_IDENTITY` or none, and that trust comes from the bundled product CA. Registration has to accept the server certificate without that CA on the phone. The PIN is the authorization for that connection.

@@ -8,6 +8,7 @@ gboolean ocrpc_cert_create_pem_files (const gchar *cert_path,
                                       const gchar *key_path,
                                       const gchar *cn,
                                       gboolean server_san,
+                                      gboolean certificate_authority,
                                       const gchar *ca_pem_path,
                                       const gchar *ca_key_path,
                                       GError **error);

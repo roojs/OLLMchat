@@ -40,7 +40,8 @@
 - **🔷** `✔️` Delete the pending-registration calls. `pending_cert`, `client_cert` actions `accept` / `reject` / `ban`, and `event.client_cert` go away, and so does `RegistrationBanner`. A match inserts the row approved. `approved_certs` and `client_cert` action `remove` stay.
 - **ℹ️** This phase returns a server-signed cert and stores it approved. The phone does not get the CA private key.
 - **ℹ️** Already-approved `client_cert` rows stay the steady-state allow list. This plan does not describe wiping them.
-- **ℹ️** Signing uses the CA already on disk, `{data_dir}/tls/ollmrpc-ca.pem` and `ollmrpc-ca-key.pem`. Removing the bundled CA stays in the parent Certificates section.
+- **ℹ️** Signing uses the generated CA already on disk,
+  `{data_dir}/tls/server-ca.pem` and `server-ca-key.pem`.
 - **💩** If the dialog cannot hand the PIN to the daemon, the toast is **Could not start pairing**.
 - **💩** Names in the fences that this write-up chose: `pair`, `event.pair`, `arm`, `finish`.
 
@@ -317,9 +318,9 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 			var ca_key_pem = "";
 			try {
 				GLib.FileUtils.get_contents(
-					GLib.Path.build_filename(tls_dir, "ollmrpc-ca.pem"), out ca_pem);
+					GLib.Path.build_filename(tls_dir, "server-ca.pem"), out ca_pem);
 				GLib.FileUtils.get_contents(
-					GLib.Path.build_filename(tls_dir, "ollmrpc-ca-key.pem"), out ca_key_pem);
+					GLib.Path.build_filename(tls_dir, "server-ca-key.pem"), out ca_key_pem);
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					error = new OLLMrpc.Error(

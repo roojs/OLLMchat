@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<gresources>
-  <gresource prefix="/ollmrpc">
-    <file>ollmrpc-ca.pem</file>
-    <file>ollmrpc-ca-key.pem</file>
-  </gresource>
-</gresources>
