@@ -43,13 +43,12 @@ This host is Ubuntu 25.04. Its apt sources stay Ubuntu. A Trixie package is buil
 
 ### GitHub
 
-The Trixie job runs on `ubuntu-24.04` with `container: image: debian:trixie`. The runner can do that. LXC is not used on GitHub.
+One **Debian packages** job runs `scripts/ci/build-debian-packages.sh` twice. LXC is not used on GitHub.
 
-`ROOJS_APT_SUITE=trixie`. Install `libgirepository1.0-dev`. The Meson probe `girepository-2.0 >= 2.86` fails on Trixie (2.84.4), so `libocrpc` links `libgirepository-1.0`. That matches Trixie GNOME Shell 48 (GJS 1.82). Shell 49 and later (Debian forky ships Shell 50, GJS 1.87) load girepository 2.0 and need GLib >= 2.85.1, which Trixie does not have. `libocrpc` has to be the same major as the Shell in that process.
+- Ubuntu 26.04 (`ROOJS_APT_SUITE=resolute`, `libgirepository-2.0-dev`, `pkg-config --atleast-version=2.86 girepository-2.0`). Plain revision (`1.4.6-1`). That binary calls `gi_repository_dup_default()` and depends on `libgirepository-2.0-0 (>= 2.85.1)`. Questing and resolute install this one.
+- Debian 13 (`debian:trixie`, `libgirepository1.0-dev`). The Meson probe `girepository-2.0 >= 2.86` fails on 2.84.4, so `libocrpc` links `libgirepository-1.0`. Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`). Trixie has no `humanity-icon-theme` and the roojs trixie suite has no `libwebkitgtk-6.0-webdriver-dev`. The script installs the Ubuntu icon theme and the Ubuntu 25.04 WebDriver build (`libjpeg8` comes from Ubuntu plucky; Trixie only has `libjpeg.so.62`).
 
-Questing and resolute stay on the Ubuntu 26.04 job (`ROOJS_APT_SUITE=resolute`, `libgirepository-2.0-dev`, `pkg-config --atleast-version=2.86 girepository-2.0`). That binary calls `gi_repository_dup_default()` and depends on `libgirepository-2.0-0 (>= 2.85.1)`.
-
-Trixie package versions end in `+trixie`, so the file is `libocrpc1_1.4.3-1+trixie_amd64.deb`. The label is the suite codename. The Ubuntu 26.04 job keeps the plain revision (`1.4.3-1`) and is the questing / resolute binary. The repos ingest has to put `+trixie` files in the trixie suite only.
+Both sets upload as `ollmchat-debian`. The repos ingest has to put `+trixie` files in the trixie suite only.
 
 ### This machine
 

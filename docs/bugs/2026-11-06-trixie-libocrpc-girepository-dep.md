@@ -42,7 +42,8 @@ Depends: libavahi-gobject0 (>= 0.6.22), libc6 (>= 2.27), libffi8 (>= 3.4), libge
 ## Attempts / changelog
 
 - ✔️ Read the four suite indexes and the Debian glib / GJS package facts.
-- ✔️ `.github/workflows/x-debian.yml` builds `debian:trixie` and `ubuntu:26.04`. The Trixie job installs `libgirepository1.0-dev` and rewrites the changelog version to `+trixie` before `dpkg-buildpackage`.
+- ✔️ Release `v1.4.6` run `42185644147`: job `Debian / Trixie packages` failed in apt. `humanity-icon-theme` is not in Debian. `libwebkitgtk-6.0-webdriver-dev` is not in the roojs trixie suite (`E: Package has no installation candidate`). The matrix had split that job away from the Ubuntu 26.04 package build.
+- ✔️ One **Debian packages** job runs `scripts/ci/build-debian-packages.sh` in `ubuntu:26.04`, then in `debian:trixie`. Trixie still links `libgirepository1.0-dev` and versions `+trixie`. The icon theme comes from Ubuntu. The WebDriver library is the Ubuntu 25.04 roojs build, plus Ubuntu `libjpeg8`.
 
 ## Next
 

@@ -30,9 +30,9 @@ housekeeping.
 
 CI then:
 
-1. Builds **Debian** packages twice, using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev`. Each job produces split runtime/`-dev` libraries plus `ollmchat`, then a second **ollmchat-remote-only** all-in-one `.deb`.
-   - **Trixie** (`debian:trixie`, girepository 1.0). Versions end in `+trixie` (`libocrpc1_1.4.3-1+trixie_amd64.deb`).
-   - **Ubuntu 26.04** (girepository 2.0). Plain revision (`1.4.3-1`), for questing and resolute.
+1. Builds **Debian** packages in one job (`scripts/ci/build-debian-packages.sh`), using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev`. Each pass produces split runtime/`-dev` libraries plus `ollmchat`, then a second **ollmchat-remote-only** all-in-one `.deb`.
+   - **Ubuntu 26.04** (girepository 2.0). Plain revision (`1.4.6-1`), for questing and resolute.
+   - **Trixie** (`debian:trixie`, girepository 1.0). Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`).
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
 3. Builds Linux AppImages with sqgipkg (Ubuntu 25.04; FAISS is built from source for those bundles).
 4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**.
