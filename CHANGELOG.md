@@ -28,7 +28,7 @@ Work since **1.4.5** (2026-11-05).
 
 - Ubuntu 26.04 packages are the plain revision again, for 25.10 and resolute
 - Debian 13 is an added Trixie build, versioned `+trixie`
-- That Trixie build links stock WebKit. The suite has no WebDriver package
+- That Trixie build links stock WebKit until WebDriver is built for Debian
 
 ## [1.4.5] - 2026-11-05
 
