@@ -43,12 +43,12 @@ This host is Ubuntu 25.04. Its apt sources stay Ubuntu. A Trixie package is buil
 
 ### GitHub
 
-One **Debian packages** job runs `scripts/ci/build-debian-packages.sh` twice. LXC is not used on GitHub.
+Two jobs. LXC is not used on GitHub. The Ubuntu job is the one that was already shipping. Trixie is a second job. Its failure does not drop the Ubuntu artifacts (`continue-on-error`).
 
-- Ubuntu 26.04 (`ROOJS_APT_SUITE=resolute`, `libgirepository-2.0-dev`, `pkg-config --atleast-version=2.86 girepository-2.0`). Plain revision (`1.4.6-1`). That binary calls `gi_repository_dup_default()` and depends on `libgirepository-2.0-0 (>= 2.85.1)`. Questing and resolute install this one.
-- Debian 13 (`debian:trixie`, `libgirepository1.0-dev`). The Meson probe `girepository-2.0 >= 2.86` fails on 2.84.4, so `libocrpc` links `libgirepository-1.0`. Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`). Trixie has no `humanity-icon-theme` and the roojs trixie suite has no `libwebkitgtk-6.0-webdriver-dev`. The script installs the Ubuntu icon theme and the Ubuntu 25.04 WebDriver build (`libjpeg8` comes from Ubuntu plucky; Trixie only has `libjpeg.so.62`).
+- **Debian packages:** `container: ubuntu:26.04`, `ROOJS_APT_SUITE=resolute`, `libgirepository-2.0-dev`, `pkg-config --atleast-version=2.86 girepository-2.0`. Plain revision (`1.4.6-1`). That binary calls `gi_repository_dup_default()` and depends on `libgirepository-2.0-0 (>= 2.85.1)`. Questing (25.10) and resolute install this one. Artifact `ollmchat-debian`.
+- **Trixie packages:** `container: debian:trixie`, `libgirepository1.0-dev`. The Meson probe `girepository-2.0 >= 2.86` fails on 2.84.4, so `libocrpc` links `libgirepository-1.0`. Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`). Artifact `ollmchat-debian-trixie`. The icon theme is the Ubuntu `humanity-icon-theme` all.deb. The roojs trixie suite has no `libwebkitgtk-6.0-webdriver-dev`. An Ubuntu 25.04 WebDriver library does not link: its `libwebkitgtk-6.0-webdriver.so.4` needs JavaScriptCore symbols Trixie does not provide.
 
-Both sets upload as `ollmchat-debian`. The repos ingest has to put `+trixie` files in the trixie suite only.
+The repos ingest has to put `+trixie` files in the trixie suite only. There is no roojs suite for Ubuntu 26.10 (`stonking`).
 
 ### This machine
 

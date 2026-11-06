@@ -17,10 +17,17 @@ Work since **1.4.5** (2026-11-05).
 
 ### Changed
 
+#### Markdown
+
+- A bash fence is the shell listing, and the command is the title
+- Live tool output and a restored bash result both use that fence
+- The restored result is collapsed and shows the command
+- Stop on that frame stops the running tools
+
 #### Packaging
 
-- Debian 13 packages are built on Trixie and versioned `+trixie`
-- Ubuntu 26.04 packages keep the plain revision for questing and resolute
+- Ubuntu 26.04 packages are the plain revision again, for 25.10 and resolute
+- Debian 13 is an added Trixie build, versioned `+trixie`
 
 ## [1.4.5] - 2026-11-05
 

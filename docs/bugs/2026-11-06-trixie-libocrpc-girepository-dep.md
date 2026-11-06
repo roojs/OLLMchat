@@ -43,7 +43,8 @@ Depends: libavahi-gobject0 (>= 0.6.22), libc6 (>= 2.27), libffi8 (>= 3.4), libge
 
 - ✔️ Read the four suite indexes and the Debian glib / GJS package facts.
 - ✔️ Release `v1.4.6` run `42185644147`: job `Debian / Trixie packages` failed in apt. `humanity-icon-theme` is not in Debian. `libwebkitgtk-6.0-webdriver-dev` is not in the roojs trixie suite (`E: Package has no installation candidate`). The matrix had split that job away from the Ubuntu 26.04 package build.
-- ✔️ One **Debian packages** job runs `scripts/ci/build-debian-packages.sh` in `ubuntu:26.04`, then in `debian:trixie`. Trixie still links `libgirepository1.0-dev` and versions `+trixie`. The icon theme comes from Ubuntu. The WebDriver library is the Ubuntu 25.04 roojs build, plus Ubuntu `libjpeg8`.
+- ✔️ One **Debian packages** job ran `scripts/ci/build-debian-packages.sh` in `ubuntu:26.04`, then in `debian:trixie`, and the collect step required both. Release `v1.4.6` run `42186821962` linked the Ubuntu 25.04 WebDriver library into the Trixie root. `libwebkitgtk-6.0-webdriver.so.4` has undefined `WTF` / `JSC` references against Trixie's JavaScriptCore. The Ubuntu `.deb` files were already built and were not uploaded.
+- ✔️ That combined job replaced the `ubuntu:26.04` container job. The container job is restored as **Debian packages** (plain revision, artifact `ollmchat-debian`). **Trixie packages** is a second job (`continue-on-error`). It does not install the Ubuntu WebDriver library. The roojs trixie suite still has no `libwebkitgtk-6.0-webdriver-dev`.
 
 ## Next
 

@@ -121,6 +121,11 @@ namespace OLLMrpc.Live
 		{
 		}
 
+		public bool complete(int correlation, Gee.ArrayList<GLib.Value?> args)
+		{
+			return false;
+		}
+
 		public static void drop(Hook user)
 		{
 		}
