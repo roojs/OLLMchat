@@ -8,11 +8,18 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 #   disabled — ollmchat-remote-only (no local GGUF backend)
 LOCAL_GGUF := $(shell grep -E '^(enabled|disabled)$$' debian/local-gguf 2>/dev/null || echo enabled)
 
+# Trixie sets WEBKIT_WEBDRIVER=disabled. That suite has no
+# libwebkitgtk-6.0-webdriver-dev. Other builds leave this empty.
+WEBKIT_OPT :=
+ifneq ($(strip $(WEBKIT_WEBDRIVER)),)
+WEBKIT_OPT := -Dwebkit_webdriver=$(WEBKIT_WEBDRIVER)
+endif
+
 %:
 	dh $@
 
 override_dh_auto_configure:
-	meson setup build --prefix=/usr -Ddocs=false -Dexamples=true -Dtests=false -Dlocal_gguf=$(LOCAL_GGUF)
+	meson setup build --prefix=/usr -Ddocs=false -Dexamples=true -Dtests=false -Dlocal_gguf=$(LOCAL_GGUF) $(WEBKIT_OPT)
 
 override_dh_auto_build:
 	ninja -C build

@@ -145,13 +145,13 @@ jobs:
           curl -fsSL -o /tmp/humanity-icon-theme.deb \
             http://archive.ubuntu.com/ubuntu/pool/universe/h/humanity-icon-theme/humanity-icon-theme_0.6.16build1_all.deb
           apt-get install -y /tmp/humanity-icon-theme.deb
-          apt-get install -y --no-install-recommends libwebkitgtk-6.0-webdriver-dev
 
       - name: Build Debian packages (amd64)
         working-directory: OLLMchat
         env:
           DEBFULLNAME: GitHub Actions
           DEBEMAIL: actions@users.noreply.github.com
+          WEBKIT_WEBDRIVER: disabled
         run: |
           set -euo pipefail
           chmod +x scripts/release/changelog.sh scripts/release/sync-debian-changelog.sh
@@ -171,6 +171,10 @@ jobs:
           fi
           sed -i '1s/(\([^)]*\))/(\1+trixie)/' debian/changelog
           head -n 1 debian/changelog
+          # No WebDriver -dev package on Trixie. Stock WebKit is the link.
+          sed -i '/libwebkitgtk-6.0-webdriver-dev/d' \
+            debian/control debian/split/control \
+            debian/monolithic/control debian/monolithic-remote-only/control
           ./debian/use-split-packages.sh
           dpkg-buildpackage -us -uc -b
           rm -rf build
