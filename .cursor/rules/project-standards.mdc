@@ -25,6 +25,7 @@ Do **not** implement until router-mandated reads are done.
 | Task | Document |
 |------|----------|
 | Meson / build | `docs/build-rules.md` |
+| Debian `.deb` | `docs/build-rules.md` (section Debian packages) |
 | Docblocks (when router includes `docblocks`) | `docs/code-documentation.md` |
 | Plans in `docs/plans/*` | `docs/guide-to-writing-plans.md` |
 | Bug fixes | `docs/bug-fix-process.md` |

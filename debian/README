@@ -101,7 +101,7 @@ packages. The VAPI is `/usr/share/vala/vapi/ocrpc.vapi`.
 Building packages
 -----------------
 
-1. Install build dependencies on Debian 13 or Ubuntu 25.04+ (add the [roojs APT source](https://roojs.github.io/repos/) first so `libllama-dev` resolves; GitHub Actions uses `scripts/ci/enable-roojs-apt.sh`):
+1. Build the Trixie packages inside Debian 13 (GitHub: `debian:trixie` container; this machine: `lxc-attach -n lxc-reference-trixie`). See `docs/build-rules.md`. Add the [roojs APT source](https://roojs.github.io/repos/) inside that root so `libllama-dev` resolves (`scripts/ci/enable-roojs-apt.sh`):
    ```bash
    sudo apt-get install build-essential devscripts debhelper meson ninja-build \
      pkg-config valac libgee-0.8-dev libglib2.0-dev libjson-glib-dev \

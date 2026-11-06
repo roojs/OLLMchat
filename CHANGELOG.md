@@ -11,7 +11,18 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.5] - Unreleased
+## [1.4.6] - Unreleased
+
+Work since **1.4.5** (2026-11-05).
+
+### Changed
+
+#### Packaging
+
+- Debian 13 packages are built on Trixie and versioned `+trixie`
+- Ubuntu 26.04 packages keep the plain revision for questing and resolute
+
+## [1.4.5] - 2026-11-05
 
 Work since **1.4.4** (2026-11-04).
 
