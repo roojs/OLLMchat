@@ -1,6 +1,6 @@
 # Bash spill folders
 
-**Status:** 🚫 CLOSED 2026-11-05. Bash commands run. Cleanup and the date folders are in the tree. Restored rendering stays [`2026-11-05-restore-bash-tool-output.md`](../2026-11-05-restore-bash-tool-output.md). Line wrap stays as it is for now: [`2026-11-05-bash-output-wrap.md`](../2026-11-05-bash-output-wrap.md).
+**Status:** 🚫 CLOSED 2026-11-05. Bash commands run. Cleanup and the date folders are in the tree. Restored rendering stays [`2026-11-05-restore-bash-tool-output.md`](../2026-11-05-restore-bash-tool-output.md). Line wrap is [`2026-11-05-CLOSED-bash-output-wrap.md`](2026-11-05-CLOSED-bash-output-wrap.md).
 
 - 💩 A later change may keep a span other than two months. Not this change.
 

@@ -16,34 +16,75 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMchatGtk
+namespace MarkdownGtk
 {
 	/**
-	 * Live ''run_command'' pane. One instance per run, added to the chat
-	 * stream like any other frame. Stays after the command ends.
+	 * Shell listing for a bash fence. The command is the title.
 	 *
-	 * @since 1.0
+	 * Stop emits {@link Render.stop_clicked}. Chat connects that
+	 * signal when the renderer is created.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var frame = new RenderToolOutput(renderer,
+	 *     "bash.oc-frame-info ls", true);
+	 * frame.output("a.txt\n");
+	 * }}}
 	 */
-	public class ToolOutput : Gtk.Frame
+	public class RenderToolOutput : Gtk.Frame
 	{
+		/**
+		 * Renderer that owns {@link Render.stop_clicked}.
+		 */
+		public Render renderer { get; construct; }
+		/**
+		 * Fence info string. The title after the classes is the command.
+		 */
+		public string language_id { get; construct; }
+		/**
+		 * True while chunks are still arriving. Shows Stop.
+		 */
+		public bool is_streaming { get; construct; }
+		/**
+		 * Status line. Live sets this from the start notification.
+		 * ''Running command as root (sudo)'' adds the ''root'' class.
+		 */
+		public string status { get; set; default = ""; }
+
 		private Gtk.Button stop;
 		private Gtk.Button collapse;
 		private Gtk.Revealer body;
 		private Gtk.ScrolledWindow scroll;
 		private Gtk.TextView view;
-		private OLLMchat.History.Manager manager;
+		private Gtk.Label status_label;
 
 		/**
-		 * @param manager History manager (Stop uses session.agent.active_tools).
-		 * @param command Command line from ''client.run_tool.start'' message.
-		 * @param action Status line from ''client.run_tool.start'' action.
+		 * @param renderer parent renderer
+		 * @param language_id fence info string
+		 * @param is_streaming true while output is still arriving
 		 */
-		public ToolOutput(OLLMchat.History.Manager manager, string command, string action)
+		public RenderToolOutput(Render renderer, string language_id, bool is_streaming)
 		{
-			this.manager = manager;
-			string[] frame_classes = { "tool-frame", "oc-frame", "oc-frame-info" };
-			if (action == "Running command as root (sudo)") {
-				frame_classes += "root";
+			Object(renderer: renderer, language_id: language_id, is_streaming: is_streaming);
+		}
+
+		construct
+		{
+			var info = this.language_id.strip();
+			var tokens = info.split(" ", 2);
+			var language = tokens.length > 0 ? tokens[0] : "";
+			var command = tokens.length > 1 ? tokens[1].strip() : "";
+			var lang_parts = language.split(".");
+			var frame_theme_classes = lang_parts.length > 1 ?
+				lang_parts[1:lang_parts.length] : new string[0];
+			var collapsed = "collapsed" in frame_theme_classes;
+			string[] frame_classes = { "tool-frame", "oc-frame" };
+			foreach (var c in frame_theme_classes) {
+				if (c == "collapsed") {
+					continue;
+				}
+				frame_classes += c;
 			}
 			this.css_classes = frame_classes;
 			var header = new Gtk.Label("") {
@@ -55,17 +96,23 @@ namespace OLLMchatGtk
 				tooltip_text = command,
 				label = "<b>" + GLib.Markup.escape_text(command) + "</b>"
 			};
-			var status = new Gtk.Label(action) {
+			this.status_label = new Gtk.Label("") {
 				halign = Gtk.Align.START,
 				wrap = true
 			};
+			this.notify["status"].connect(() => {
+				this.status_label.label = this.status;
+				if (this.status == "Running command as root (sudo)") {
+					this.add_css_class("root");
+				}
+			});
 			this.body = new Gtk.Revealer() {
-				reveal_child = true,
+				reveal_child = !collapsed,
 				hexpand = true
 			};
 			this.collapse = new Gtk.Button() {
-				icon_name = "go-up-symbolic",
-				tooltip_text = "Collapse",
+				icon_name = collapsed ? "go-next-symbolic" : "go-up-symbolic",
+				tooltip_text = collapsed ? "Expand" : "Collapse",
 				valign = Gtk.Align.CENTER
 			};
 			this.collapse.clicked.connect(() => {
@@ -77,13 +124,12 @@ namespace OLLMchatGtk
 			});
 			this.stop = new Gtk.Button.with_label("Stop") {
 				valign = Gtk.Align.CENTER,
+				visible = this.is_streaming,
 				css_classes = { "destructive-action" }
 			};
 			this.stop.clicked.connect(() => {
 				this.stop.visible = false;
-				foreach (var req in this.manager.session.agent.active_tools.values) {
-					req.stop();
-				}
+				this.renderer.stop_clicked();
 			});
 			var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				css_classes = { "oc-frame-header" }
@@ -118,15 +164,16 @@ namespace OLLMchatGtk
 			this.body.set_child(this.scroll);
 			var col = new Gtk.Box(Gtk.Orientation.VERTICAL, 6);
 			col.append(row);
-			col.append(status);
+			col.append(this.status_label);
 			col.append(this.body);
 			this.set_child(col);
 		}
 
 		/**
-		 * Append a chunk. Cap at 2000 lines. Stick to bottom only if already there.
+		 * Append a chunk. Cap at 2000 lines. Stick to the bottom
+		 * only when the view is already there.
 		 *
-		 * @param chunk Text from ''client.run_tool.output'' message.
+		 * @param chunk text still arriving, or the restored tail
 		 */
 		public void output(string chunk)
 		{
@@ -149,7 +196,7 @@ namespace OLLMchatGtk
 		}
 
 		/**
-		 * Run finished. Hide Stop and collapse. Leave this frame in the stream.
+		 * Run finished. Hide Stop and collapse. Leave the frame.
 		 */
 		public void close()
 		{

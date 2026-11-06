@@ -1,6 +1,6 @@
 # Bash output wraps; code fences stay on one line
 
-**Status:** ✔️ code applied; not checked in the app yet
+**Status:** 🚫 CLOSED 2026-11-06. Live bash already scrolls sideways. Further bash output rendering is [`2026-11-05-restore-bash-tool-output.md`](../2026-11-05-restore-bash-tool-output.md).
 
 ## Problem
 
@@ -65,9 +65,8 @@
 
 - ✔️ 2026-11-05 — live bash scrolls sideways. A first pass also wrapped every code fence.
 - ✔️ 2026-11-05 — that fence wrap is removed. Vala and Python scroll sideways again. Markdown and `raw` still wrap.
+- 🚫 2026-11-06 — closed. The remaining bash output work is the restore log.
 
 ## Next
 
-- ⏳ 🔷 Run a long `ls` line in bash and confirm the black pane scrolls right.
-- ⏳ 🔷 A Vala or Python fence with a long line scrolls sideways.
-- ⏳ 🔷 Markdown output and a user quote still wrap.
+- 🚫 2026-11-06 — closed.

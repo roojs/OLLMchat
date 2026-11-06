@@ -68,6 +68,8 @@ namespace MarkdownGtk
 		private Gee.ArrayList<RenderSourceView> source_view_handlers = new Gee.ArrayList<RenderSourceView>();
 		/** Current code block (child frame); public so ChatView can hold a reference after on_code_block(true, lang). */
 		public RenderSourceView? childview { get; set; default = null; }
+		/** Open shell frame. Null after the fence ends. The widget stays in the box. */
+		public RenderToolOutput? tool_view { get; set; default = null; }
 		
 		// Indent levels: actual space_skip values we've seen (on_ul/on_ol), in ascending order
 		private Gee.ArrayList<int> indent_levels = new Gee.ArrayList<int>();
@@ -94,6 +96,8 @@ namespace MarkdownGtk
 		public signal void code_block_content_updated();
 		/** Emitted when user clicks "Start new chat with this" on a user-sent frame. Connect to start a new chat with the given text. */
 		public signal void start_new_chat_requested(string text);
+		/** Stop was clicked on the open shell frame. */
+		public signal void stop_clicked();
 
 		/**
 		 * Creates a renderer that appends content to the given box.
@@ -333,6 +337,7 @@ namespace MarkdownGtk
 			this.on_table_pending(false);
 			// Clear current sourceview handler
 			this.childview = null;
+			this.tool_view = null;
 			
 			// Clear all sourceview handlers
 			this.source_view_handlers.clear();
@@ -855,11 +860,13 @@ namespace MarkdownGtk
 		public override void on_code_block(bool is_start, string lang)
 		{
 			if (!is_start) {
-				// Code block ended - delegate to childview
+				if (this.tool_view != null) {
+					this.tool_view.close();
+					this.tool_view = null;
+					return;
+				}
 				if (this.childview != null) {
 					this.childview.end_code_block();
-					// Keep handler in array so it doesn't go out of scope
-					// (buttons and other handlers need to remain functional)
 					this.childview = null;
 				}
 				
@@ -893,10 +900,13 @@ namespace MarkdownGtk
 
 			// Create new source_view_handler for the code block FIRST
 			// (so it appears before the textview that will be created after)
-			this.childview = new RenderSourceView(this, lang, this.is_streaming);
-
-			// Keep handler in array so it doesn't go out of scope
-			this.source_view_handlers.add(this.childview);
+			var token = lang.split(".")[0];
+			if (token == "bash") {
+				this.tool_view = new RenderToolOutput(this, lang, this.is_streaming);
+			} else {
+				this.childview = new RenderSourceView(this, lang, this.is_streaming);
+				this.source_view_handlers.add(this.childview);
+			}
 
 			// Create new textview and states immediately (ready for text after code block)
 			// This will be added to the box AFTER the sourceview, which is correct
@@ -905,7 +915,10 @@ namespace MarkdownGtk
 		
 		public override void on_code_text(string text)
 		{
-			// Delegate to childview
+			if (this.tool_view != null) {
+				this.tool_view.output(text);
+				return;
+			}
 			if (this.childview != null) {
 				this.childview.add_code_text(text);
 			}

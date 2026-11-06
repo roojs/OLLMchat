@@ -64,8 +64,6 @@ namespace OLLMchatGtk
 		private bool streaming = false;
 		/** True while restoring a session from history; used to keep autoscroll disabled until restoration is done. */
 		internal bool restoring_session { get; private set; default = false; }
-		private ToolOutput? current_output;
-
 		/**
 		* Default message text to display in the input field.
 		* 
@@ -251,18 +249,17 @@ namespace OLLMchatGtk
 			this.manager.notification.connect((notif) => {
 				switch (notif.method) {
 				case "client.run_tool.start":
-					this.current_output = new ToolOutput(
-						this.manager, notif.message, notif.action);
-					this.chat_view.add_widget_frame(this.current_output);
+					this.chat_view.renderer.on_code_block(true,
+						"bash.oc-frame-info " + notif.message);
+					this.chat_view.renderer.tool_view.status = notif.action;
 					return;
 
 				case "client.run_tool.output":
-					this.current_output.output(notif.message);
+					this.chat_view.renderer.tool_view.output(notif.message);
 					return;
 
 				case "client.run_tool.end":
-					this.current_output.close();
-					this.current_output = null;
+					this.chat_view.renderer.on_code_block(false, "");
 					return;
 				}
 			});
@@ -352,9 +349,22 @@ namespace OLLMchatGtk
 			}
 			if (this.restoring_session && m.role == "tool" &&
 					(m.name == "bash" || m.name == "run_command")) {
+				var command = "";
+				for (var i = 0; i < session.messages.size; i++) {
+					var prior = session.messages.get(i);
+					for (var c = 0; c < prior.tool_calls.size; c++) {
+						var call = prior.tool_calls.get(c);
+						if (call.id != m.tool_call_id) {
+							continue;
+						}
+						if (call.function.arguments.has_member("command")) {
+							command = call.function.arguments.get_string_member("command");
+						}
+					}
+				}
 				var ui_msg = new OLLMchat.Message("assistant",
 					OLLMchat.Message.fenced(
-						"text.oc-frame-success.collapsed Execution results",
+						"bash.oc-frame-info.collapsed " + command,
 						m.content),
 					m.thinking);
 				ui_msg.idx_last = this.chat_view.append_complete_assistant_message(ui_msg, session);

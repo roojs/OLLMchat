@@ -47,7 +47,7 @@ namespace OLLMchatGtk
 		private ChatWidget chat_widget;
 		private Gtk.ScrolledWindow scrolled_window;
 		private Gtk.Box text_view_box;
-		private MarkdownGtk.Render renderer;
+		internal MarkdownGtk.Render renderer;
 		private string last_line = "";
 		private int last_chunk_start = 0;
 		private bool is_assistant_message = false;
@@ -131,6 +131,11 @@ namespace OLLMchatGtk
 			});
 			this.renderer.start_new_chat_requested.connect((text) => {
 				this.chat_widget.start_new_chat_with_text.begin(text);
+			});
+			this.renderer.stop_clicked.connect(() => {
+				foreach (var req in this.chat_widget.manager.session.agent.active_tools.values) {
+					req.stop();
+				}
 			});
 
 			this.scrolled_window = new Gtk.ScrolledWindow() {

@@ -26,6 +26,7 @@ ocmarkdowngtk_src = files([
   'RenderBox.vala',
   'Render.vala',
   'RenderSourceView.vala',
+  'RenderToolOutput.vala',
   'State.vala',
   'TopState.vala',
   'Table.vala',
