@@ -32,7 +32,6 @@ jobs:
     with:
       refresh_cache: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_cache || false }}
       upload_to_release: true
-      non_blocking: true
     permissions:
       contents: read
 
@@ -122,6 +121,11 @@ jobs:
           ls -lh artifacts/main artifacts/packages
           ((${#main_files[@]})) || {
             echo "no AppImage / Windows / Android assets" >&2
+            exit 1
+          }
+          apk_files=(artifacts/main/*.apk)
+          ((${#apk_files[@]})) || {
+            echo "no Android APK; refusing to publish" >&2
             exit 1
           }
           ((${#packages_files[@]})) || {

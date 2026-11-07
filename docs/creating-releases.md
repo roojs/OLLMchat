@@ -38,8 +38,8 @@ CI then:
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
 3. Builds Linux AppImages with sqgipkg (Ubuntu 25.04; FAISS is built from source for those bundles).
 4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**, plus one MSYS2 package per library: **`mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst`**.
-5. Builds the **Android** APK (`ollmchat-android-v*-debug.apk`). A Pixiewood failure does not block the other packages.
-6. On a tag push, publishes **two** GitHub Releases. Debian and RPM files go on `${tag}-packages` first (same commit, not marked Latest), then AppImage, Windows Setup.exe, the library pacman packages, and the APK (when Android succeeded) on the version tag so that tag appears above packages on the Releases page.
+5. Builds the **Android** APK (`ollmchat-android-v*-debug.apk`). An Android failure fails the Release workflow. Publish does not run, so neither GitHub Release is created.
+6. On a tag push, publishes **two** GitHub Releases only after Android, Debian, RPM, AppImage, and Windows have all succeeded. Debian and RPM files go on `${tag}-packages` first (same commit, not marked Latest), then AppImage, Windows Setup.exe, the library pacman packages, and the APK on the version tag so that tag appears above packages on the Releases page. Publish also refuses to create those releases when the APK artifact is missing.
 
 AppImage packaging is configured in [`sqgipkg.json`](../sqgipkg.json) (Linux only). Debian packaging lives under [`debian/`](../debian/). The RPM spec is [`packaging/rpm/ollmchat.spec`](../packaging/rpm/ollmchat.spec).
 
