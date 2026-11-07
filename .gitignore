@@ -1,6 +1,11 @@
 build/
 build-*/
 dist-*/
+packaging/msys2/src/
+packaging/msys2/pkg/
+packaging/msys2/prebuilt/
+packaging/msys2/*.pkg.tar.zst
+packaging/msys2/*.pkg.tar.zst.sig
 .sqgipkg/
 .ci-cache/
 .android-sdk

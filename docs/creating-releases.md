@@ -1,6 +1,6 @@
 # Creating Releases
 
-Users install OLLMchat from the **[roojs package repositories](https://roojs.github.io/repos/)** (`apt-get` / `dnf` / `zypper`). GitHub keeps two Releases per version: the version tag (`v1.3.0`) has AppImage, Android, and the Windows NSIS installer (`OLLMchat-<version>-Setup.exe`); the matching `v1.3.0-packages` tag has the `.deb` / `.rpm` files. Publish creates the packages Release first, then the version tag, so the Releases page (newest `created_at` first) shows `v1.3.0`, then `v1.3.0-packages`, then older versions. GitHub’s **Latest** badge stays on the version tag.
+Users install OLLMchat from the **[roojs package repositories](https://roojs.github.io/repos/)** (`apt-get` / `dnf` / `zypper`). GitHub keeps two Releases per version: the version tag (`v1.3.0`) has AppImage, Android, the Windows NSIS installer (`OLLMchat-<version>-Setup.exe`), and one UCRT64 pacman package per library; the matching `v1.3.0-packages` tag has the `.deb` / `.rpm` files. Publish creates the packages Release first, then the version tag, so the Releases page (newest `created_at` first) shows `v1.3.0`, then `v1.3.0-packages`, then older versions. GitHub’s **Latest** badge stays on the version tag.
 
 For Debian package layout and local `.deb` builds, see [`debian/README`](../debian/README). RPM packaging lives under [`packaging/rpm/`](../packaging/rpm/).
 
@@ -37,9 +37,9 @@ CI then:
    - **Trixie packages** is Debian 13 (`debian:trixie`, girepository 1.0). Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`). A Trixie failure does not drop the Ubuntu artifacts.
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
 3. Builds Linux AppImages with sqgipkg (Ubuntu 25.04; FAISS is built from source for those bundles).
-4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**.
+4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**, plus one MSYS2 package per library: **`mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst`**.
 5. Builds the **Android** APK (`ollmchat-android-v*-debug.apk`). A Pixiewood failure does not block the other packages.
-6. On a tag push, publishes **two** GitHub Releases. Debian and RPM files go on `${tag}-packages` first (same commit, not marked Latest), then AppImage, Windows Setup.exe, and the APK (when Android succeeded) on the version tag so that tag appears above packages on the Releases page.
+6. On a tag push, publishes **two** GitHub Releases. Debian and RPM files go on `${tag}-packages` first (same commit, not marked Latest), then AppImage, Windows Setup.exe, the library pacman packages, and the APK (when Android succeeded) on the version tag so that tag appears above packages on the Releases page.
 
 AppImage packaging is configured in [`sqgipkg.json`](../sqgipkg.json) (Linux only). Debian packaging lives under [`debian/`](../debian/). The RPM spec is [`packaging/rpm/ollmchat.spec`](../packaging/rpm/ollmchat.spec).
 
@@ -52,7 +52,7 @@ Fedora 44 is the RPM base. openSUSE uses the same spec; CI does **not** share on
 | APT / `.deb` | amd64 | **split `ollmchat`**: yes · **ollmchat-remote-only**: no | Users: `apt-get update && apt-get install ollmchat` (or `libocrpc-dev`) after adding [the repo](https://roojs.github.io/repos/) |
 | RPM | x86_64 | same split + remote-only | Fedora 44 and openSUSE Tumbleweed; FAISS on Fedora comes from the roojs repo (nicked from Tumbleweed) |
 | AppImage | x86_64, aarch64 | No | Self-contained; remote backends only |
-| Windows `.exe` | x86_64 | No | Native MSYS2 NSIS: **`OLLMchat-<version>-Setup.exe`** |
+| Windows `.exe` | x86_64 | No | Native MSYS2 NSIS: **`OLLMchat-<version>-Setup.exe`**. Same release has one UCRT64 pacman package per library. |
 | Android `.apk` | arm64-v8a | No | Android client; sideload from GitHub Releases |
 
 Release `.deb` files use the **split** Debian layout (runtime libraries, `-dev` packages, `ollmchat`, `ollmchat-tools`, `ollmchat-doc`) plus a conflicting **ollmchat-remote-only** all-in-one package. See [`debian/README`](../debian/README). The RPM spec ships the same split (`libocrpc`, `libocrpc-devel`, …) for the GGUF build and a single `ollmchat-remote-only` RPM without libllama.
@@ -113,6 +113,7 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only |
    | `OLLMchat-remote-only-aarch64.AppImage` | Linux 64-bit (ARM); remote backends only |
    | `OLLMchat-<version>-Setup.exe` | Windows installer (MSYS2 / WebView2); remote backends only |
+   | `mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst` | Windows UCRT64 library (DLL, import library, header, VAPI; GIR when the build emits one). One file per library: `libocsqlite`, `libocrpc`, `libocmarkdown`, `libollamaweb`, `libochf`, `libocmarkdowngtk`, `libocfiles`, `libollmchat`, `libocwebkit`, `libocvector2`, `libocbwrap`, `libocmcp`, `liboctools`, `liboccoder`, `libollmchatgtk`. `libocvector2` also contains `libfaiss.dll`. |
    | `ollmchat-android-v*-debug.apk` | Android client (arm64; sideload) |
 
    **Packages tag** (`v1.3.0-packages`):
@@ -174,8 +175,17 @@ Release CI builds on **`windows-latest`** + MSYS2 UCRT64 ([`x-windows.yml`](../.
 
 1. `scripts/ci/windows-msys2-build.sh` — FAISS + pinned webview2gtk pacman + meson compile
 2. `scripts/ci/windows-package-nsis.sh` — stages `dist-windows/OLLMchat/` (exe + DLLs; intermediate only), then NSIS → **`OLLMchat-<version>-Setup.exe`**
+3. `scripts/ci/windows-package-libs.sh` — packs every library in `packaging/msys2/PKGBUILD` `_libs` from that compile
 
-Tagged releases attach that Setup.exe. Manual: **Release - Windows**. Compile-only smoke: **X - Native Windows MSYS2 compile**.
+Tagged releases attach the Setup.exe and every `.pkg.tar.zst`. Manual: **Release - Windows**. Compile-only smoke: **X - Native Windows MSYS2 compile** (no packages).
+
+Another Windows app installs the libraries with UCRT64 `pacman`. Download the assets from the version tag, then pass them in one command so a library's sibling depends are on the command line:
+
+```bash
+pacman -U --noconfirm mingw-w64-ucrt-x86_64-lib*-any.pkg.tar.zst
+```
+
+The packages are unsigned. `pacman -U` on a release URL also fetches a `.sig`, and this repo does not publish one, so install the downloaded files.
 
 End users need the [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (Evergreen). See [webview2-gtk deploying docs](https://github.com/roojs/webview2-gtk/blob/main/docs/deploying-windows.md).
 

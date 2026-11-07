@@ -1,6 +1,6 @@
 # Trixie cannot install libocrpc1: girepository 2.0 >= 2.85.1
 
-**Status:** ⏳ root cause confirmed. Build split not applied.
+**Status:** ✅ 2026-11-07. User closed it. Trixie `libocrpc1` is `1.4.6-1+trixie` and depends on `libgirepository-1.0-1`. WebDriver stays [`2026-11-06-trixie-webkit-webdriver.md`](../2026-11-06-trixie-webkit-webdriver.md).
 
 ## Problem
 
@@ -33,7 +33,7 @@ Depends: libavahi-gobject0 (>= 0.6.22), libc6 (>= 2.27), libffi8 (>= 3.4), libge
 
 - 💩 Build two `.deb` sets. Do not lower the Depends line on the Resolute binary. That symbol is absent from 2.84, so the library would fail to load.
 - 💩 Trixie: build on `debian:trixie`. Install `libgirepository1.0-dev`. Leave the Meson `>= 2.86` probe in place so 2.84 is rejected and the link stays `libgirepository-1.0`.
-- 🚫 Plucky installs that same Trixie binary. `+trixie` is the Debian suite only, and that build has WebDriver disabled. Plucky needs its own Ubuntu build (`docs/bugs/2026-11-07-ubuntu-one-deb-every-suite.md`).
+- 🚫 Plucky installs that same Trixie binary. `+trixie` is the Debian suite only, and that build has WebDriver disabled. Plucky needs its own Ubuntu build ([`2026-11-07-FIXED-ubuntu-one-deb-every-suite.md`](2026-11-07-FIXED-ubuntu-one-deb-every-suite.md)).
 - 🚫 Questing and resolute share the `ubuntu:26.04` build. Questing libc is 2.42 and its WebDriver is `2.52.3`. The Resolute binary requires `libc6 (>= 2.43)` and WebDriver `2.52.6`.
 - 🔷 Trixie filenames use the suite codename: version `1.4.3-1+trixie`, file `libocrpc1_1.4.3-1+trixie_amd64.deb`. The Ubuntu 26.04 job keeps the plain revision. No `26.04` or `26.10` in the name.
 - 🚫 Do not switch `Gi2.vala` to `gi_repository_new()` to drop the version. Resolute GJS needs the process singleton from `dup_default`. A 2.0-linked library still cannot sit in a Trixie process whose GJS loaded girepository 1.0.
@@ -47,7 +47,8 @@ Depends: libavahi-gobject0 (>= 0.6.22), libc6 (>= 2.27), libffi8 (>= 3.4), libge
 - ✔️ One **Debian packages** job ran `scripts/ci/build-debian-packages.sh` in `ubuntu:26.04`, then in `debian:trixie`, and the collect step required both. Release `v1.4.6` run `42186821962` linked the Ubuntu 25.04 WebDriver library into the Trixie root. `libwebkitgtk-6.0-webdriver.so.4` has undefined `WTF` / `JSC` references against Trixie's JavaScriptCore. The Ubuntu `.deb` files were already built and were not uploaded.
 - ✔️ That combined job replaced the `ubuntu:26.04` container job. The container job is restored as **Debian packages** (plain revision, artifact `ollmchat-debian`). **Trixie packages** is a second job (`continue-on-error`).
 - ✔️ Release `v1.4.6` run `42189995538`: **Trixie packages** failed at apt with `libwebkitgtk-6.0-webdriver-dev` has no installation candidate. The job now sets `WEBKIT_WEBDRIVER=disabled` and drops that build dependency. Trixie links stock `webkitgtk-6.0`.
+- ✅ 2026-11-07. User closed the girepository split. WebDriver stays open in [`2026-11-06-trixie-webkit-webdriver.md`](../2026-11-06-trixie-webkit-webdriver.md).
 
 ## Next
 
-- ✔️ Repos ingest `a9a6a19` files `+trixie` into trixie only. The published trixie index is `1.4.6-1+trixie` (`libgirepository-1.0-1`). Plucky, questing, and resolute still share the unsuffixed Resolute binary. That split is `docs/bugs/2026-11-07-ubuntu-one-deb-every-suite.md`.
+- ✅ Closed. Repos ingest `a9a6a19` files `+trixie` into trixie only. The published trixie index is `1.4.6-1+trixie` (`libgirepository-1.0-1`). The Ubuntu suites are [`2026-11-07-FIXED-ubuntu-one-deb-every-suite.md`](2026-11-07-FIXED-ubuntu-one-deb-every-suite.md).

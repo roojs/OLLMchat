@@ -110,7 +110,7 @@ jobs:
             [ -f "$f" ] || continue
             case "$f" in
               *.deb|*.rpm) mv "$f" artifacts/packages/ ;;
-              *.AppImage|*.exe|*.apk) mv "$f" artifacts/main/ ;;
+              *.AppImage|*.exe|*.apk|*.pkg.tar.zst|*.pkg.tar.zst.sig) mv "$f" artifacts/main/ ;;
               *)
                 echo "unclassified release asset: $f" >&2
                 exit 1
@@ -136,7 +136,7 @@ jobs:
             echo
             echo "Prefer the [roojs package repositories](https://roojs.github.io/repos/) (\`apt\` / \`dnf\` / \`zypper\`). This GitHub Release is the matching file set."
             echo
-            echo "AppImage, Windows, and Android: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+            echo "AppImage, the Windows installer, the Windows library pacman packages, and Android: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
           } > packages-notes.md
           # Create packages first. GitHub lists Releases by created_at
           # (newest first), so the version tag published next sits above

@@ -1,6 +1,6 @@
 # One Ubuntu .deb is published into plucky, questing, and resolute
 
-**Status:** ✔️ per-suite Ubuntu jobs added. Not published. `apt` still serves `1.4.6-1` until the next release.
+**Status:** ✅ 2026-11-07. User closed it. Plucky, questing, and resolute each have their own job in `.github/workflows/x-debian.yml`. The next release publishes `+plucky` and `+questing`.
 
 ## Problem
 
@@ -34,7 +34,8 @@
 
 - ✔️ Read the four suite `Packages` files and this host's girepository / GJS / libc.
 - ✔️ `.github/workflows/x-debian.yml` Ubuntu job is a three-row matrix (`+plucky`, `+questing`, plain resolute).
+- ✅ 2026-11-07. User closed this. Trixie WebDriver stays open in `docs/bugs/2026-11-06-trixie-webkit-webdriver.md`.
 
 ## Next
 
-- ⏳ 🔷 The next tag publish has to upload these `.deb` files. Until then plucky apt still offers `1.4.6-1`.
+- ✅ Closed. The three Ubuntu jobs are in the tree. Publishing them is the next release, not this bug.

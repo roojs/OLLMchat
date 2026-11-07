@@ -11,7 +11,17 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.7] - Unreleased
+## [1.4.8] - Unreleased
+
+Work since **1.4.7** (2026-11-07).
+
+### Changed
+
+#### Packaging
+
+- Windows releases publish one MSYS2 pacman package per library (DLL, import library, header, and VAPI)
+
+## [1.4.7] - 2026-11-07
 
 Work since **1.4.6** (2026-11-06).
 

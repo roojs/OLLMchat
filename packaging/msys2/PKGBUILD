@@ -1,0 +1,208 @@
+# Maintainer: OLLMchat contributors
+# One UCRT64 pacman package per library this repo installs.
+# Build from the repo root (MSYS2 UCRT64), after the Meson compile:
+#   ./scripts/ci/windows-package-libs.sh
+#
+# Install the downloaded files (these packages are unsigned). Pass every
+# package you need in one pacman -U so sibling depends resolve together:
+#   pacman -U --noconfirm mingw-w64-ucrt-x86_64-lib*-any.pkg.tar.zst
+
+_p=mingw-w64-ucrt-x86_64
+_libs=(
+ocsqlite
+ocrpc
+ocmarkdown
+ollamaweb
+ochf
+ocmarkdowngtk
+ocfiles
+ollmchat
+ocwebkit
+ocvector2
+ocbwrap
+ocmcp
+octools
+occoder
+ollmchatgtk
+)
+
+pkgbase=ollmchat-libs
+pkgname=(
+  'mingw-w64-ucrt-x86_64-libocsqlite'
+  'mingw-w64-ucrt-x86_64-libocrpc'
+  'mingw-w64-ucrt-x86_64-libocmarkdown'
+  'mingw-w64-ucrt-x86_64-libollamaweb'
+  'mingw-w64-ucrt-x86_64-libochf'
+  'mingw-w64-ucrt-x86_64-libocmarkdowngtk'
+  'mingw-w64-ucrt-x86_64-libocfiles'
+  'mingw-w64-ucrt-x86_64-libollmchat'
+  'mingw-w64-ucrt-x86_64-libocwebkit'
+  'mingw-w64-ucrt-x86_64-libocvector2'
+  'mingw-w64-ucrt-x86_64-libocbwrap'
+  'mingw-w64-ucrt-x86_64-libocmcp'
+  'mingw-w64-ucrt-x86_64-liboctools'
+  'mingw-w64-ucrt-x86_64-liboccoder'
+  'mingw-w64-ucrt-x86_64-libollmchatgtk'
+)
+pkgver="${OLLM_LIBS_PKGVER:?set OLLM_LIBS_PKGVER}"
+pkgrel=1
+arch=('any')
+url='https://github.com/roojs/OLLMchat'
+license=('LGPL-3.0-or-later')
+options=('!strip' '!emptydirs')
+source=()
+sha256sums=()
+
+_stage_root() {
+  local name="$1"
+  local src="${OLLM_LIBS_PREBUILT_DESTDIR:?set OLLM_LIBS_PREBUILT_DESTDIR}/${name}"
+  if [[ ! -d "${src}/ucrt64/bin" ]]; then
+    echo "PKGBUILD: missing staged ${name} tree (${src})" >&2
+    return 1
+  fi
+  mkdir -p "$pkgdir"
+  cp -a "${src}/." "$pkgdir/"
+}
+
+_pack() {
+  local name="$1"
+  case "${name}" in
+    ocsqlite)
+      pkgdesc='SQLite helpers (OCSqlite)'
+      depends=("${_p}-glib2" "${_p}-libgee" "${_p}-sqlite3")
+      ;;
+    ocrpc)
+      pkgdesc='Binary RPC library (OLLMrpc)'
+      depends=(
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib"
+        "${_p}-libsoup3" "${_p}-libffi" "${_p}-gnutls"
+      )
+      ;;
+    ocmarkdown)
+      pkgdesc='Markdown parsing (OCMarkdown)'
+      depends=(
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib"
+        "${_p}-libsoup3" "${_p}-libxml2"
+      )
+      ;;
+    ollamaweb)
+      pkgdesc='Ollama HTTP client'
+      depends=(
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib"
+        "${_p}-libsoup3" "${_p}-libxml2"
+      )
+      ;;
+    ochf)
+      pkgdesc='Hugging Face Hub catalog (OLLMhf)'
+      depends=(
+        "${_p}-libocrpc"
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib" "${_p}-libsoup3"
+      )
+      ;;
+    ocmarkdowngtk)
+      pkgdesc='GTK markdown rendering (OCMarkdownGtk)'
+      depends=(
+        "${_p}-libocmarkdown"
+        "${_p}-gtk4" "${_p}-gtksourceview5" "${_p}-libgee"
+        "${_p}-glib2" "${_p}-json-glib" "${_p}-libsoup3" "${_p}-libxml2"
+      )
+      ;;
+    ocfiles)
+      pkgdesc='File and project management (OLLMfiles)'
+      depends=(
+        "${_p}-libocrpc" "${_p}-libocsqlite"
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib"
+        "${_p}-sqlite3" "${_p}-libsoup3"
+      )
+      ;;
+    ollmchat)
+      pkgdesc='LLM API access (OLLMchat)'
+      depends=(
+        "${_p}-libocsqlite" "${_p}-libocmarkdown"
+        "${_p}-libollamaweb" "${_p}-libocrpc"
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib" "${_p}-libsoup3"
+      )
+      ;;
+    ocwebkit)
+      pkgdesc='WebView2 browser tool (OCWebKit)'
+      depends=(
+        "${_p}-libollmchat" "${_p}-webview2gtk"
+        "${_p}-gtk4" "${_p}-glib2" "${_p}-libgee"
+        "${_p}-json-glib" "${_p}-libsoup3"
+      )
+      ;;
+    ocvector2)
+      pkgdesc='FAISS vector search (OCVector2)'
+      depends=(
+        "${_p}-libollmchat" "${_p}-libocsqlite"
+        "${_p}-libollamaweb" "${_p}-libocrpc"
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib"
+        "${_p}-libsoup3" "${_p}-sqlite3"
+        "${_p}-openblas" "${_p}-lapack"
+      )
+      ;;
+    ocbwrap)
+      pkgdesc='Sandbox helpers (OLLMbwrap)'
+      depends=("${_p}-glib2" "${_p}-libgee")
+      ;;
+    ocmcp)
+      pkgdesc='MCP client (OLLMmcp)'
+      depends=(
+        "${_p}-libollmchat" "${_p}-libocfiles" "${_p}-libocbwrap"
+        "${_p}-libollamaweb"
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib" "${_p}-libsoup3"
+      )
+      ;;
+    octools)
+      pkgdesc='LLM tool implementations (OLLMtools)'
+      depends=(
+        "${_p}-libollmchat" "${_p}-libochf" "${_p}-libocfiles"
+        "${_p}-libocmarkdown" "${_p}-libocbwrap" "${_p}-libocrpc"
+        "${_p}-libollamaweb" "${_p}-libocsqlite"
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib" "${_p}-libsoup3"
+      )
+      ;;
+    occoder)
+      pkgdesc='Code editor and agent UI (OLLMcoder)'
+      depends=(
+        "${_p}-libocsqlite" "${_p}-libocfiles" "${_p}-libollmchat"
+        "${_p}-libocmarkdown" "${_p}-libocmarkdowngtk" "${_p}-libocrpc"
+        "${_p}-libollamaweb"
+        "${_p}-gtk4" "${_p}-libadwaita" "${_p}-gtksourceview5"
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib"
+        "${_p}-libsoup3" "${_p}-sqlite3"
+      )
+      ;;
+    ollmchatgtk)
+      pkgdesc='GTK chat widgets (OLLMchatGtk)'
+      depends=(
+        "${_p}-libollmchat" "${_p}-libocmarkdown" "${_p}-libocmarkdowngtk"
+        "${_p}-libocrpc" "${_p}-libocsqlite" "${_p}-libollamaweb"
+        "${_p}-gtk4" "${_p}-libadwaita" "${_p}-gtksourceview5"
+        "${_p}-glib2" "${_p}-libgee" "${_p}-json-glib"
+        "${_p}-libsoup3" "${_p}-sqlite3"
+      )
+      ;;
+    *)
+      echo "PKGBUILD: no package metadata for ${name}" >&2
+      return 1
+      ;;
+  esac
+  _stage_root "${name}"
+}
+
+package_mingw-w64-ucrt-x86_64-libocsqlite() { _pack ocsqlite; }
+package_mingw-w64-ucrt-x86_64-libocrpc() { _pack ocrpc; }
+package_mingw-w64-ucrt-x86_64-libocmarkdown() { _pack ocmarkdown; }
+package_mingw-w64-ucrt-x86_64-libollamaweb() { _pack ollamaweb; }
+package_mingw-w64-ucrt-x86_64-libochf() { _pack ochf; }
+package_mingw-w64-ucrt-x86_64-libocmarkdowngtk() { _pack ocmarkdowngtk; }
+package_mingw-w64-ucrt-x86_64-libocfiles() { _pack ocfiles; }
+package_mingw-w64-ucrt-x86_64-libollmchat() { _pack ollmchat; }
+package_mingw-w64-ucrt-x86_64-libocwebkit() { _pack ocwebkit; }
+package_mingw-w64-ucrt-x86_64-libocvector2() { _pack ocvector2; }
+package_mingw-w64-ucrt-x86_64-libocbwrap() { _pack ocbwrap; }
+package_mingw-w64-ucrt-x86_64-libocmcp() { _pack ocmcp; }
+package_mingw-w64-ucrt-x86_64-liboctools() { _pack octools; }
+package_mingw-w64-ucrt-x86_64-liboccoder() { _pack occoder; }
+package_mingw-w64-ucrt-x86_64-libollmchatgtk() { _pack ollmchatgtk; }

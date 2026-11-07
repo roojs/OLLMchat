@@ -84,12 +84,18 @@ jobs:
           chmod +x scripts/ci/windows-package-nsis.sh scripts/copy-exe-runtime-dlls.sh
           ./scripts/ci/windows-package-nsis.sh
 
+      - name: Package libraries (pacman)
+        run: |
+          chmod +x scripts/ci/windows-package-libs.sh
+          ./scripts/ci/windows-package-libs.sh
+
       - name: Collect artifacts
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts
           cp -v dist-windows/OLLMchat-*-Setup.exe artifacts/
+          cp -v packaging/msys2/mingw-w64-ucrt-x86_64-lib*-any.pkg.tar.zst artifacts/
           ls -lh artifacts
 
       - name: Upload Windows artifacts
