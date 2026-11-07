@@ -43,12 +43,14 @@ This host is Ubuntu 25.04. Its apt sources stay Ubuntu. A Trixie package is buil
 
 ### GitHub
 
-Two jobs. LXC is not used on GitHub. The Ubuntu job is the one that was already shipping. Trixie is a second job. Its failure does not drop the Ubuntu artifacts (`continue-on-error`).
+Four jobs. LXC is not used on GitHub. Each suite is built on that suite. Trixie is `continue-on-error`. Its failure does not drop the Ubuntu artifacts.
 
-- **Debian packages:** `container: ubuntu:26.04`, `ROOJS_APT_SUITE=resolute`, `libgirepository-2.0-dev`, `pkg-config --atleast-version=2.86 girepository-2.0`. Plain revision (`1.4.6-1`). That binary calls `gi_repository_dup_default()` and depends on `libgirepository-2.0-0 (>= 2.85.1)`. Questing (25.10) and resolute install this one. Artifact `ollmchat-debian`.
-- **Trixie packages:** `container: debian:trixie`, `libgirepository1.0-dev`. The Meson probe `girepository-2.0 >= 2.86` fails on 2.84.4, so `libocrpc` links `libgirepository-1.0`. Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`). Artifact `ollmchat-debian-trixie`. The icon theme is the Ubuntu `humanity-icon-theme` all.deb. The roojs trixie suite has no `libwebkitgtk-6.0-webdriver-dev`, and an Ubuntu WebDriver `.so` does not link against Trixie JavaScriptCore. Until a Debian build is published (`docs/bugs/2026-11-06-trixie-webkit-webdriver.md`), the job sets `WEBKIT_WEBDRIVER=disabled` and drops that build dependency, so Trixie links stock `webkitgtk-6.0`.
+- **Plucky packages:** `container: ubuntu:25.04`, `ROOJS_APT_SUITE=plucky`, `libgirepository1.0-dev`. Plucky girepository 2.0 is 2.84.1, so the Meson probe `girepository-2.0 >= 2.86` fails and `libocrpc` links `libgirepository-1.0`. Versions end in `+plucky`. Artifact `ollmchat-debian-plucky`.
+- **Questing packages:** `container: ubuntu:25.10`, `ROOJS_APT_SUITE=questing`, `libgirepository-2.0-dev`, `pkg-config --atleast-version=2.86 girepository-2.0`. Versions end in `+questing`. Artifact `ollmchat-debian-questing`.
+- **Resolute packages:** `container: ubuntu:26.04`, `ROOJS_APT_SUITE=resolute`, `libgirepository-2.0-dev`, same `>= 2.86` gate. Plain revision (`1.4.6-1`). That binary calls `gi_repository_dup_default()`. Artifact `ollmchat-debian`.
+- **Trixie packages:** `container: debian:trixie`, `libgirepository1.0-dev`. The Meson probe fails on 2.84.4, so `libocrpc` links `libgirepository-1.0`. Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`). Artifact `ollmchat-debian-trixie`. The icon theme is the Ubuntu `humanity-icon-theme` all.deb. The roojs trixie suite has no `libwebkitgtk-6.0-webdriver-dev`, and an Ubuntu WebDriver `.so` does not link against Trixie JavaScriptCore. Until a Debian build is published (`docs/bugs/2026-11-06-trixie-webkit-webdriver.md`), the job sets `WEBKIT_WEBDRIVER=disabled` and drops that build dependency, so Trixie links stock `webkitgtk-6.0`.
 
-The repos ingest has to put `+trixie` files in the trixie suite only. There is no roojs suite for Ubuntu 26.10 (`stonking`).
+The repos ingest puts a `+<codename>` file in that suite only, and keeps the plain revision off suites that have their own build. There is no roojs suite for Ubuntu 26.10 (`stonking`).
 
 ### This machine
 

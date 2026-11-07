@@ -11,7 +11,17 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.6] - Unreleased
+## [1.4.7] - Unreleased
+
+Work since **1.4.6** (2026-11-06).
+
+### Changed
+
+#### Packaging
+
+- Ubuntu packages are built per release: 25.04 (`+plucky`, girepository 1.0), 25.10 (`+questing`), and 26.04 (plain revision)
+
+## [1.4.6] - 2026-11-06
 
 Work since **1.4.5** (2026-11-05).
 

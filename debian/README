@@ -101,7 +101,7 @@ packages. The VAPI is `/usr/share/vala/vapi/ocrpc.vapi`.
 Building packages
 -----------------
 
-1. Build the Trixie packages inside Debian 13 (GitHub: `debian:trixie` container; this machine: `lxc-attach -n lxc-reference-trixie`). See `docs/build-rules.md`. Add the [roojs APT source](https://roojs.github.io/repos/) inside that root so `libllama-dev` resolves (`scripts/ci/enable-roojs-apt.sh`):
+1. Build on the suite that will install the `.deb`. This host is Ubuntu 25.04, so a native `dpkg-buildpackage` is the plucky set (`+plucky` in `debian/changelog`). Trixie is Debian 13 (GitHub: `debian:trixie`; this machine: `lxc-attach -n lxc-reference-trixie`). Questing and resolute are their own containers and use `libgirepository-2.0-dev`. See `docs/build-rules.md`. Add the [roojs APT source](https://roojs.github.io/repos/) so `libllama-dev` resolves (`scripts/ci/enable-roojs-apt.sh`). The list below is girepository 1.0:
    ```bash
    sudo apt-get install build-essential devscripts debhelper meson ninja-build \
      pkg-config valac libgee-0.8-dev libglib2.0-dev libjson-glib-dev \

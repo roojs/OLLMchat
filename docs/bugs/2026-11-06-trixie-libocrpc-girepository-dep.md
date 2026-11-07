@@ -32,8 +32,9 @@ Depends: libavahi-gobject0 (>= 0.6.22), libc6 (>= 2.27), libffi8 (>= 3.4), libge
 ## Proposed fix
 
 - 💩 Build two `.deb` sets. Do not lower the Depends line on the Resolute binary. That symbol is absent from 2.84, so the library would fail to load.
-- 💩 Trixie and plucky: build on `debian:trixie` (plucky can install the same 1.0-linked binary). Install `libgirepository1.0-dev`. Leave the Meson `>= 2.86` probe in place so 2.84 is rejected and the link stays `libgirepository-1.0`.
-- 💩 Questing and resolute: keep the current `ubuntu:26.04` build and the `>= 2.86` gate.
+- 💩 Trixie: build on `debian:trixie`. Install `libgirepository1.0-dev`. Leave the Meson `>= 2.86` probe in place so 2.84 is rejected and the link stays `libgirepository-1.0`.
+- 🚫 Plucky installs that same Trixie binary. `+trixie` is the Debian suite only, and that build has WebDriver disabled. Plucky needs its own Ubuntu build (`docs/bugs/2026-11-07-ubuntu-one-deb-every-suite.md`).
+- 🚫 Questing and resolute share the `ubuntu:26.04` build. Questing libc is 2.42 and its WebDriver is `2.52.3`. The Resolute binary requires `libc6 (>= 2.43)` and WebDriver `2.52.6`.
 - 🔷 Trixie filenames use the suite codename: version `1.4.3-1+trixie`, file `libocrpc1_1.4.3-1+trixie_amd64.deb`. The Ubuntu 26.04 job keeps the plain revision. No `26.04` or `26.10` in the name.
 - 🚫 Do not switch `Gi2.vala` to `gi_repository_new()` to drop the version. Resolute GJS needs the process singleton from `dup_default`. A 2.0-linked library still cannot sit in a Trixie process whose GJS loaded girepository 1.0.
 - 🚫 🔷 Point the Ubuntu host apt sources at Debian Trixie and upgrade the host. This machine stays on Ubuntu 25.04. Trixie is glib 2.84, the same generation as plucky, so that upgrade does not provide `libgirepository-2.0-0 (>= 2.85.1)` and it is not a Debian build root.
@@ -49,4 +50,4 @@ Depends: libavahi-gobject0 (>= 0.6.22), libc6 (>= 2.27), libffi8 (>= 3.4), libge
 
 ## Next
 
-- 💩 ⏳ The repos ingest still has to file `+trixie` debs into the trixie suite only. It currently copies one pool file into every suite. That publisher is outside this repo.
+- ✔️ Repos ingest `a9a6a19` files `+trixie` into trixie only. The published trixie index is `1.4.6-1+trixie` (`libgirepository-1.0-1`). Plucky, questing, and resolute still share the unsuffixed Resolute binary. That split is `docs/bugs/2026-11-07-ubuntu-one-deb-every-suite.md`.

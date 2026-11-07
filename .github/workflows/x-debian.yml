@@ -2,19 +2,46 @@ name: X - Debian .deb build (Release calls this)
 
 # The real dpkg-buildpackage job. Start Release - Debian, not this file.
 #
-# Debian packages is the Ubuntu 26.04 build (plain revision). That is the
-# binary questing (25.10) and resolute install. Trixie packages is added
-# beside it. A Trixie failure does not drop the Ubuntu artifacts.
+# One .deb per suite. Plucky (25.04) links girepository 1.0 and is +plucky.
+# Questing (25.10) links girepository 2.0 and is +questing. Resolute (26.04)
+# is the plain revision. Trixie is +trixie. A Trixie failure does not drop
+# the Ubuntu artifacts. The repos ingest sends +<codename> to that suite
+# and keeps the plain file off suites that have their own build.
 
 on:
   workflow_call:
 
 jobs:
   build-debian:
-    name: Debian packages
+    name: ${{ matrix.name }}
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Plucky packages
+            image: ubuntu:25.04
+            suite: plucky
+            gi_dev: libgirepository1.0-dev
+            gi_min: ''
+            version_suffix: +plucky
+            artifact: ollmchat-debian-plucky
+          - name: Questing packages
+            image: ubuntu:25.10
+            suite: questing
+            gi_dev: libgirepository-2.0-dev
+            gi_min: '2.86'
+            version_suffix: +questing
+            artifact: ollmchat-debian-questing
+          - name: Resolute packages
+            image: ubuntu:26.04
+            suite: resolute
+            gi_dev: libgirepository-2.0-dev
+            gi_min: '2.86'
+            version_suffix: ''
+            artifact: ollmchat-debian
     container:
-      image: ubuntu:26.04
+      image: ${{ matrix.image }}
     # Container jobs default to sh (dash). Collect artifacts uses shopt;
     # the tag/version check uses [[. Both are bash.
     defaults:
@@ -22,7 +49,9 @@ jobs:
         shell: bash
     env:
       DEBIAN_FRONTEND: noninteractive
-      ROOJS_APT_SUITE: resolute
+      ROOJS_APT_SUITE: ${{ matrix.suite }}
+      VERSION_SUFFIX: ${{ matrix.version_suffix }}
+      GI_MIN: ${{ matrix.gi_min }}
       TZ: UTC
     steps:
       - name: Install git
@@ -45,14 +74,16 @@ jobs:
           apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config file \
             meson valac gobject-introspection devscripts debhelper \
-            libglib2.0-dev libgirepository-2.0-dev libffi-dev libcairo2-dev \
+            libglib2.0-dev ${{ matrix.gi_dev }} libffi-dev libcairo2-dev \
             libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libgnutls28-dev libxml2-dev \
             libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev libsecret-1-dev \
             humanity-icon-theme \
             libwebkitgtk-6.0-dev libwebkitgtk-6.0-webdriver-dev libatspi2.0-dev \
             libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev libavahi-gobject-dev \
             libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
-          pkg-config --atleast-version=2.86 girepository-2.0
+          if [[ -n "${GI_MIN:-}" ]]; then
+            pkg-config --atleast-version="${GI_MIN}" girepository-2.0
+          fi
 
       - name: Build Debian packages (amd64)
         working-directory: OLLMchat
@@ -76,6 +107,10 @@ jobs:
           else
             ./scripts/release/sync-debian-changelog.sh
           fi
+          if [[ -n "${VERSION_SUFFIX:-}" ]]; then
+            sed -i "1s/(\([^)]*\))/(\1${VERSION_SUFFIX})/" debian/changelog
+            head -n 1 debian/changelog
+          fi
           ./debian/use-split-packages.sh
           dpkg-buildpackage -us -uc -b
           rm -rf build
@@ -86,20 +121,44 @@ jobs:
       - name: Collect artifacts
         working-directory: OLLMchat
         run: |
+          set -euo pipefail
           mkdir -p artifacts
           shopt -s nullglob
+          found=0
           for deb in ../*.deb; do
             case "${deb}" in
               *dbgsym*) continue ;;
             esac
+            base="$(basename "${deb}")"
+            if [[ -n "${VERSION_SUFFIX:-}" ]]; then
+              case "${base}" in
+                *"${VERSION_SUFFIX}_"*) ;;
+                *)
+                  echo "suite label ${VERSION_SUFFIX} missing from ${base}" >&2
+                  exit 1
+                  ;;
+              esac
+            else
+              case "${base}" in
+                *+*)
+                  echo "resolute build must stay unsuffixed: ${base}" >&2
+                  exit 1
+                  ;;
+              esac
+            fi
             cp -v "${deb}" artifacts/
+            found=1
           done
+          if [[ "$found" -eq 0 ]]; then
+            echo "no .deb files" >&2
+            exit 1
+          fi
           ls -lh artifacts
 
       - name: Upload Debian artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ollmchat-debian
+          name: ${{ matrix.artifact }}
           path: OLLMchat/artifacts/*
 
   build-debian-trixie:

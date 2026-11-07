@@ -30,9 +30,11 @@ housekeeping.
 
 CI then:
 
-1. Builds **Debian** packages in two jobs, using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev`. Each job produces split runtime/`-dev` libraries plus `ollmchat`, then a second **ollmchat-remote-only** all-in-one `.deb`.
-   - **Debian packages** is the Ubuntu 26.04 build (girepository 2.0). Plain revision (`1.4.6-1`), for questing (25.10) and resolute. Artifact `ollmchat-debian`.
-   - **Trixie packages** is added beside that job (`debian:trixie`, girepository 1.0). Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`). A Trixie failure does not drop the Ubuntu artifacts.
+1. Builds **Debian** packages in four jobs, using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev`. Each job produces split runtime/`-dev` libraries plus `ollmchat`, then a second **ollmchat-remote-only** all-in-one `.deb`.
+   - **Plucky packages** is Ubuntu 25.04 (girepository 1.0). Versions end in `+plucky`. Artifact `ollmchat-debian-plucky`.
+   - **Questing packages** is Ubuntu 25.10 (girepository 2.0). Versions end in `+questing`. Artifact `ollmchat-debian-questing`.
+   - **Resolute packages** is Ubuntu 26.04 (girepository 2.0). Plain revision (`1.4.6-1`). Artifact `ollmchat-debian`.
+   - **Trixie packages** is Debian 13 (`debian:trixie`, girepository 1.0). Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`). A Trixie failure does not drop the Ubuntu artifacts.
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
 3. Builds Linux AppImages with sqgipkg (Ubuntu 25.04; FAISS is built from source for those bundles).
 4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**.
@@ -118,7 +120,9 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    | File | Platform |
    |------|----------|
    | `*+trixie_amd64.deb` | Debian 13 trixie (split libs + app; remote-only is all-in-one). Suite label is `+trixie`. |
-   | `ollmchat_*.deb`, `liboc*_*.deb`, `liboll*_*.deb`, `ollmchat-remote-only_*.deb` without `+trixie` | Ubuntu 26.04 amd64, for questing and resolute |
+   | `*+plucky_amd64.deb` | Ubuntu 25.04. Suite label is `+plucky`. |
+   | `*+questing_amd64.deb` | Ubuntu 25.10. Suite label is `+questing`. |
+   | `ollmchat_*.deb`, `liboc*_*.deb`, `liboll*_*.deb`, `ollmchat-remote-only_*.deb` without a suite `+` label | Ubuntu 26.04 resolute |
    | `libocrpc-*.rpm`, `liboc*-*.rpm`, `liboll*-*.rpm`, `ollmchat-*.fc44.*.rpm` | Fedora 44 (split libs + app; plus `ollmchat-remote-only`) |
    | same names without `.fc` | openSUSE Tumbleweed |
 
@@ -177,7 +181,7 @@ End users need the [WebView2 Runtime](https://developer.microsoft.com/en-us/micr
 
 ### Debian packages
 
-Build the Trixie `.deb` inside Debian 13. On GitHub that is a `debian:trixie` job container. On this Ubuntu machine, `lxc-attach` into `lxc-reference-trixie`. The steps are in [`docs/build-rules.md`](build-rules.md) (Debian packages). Add the [roojs APT source](https://roojs.github.io/repos/) inside that Debian root so `libllama-dev` resolves. Questing and resolute keep the Ubuntu 26.04 build. CI uses `scripts/ci/enable-roojs-apt.sh` for the roojs APT step.
+Build each `.deb` on its own suite. On GitHub that is the container named in [`docs/build-rules.md`](build-rules.md) (Debian packages). On this Ubuntu 25.04 machine, `dpkg-buildpackage` builds the plucky set. A Trixie package is `lxc-attach` into `lxc-reference-trixie`. Add the [roojs APT source](https://roojs.github.io/repos/) inside that root so `libllama-dev` resolves. CI uses `scripts/ci/enable-roojs-apt.sh` for the roojs APT step. The package list below is the plucky / Trixie girepository 1.0 set. Questing and resolute install `libgirepository-2.0-dev` instead of `libgirepository1.0-dev`.
 
 ```bash
 sudo apt-get install build-essential devscripts debhelper meson ninja-build \
