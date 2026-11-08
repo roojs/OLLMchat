@@ -11,6 +11,14 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
+## [Unreleased]
+
+### Changed
+
+#### Packaging
+
+- Debian 13 packages link `libwebkitgtk-6.0-webdriver` from the Trixie WebDriver build
+
 ## [1.4.8] - Unreleased
 
 Work since **1.4.7** (2026-11-07).

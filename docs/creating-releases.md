@@ -191,7 +191,7 @@ End users need the [WebView2 Runtime](https://developer.microsoft.com/en-us/micr
 
 ### Debian packages
 
-Build each `.deb` on its own suite. On GitHub that is the container named in [`docs/build-rules.md`](build-rules.md) (Debian packages). On this Ubuntu 25.04 machine, `dpkg-buildpackage` builds the plucky set. A Trixie package is `lxc-attach` into `lxc-reference-trixie`. Add the [roojs APT source](https://roojs.github.io/repos/) inside that root so `libllama-dev` resolves. CI uses `scripts/ci/enable-roojs-apt.sh` for the roojs APT step. The package list below is the plucky / Trixie girepository 1.0 set. Questing and resolute install `libgirepository-2.0-dev` instead of `libgirepository1.0-dev`.
+Build each `.deb` on its own suite. On GitHub that is the container named in [`docs/build-rules.md`](build-rules.md) (Debian packages). On this Ubuntu 25.04 machine, `dpkg-buildpackage` builds the plucky set. A Trixie package is `lxc-attach` into `lxc-reference-trixie`. Add the [roojs APT source](https://roojs.github.io/repos/) inside that root so `libllama-dev` resolves. CI uses `scripts/ci/enable-roojs-apt.sh` for the roojs APT step. The package list below is the plucky / Trixie girepository 1.0 set. Questing and resolute install `libgirepository-2.0-dev` instead of `libgirepository1.0-dev`. Trixie installs `libwebkitgtk-6.0-webdriver-dev` from the roojs trixie suite, the same package name as the Ubuntu jobs.
 
 ```bash
 sudo apt-get install build-essential devscripts debhelper meson ninja-build \
@@ -199,7 +199,7 @@ sudo apt-get install build-essential devscripts debhelper meson ninja-build \
   libjson-glib-dev libsoup-3.0-dev libgnutls28-dev libxml2-dev libsqlite3-dev \
   libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev libsecret-1-dev humanity-icon-theme gobject-introspection \
   libgirepository1.0-dev libavahi-gobject-dev libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
-  libwebkitgtk-6.0-dev libatspi2.0-dev \
+  libwebkitgtk-6.0-dev libwebkitgtk-6.0-webdriver-dev libatspi2.0-dev \
   libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
 
 dpkg-buildpackage -us -uc -b

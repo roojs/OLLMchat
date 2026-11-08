@@ -198,7 +198,7 @@ jobs:
             libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libgnutls28-dev libxml2-dev \
             libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev libsecret-1-dev \
             hicolor-icon-theme \
-            libwebkitgtk-6.0-dev libatspi2.0-dev \
+            libwebkitgtk-6.0-dev libwebkitgtk-6.0-webdriver-dev libatspi2.0-dev \
             libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev libavahi-gobject-dev \
             libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
           curl -fsSL -o /tmp/humanity-icon-theme.deb \
@@ -210,7 +210,6 @@ jobs:
         env:
           DEBFULLNAME: GitHub Actions
           DEBEMAIL: actions@users.noreply.github.com
-          WEBKIT_WEBDRIVER: disabled
         run: |
           set -euo pipefail
           chmod +x scripts/release/changelog.sh scripts/release/sync-debian-changelog.sh
@@ -230,10 +229,6 @@ jobs:
           fi
           sed -i '1s/(\([^)]*\))/(\1+trixie)/' debian/changelog
           head -n 1 debian/changelog
-          # No WebDriver -dev package on Trixie. Stock WebKit is the link.
-          sed -i '/libwebkitgtk-6.0-webdriver-dev/d' \
-            debian/control debian/split/control \
-            debian/monolithic/control debian/monolithic-remote-only/control
           ./debian/use-split-packages.sh
           dpkg-buildpackage -us -uc -b
           rm -rf build

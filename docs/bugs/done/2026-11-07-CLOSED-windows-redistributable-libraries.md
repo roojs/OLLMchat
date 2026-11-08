@@ -1,6 +1,6 @@
 # Windows redistributable libraries
 
-**Status:** ⏳ OLLMchat publishes the packages; Argus still compiles this tree
+**Status:** 🚫 CLOSED 2026-11-08. v1.4.8 published the UCRT64 library packages. Argus is outside this tree.
 
 **Pointer:** `docs/bug-fix-process.md`
 
@@ -43,10 +43,10 @@ Filed from Argus. The Argus Windows installer compiles this tree to obtain the l
 - ✔️ `packaging/msys2/PKGBUILD` has one `package_*` function per library.
 - ✔️ `.github/workflows/x-windows.yml` runs that script and uploads both `.pkg.tar.zst` files with the Setup.exe.
 - ✔️ `.github/workflows/release.yml` attaches `*.pkg.tar.zst` to the version tag.
-- ✔️ Docs: `docs/creating-releases.md`. Changelog bullet under `[1.4.7]`.
-- 🚫 Argus is not in this tree, so its workflow still checks out OLLMchat and compiles it.
+- ✔️ Docs: `docs/creating-releases.md`. Changelog bullet under `[1.4.8]`.
+- ✔️ Release `v1.4.8` (2026-11-07) attaches all 15 `mingw-w64-ucrt-x86_64-lib*-1.4.8-1-any.pkg.tar.zst` files with `OLLMchat-1.4.8-Setup.exe`. `libocrpc` and `libocsqlite` are in that set. `v1.4.7` does not have them.
+- 🚫 Argus is not in this tree. Its workflow is not part of this bug.
 
 ## Next
 
-- ⏳ 🔷 Point the Argus Windows job at the release assets it links (`libocrpc`, `libocsqlite`, and any sibling those depends pull in). It should `pacman -U` the downloaded files and build `argus-agent` from those prefixes.
-- ⏳ ℹ️ The packages exist on a release only after the next tagged **Release** (or a **Release - Windows** artifact, which is not a download URL).
+- 🚫 Closed. The download URLs are the `v1.4.8` release assets.
