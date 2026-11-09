@@ -43,10 +43,10 @@ namespace OLLMrpc.Transport
 	 * == Example ==
 	 *
 	 * {{{
-	 * var link = new OLLMrpc.Transport.TlsClient(host, port) {
+	 * var connection = new OLLMrpc.Transport.TlsClient(host, port) {
 	 *     accept_any = true
 	 * };
-	 * var response = link.call(request);
+	 * var response = connection.call(request);
 	 *
 	 * var authed = new OLLMrpc.Transport.TlsClient(host, port) {
 	 *     tls_certificate = certificate,
@@ -109,7 +109,19 @@ namespace OLLMrpc.Transport
 		 */
 		public signal void notification(Notification notif);
 
-		private bool connected = false;
+		/**
+		 * The idle read stopped because the connection failed.
+		 *
+		 * {@link watch} emits this after it closes the socket.
+		 * {@link connected} is then false, so {@link open} can
+		 * handshake again.
+		 */
+		public signal void closed();
+
+		/**
+		 * True after {@link open} until the idle read fails.
+		 */
+		public bool connected { get; private set; default = false; }
 		private int fd = -1;
 		private uint watch_id = 0;
 		private bool watching = false;
@@ -117,7 +129,7 @@ namespace OLLMrpc.Transport
 		/* Keeps the handshake alive. The bin streams borrow the
 		 * TLS input stream; they do not own the connection. */
 		private GLib.SocketConnection? socket = null;
-		private GLib.TlsClientConnection? link = null;
+		private GLib.TlsClientConnection? connection = null;
 		private Bin.Stream bin {
 			get; set; default = new Bin.Stream(null, null, false);
 		}
@@ -170,7 +182,7 @@ namespace OLLMrpc.Transport
 			this.bin.out_stream = new GLib.DataOutputStream(tls.get_output_stream());
 			this.bin.out_stream.set_byte_order(GLib.DataStreamByteOrder.BIG_ENDIAN);
 			this.socket = conn;
-			this.link = tls;
+			this.connection = tls;
 			this.fd = conn.socket.fd;
 			this.connected = true;
 		}
@@ -243,7 +255,9 @@ namespace OLLMrpc.Transport
 		 * A second call is ignored. {@link call} removes the
 		 * source and queues this again when {@link watching} is
 		 * set. The source is a timeout. A would-block or
-		 * timed-out read keeps the source.
+		 * timed-out read keeps the source. Any other read error
+		 * stops the source, closes the socket, and emits
+		 * {@link closed}.
 		 */
 		public void watch()
 		{
@@ -264,7 +278,7 @@ namespace OLLMrpc.Transport
 				}
 				this.socket.socket.blocking = false;
 				if (this.bin.in_stream.get_available() < 1) {
-					var pollable = this.link.get_input_stream()
+					var pollable = this.connection.get_input_stream()
 						as GLib.PollableInputStream;
 					if (pollable == null || !pollable.is_readable()) {
 						this.mutex.unlock();
@@ -285,7 +299,21 @@ namespace OLLMrpc.Transport
 					}
 					GLib.warning("%s", e.message);
 					this.watch_id = 0;
+					this.watching = false;
+					this.connected = false;
+					this.fd = -1;
+					var tls = this.connection;
+					this.connection = null;
+					this.socket = null;
 					this.mutex.unlock();
+					if (tls != null) {
+						try {
+							tls.close();
+						} catch (GLib.Error close_error) {
+							GLib.warning("%s", close_error.message);
+						}
+					}
+					this.closed();
 					return false;
 				}
 				this.mutex.unlock();

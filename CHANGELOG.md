@@ -11,15 +11,33 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [Unreleased]
+## [1.4.9] - Unreleased
+
+Work since **1.4.8** (2026-11-07).
 
 ### Changed
+
+#### Chat
+
+- Shell listing and tool output use Droid Sans Mono at 8pt
+- The collapse arrow sits against the frame title
 
 #### Packaging
 
 - Debian 13 packages link `libwebkitgtk-6.0-webdriver` from the Trixie WebDriver build
 
-## [1.4.8] - Unreleased
+### Fixed
+
+#### Chat
+
+- A bash tool frame is added to the chat
+- An empty tool status line stays hidden
+
+#### libocrpc
+
+- `Transport.TlsClient` closes the socket and emits `closed` when the idle read fails, and `connected` is then false so `open` can handshake again
+
+## [1.4.8] - 2026-11-07
 
 Work since **1.4.7** (2026-11-07).
 
