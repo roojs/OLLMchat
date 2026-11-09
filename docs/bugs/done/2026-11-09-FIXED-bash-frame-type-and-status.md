@@ -1,8 +1,8 @@
 # Bash frame header, terminal face, and empty status row
 
-**Status:** ✔️ installed on the tablet. Waiting for a live command and a reopened chat.
+**Status:** ✅ 2026-11-09. User closed it. The command title is 14px, the terminal face is 8pt, and a restored chat hides the empty status row.
 
-**ℹ️** The frame is [`2026-11-08-bash-frame-not-in-chat.md`](2026-11-08-bash-frame-not-in-chat.md). This file is only type size and the status row.
+**ℹ️** The frame is [`2026-11-08-FIXED-bash-frame-not-in-chat.md`](2026-11-08-FIXED-bash-frame-not-in-chat.md). This file is only type size and the status row.
 
 ## Problem
 
@@ -136,4 +136,4 @@
 
 ## Next
 
-- ⏳ 🔷 On the tablet, a live command shows the status line and the smaller terminal face. A reopened chat has no blank band under the command.
+- ✔️ 2026-11-09 — user closed it on the tablet.

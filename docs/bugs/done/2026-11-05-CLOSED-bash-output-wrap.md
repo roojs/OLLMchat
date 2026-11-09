@@ -1,6 +1,6 @@
 # Bash output wraps; code fences stay on one line
 
-**Status:** 🚫 CLOSED 2026-11-06. Live bash already scrolls sideways. Further bash output rendering is [`2026-11-05-CLOSED-restore-bash-tool-output.md`](2026-11-05-CLOSED-restore-bash-tool-output.md). The missing row is [`2026-11-08-bash-frame-not-in-chat.md`](../2026-11-08-bash-frame-not-in-chat.md).
+**Status:** 🚫 CLOSED 2026-11-06. Live bash already scrolls sideways. Further bash output rendering is [`2026-11-05-CLOSED-restore-bash-tool-output.md`](2026-11-05-CLOSED-restore-bash-tool-output.md). The missing row is [`2026-11-08-FIXED-bash-frame-not-in-chat.md`](2026-11-08-FIXED-bash-frame-not-in-chat.md).
 
 ## Problem
 

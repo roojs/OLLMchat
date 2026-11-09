@@ -1,6 +1,6 @@
 # Frame header title sits too far from the collapse arrow
 
-**Status:** ✔️ installed on the tablet. Waiting for a look at the header.
+**Status:** ✅ 2026-11-09. User closed it. The title sits against the collapse arrow.
 
 ## Problem
 
@@ -83,4 +83,4 @@ After `transform-origin: center` on `.oc-frame button`, scale the first header b
 
 ## Next
 
-- ⏳ 🔷 On the tablet, the command and a thinking title sit against the arrow.
+- ✔️ 2026-11-09 — user closed it on the tablet.

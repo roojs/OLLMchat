@@ -1,8 +1,8 @@
 # Bash execution frame is built and never shown
 
-**Status:** ✔️ installed on the tablet. Waiting for a bash command to confirm the frame is on screen.
+**Status:** ✅ 2026-11-09. User closed it. The frame is in the chat while a command runs.
 
-**ℹ️** The accepted shell-frame cut is closed: [`done/2026-11-05-CLOSED-restore-bash-tool-output.md`](done/2026-11-05-CLOSED-restore-bash-tool-output.md). This file is only the missing row.
+**ℹ️** The accepted shell-frame cut is closed: [`2026-11-05-CLOSED-restore-bash-tool-output.md`](2026-11-05-CLOSED-restore-bash-tool-output.md). This file is only the missing row.
 
 ## Problem
 
@@ -56,4 +56,4 @@ After `this.set_child(col)`, add the frame to the render box.
 
 ## Next
 
-- ⏳ 🔷 Run a bash command on the tablet. Confirm the frame is on screen while the command runs.
+- ✔️ 2026-11-09 — user closed it on the tablet.

@@ -1,6 +1,6 @@
 # Tool output and code blocks are two incomplete widgets
 
-**Status:** 🚫 CLOSED 2026-11-08. The accepted hunks are in the tree. The frame is still missing from the chat. That is [`2026-11-08-bash-frame-not-in-chat.md`](../2026-11-08-bash-frame-not-in-chat.md).
+**Status:** 🚫 CLOSED 2026-11-08. The accepted hunks are in the tree. The missing row is [`2026-11-08-FIXED-bash-frame-not-in-chat.md`](2026-11-08-FIXED-bash-frame-not-in-chat.md).
 
 ## Problem
 
@@ -922,5 +922,5 @@ Delete `libollmchatgtk/ToolOutput.vala`.
 ## Next
 
 - 🚫 More hunks in this file. The accepted proposal stays as applied.
-- ⏳ 🔷 Show the frame. [`2026-11-08-bash-frame-not-in-chat.md`](../2026-11-08-bash-frame-not-in-chat.md).
+- ✔️ 2026-11-09 — the frame is in the chat. [`2026-11-08-FIXED-bash-frame-not-in-chat.md`](2026-11-08-FIXED-bash-frame-not-in-chat.md).
 - ⏳ 🔷 Stop one request. [`2026-11-06-stop-one-tool.md`](../2026-11-06-stop-one-tool.md).
