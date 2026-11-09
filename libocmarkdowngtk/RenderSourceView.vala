@@ -127,7 +127,6 @@ namespace MarkdownGtk
 				icon_name = this.collapse_on_done ? "go-up-symbolic" : "go-next-symbolic",
 				tooltip_text = this.collapse_on_done ? "Collapse" : "Expand",
 				hexpand = false,
-				margin_end = 4,
 				can_focus = false,
 				focus_on_click = false,
 				visible = has_collapsed_style || this.collapse_on_done

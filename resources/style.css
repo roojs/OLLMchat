@@ -199,19 +199,23 @@ separator.horizontal.oc-table-body-sep {
   background-color: alpha(@destructive_color, 0.45);
 }
 
-.permission-widget .command-preview,
-.tool-frame .command-preview {
+.permission-widget .command-preview {
   font-weight: bold;
   font-size: 1.25em;
 }
 
+.tool-frame .command-preview {
+  font-weight: bold;
+  font-size: 14px;
+}
+
 /* Shell output. One absolute size: 0.9em on the view and again
-   on its text node shrinks twice. 10pt is just under the 11pt
-   chat face. Droid Sans Mono is the Android fixed face. */
+   on its text node shrinks twice. 8pt is 2pt under the previous
+   10pt face. Droid Sans Mono is the Android fixed face. */
 .tool-frame .tool-output,
 .tool-frame .tool-output text {
   font-family: "Droid Sans Mono", monospace;
-  font-size: 10pt;
+  font-size: 8pt;
   background-color: #000000;
   color: #ffffff;
 }

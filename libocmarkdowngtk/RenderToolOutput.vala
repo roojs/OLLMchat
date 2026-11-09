@@ -98,10 +98,12 @@ namespace MarkdownGtk
 			};
 			this.status_label = new Gtk.Label("") {
 				halign = Gtk.Align.START,
-				wrap = true
+				wrap = true,
+				visible = false
 			};
 			this.notify["status"].connect(() => {
 				this.status_label.label = this.status;
+				this.status_label.visible = this.status != "";
 				if (this.status == "Running command as root (sudo)") {
 					this.add_css_class("root");
 				}
@@ -131,7 +133,7 @@ namespace MarkdownGtk
 				this.stop.visible = false;
 				this.renderer.stop_clicked();
 			});
-			var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+			var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				css_classes = { "oc-frame-header" }
 			};
 			row.append(this.collapse);
@@ -167,6 +169,7 @@ namespace MarkdownGtk
 			col.append(this.status_label);
 			col.append(this.body);
 			this.set_child(col);
+			this.renderer.box.appender(this);
 		}
 
 		/**

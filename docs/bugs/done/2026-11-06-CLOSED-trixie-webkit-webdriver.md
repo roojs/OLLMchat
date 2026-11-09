@@ -1,6 +1,6 @@
 # Trixie has no WebDriver library built on Debian
 
-**Status:** ⏳ Trixie job apt-installs `libwebkitgtk-6.0-webdriver-dev` from the roojs trixie suite. The next package build confirms the link.
+**Status:** 🚫 CLOSED 2026-11-08. The Trixie job apt-installs `libwebkitgtk-6.0-webdriver-dev` from the roojs trixie suite. The disable is gone.
 
 ## Problem
 
@@ -36,7 +36,8 @@
 - ✔️ Tried the Ubuntu 25.04 GitHub/roojs debs. Link failed on `WTF` / `JSC` symbols.
 - ✔️ Held the Trixie job on stock WebKit so the Ubuntu 26.04 package job still uploads.
 - ✔️ `.github/workflows/x-debian.yml` **Trixie packages** apt-installs `libwebkitgtk-6.0-webdriver-dev`. The disable env, the control-file delete, and the GitHub asset download are gone.
+- 🚫 Closed 2026-11-08. Publishing the Debian package into the trixie suite is the repos ingest, not this bug.
 
 ## Next
 
-- ⏳ ℹ️ The next Trixie package build is the check that `dpkg-buildpackage` links `webkitgtk-6.0-webdriver`.
+- 🚫 Closed.

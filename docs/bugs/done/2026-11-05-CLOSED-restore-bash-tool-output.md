@@ -1,6 +1,6 @@
 # Tool output and code blocks are two incomplete widgets
 
-**Status:** ✔️ hunks applied. Not checked in the app yet.
+**Status:** 🚫 CLOSED 2026-11-08. The accepted hunks are in the tree. The frame is still missing from the chat. That is [`2026-11-08-bash-frame-not-in-chat.md`](../2026-11-08-bash-frame-not-in-chat.md).
 
 ## Problem
 
@@ -321,7 +321,7 @@ if (this.code_language == "raw") {
   - ℹ️ `is_ui_visible` is false.
 - ℹ️ The restore branch exists because the live pane cannot be rebuilt.
   - ℹ️ The fence was the widget that can show a finished block.
-  - ℹ️ That choice is [`TOOLS-2.6.5`](../plans/done/TOOLS-2.6.5-DONE-run-command-timeout-live-spill.md) §4a and §5.
+  - ℹ️ That choice is [`TOOLS-2.6.5`](../../plans/done/TOOLS-2.6.5-DONE-run-command-timeout-live-spill.md) §4a and §5.
 - ✔️ The listing changes widget when the session is reopened.
   - ✔️ The fence was never the shell pane.
   - ✔️ The shell pane was never a restorable block.
@@ -348,7 +348,7 @@ if (this.code_language == "raw") {
 ## Plan
 
 - ℹ️ The design and the applied hunks are in this file.
-- ℹ️ Stop still calls every `active_tools` entry. Follow-up: [`2026-11-06-stop-one-tool.md`](2026-11-06-stop-one-tool.md).
+- ℹ️ Stop still calls every `active_tools` entry. Follow-up: [`2026-11-06-stop-one-tool.md`](../2026-11-06-stop-one-tool.md).
 - 🔷 Two classes. `on_code_block` constructs `RenderSourceView` or the shell class.
 - 🔷 A type registry was a plugin example. `ToolOutput`'s only chat dependency is `History.Manager`, and only for Stop.
 - 🚫 The registry. Withdrawn.
@@ -917,8 +917,10 @@ Delete `libollmchatgtk/ToolOutput.vala`.
 - ✔️ 2026-11-06 — no product code.
 - ✔️ 2026-11-06 — registry withdrawn. `ToolOutput` depends on `History.Manager` only for Stop.
 - ✔️ 2026-11-06 — proposed hunks applied. `libocmarkdowngtk` and `libollmchatgtk` compile. Not checked in the app.
+- ✔️ 2026-11-08 — tablet `emulator-5556`, `org.roojs.ollmchat.androidpoc` pid 30273, installed 10:01. Bash runs: `Sandbox-Bubble.rpc_create`, `rpc_run`, `wait`, then RPC `output` and `finished`. The tool reply is stored (17 bytes, preview `done`; later 2435 bytes). `role=tool` is not UI-visible, so the live chat skips that row. `ChatWidget` only logs the waiting line. No crash. `RenderToolOutput` is constructed in `on_code_block` and never passed to `renderer.box.appender`.
 
 ## Next
 
-- ⏳ 🔷 Run a command and reopen the session. Live and restore should be the same black pane, command in the header.
-- ⏳ 🔷 Stop one request. See [`2026-11-06-stop-one-tool.md`](2026-11-06-stop-one-tool.md).
+- 🚫 More hunks in this file. The accepted proposal stays as applied.
+- ⏳ 🔷 Show the frame. [`2026-11-08-bash-frame-not-in-chat.md`](../2026-11-08-bash-frame-not-in-chat.md).
+- ⏳ 🔷 Stop one request. [`2026-11-06-stop-one-tool.md`](../2026-11-06-stop-one-tool.md).

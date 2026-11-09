@@ -101,7 +101,7 @@
     background-color: #000000;
     color: #ffffff;
     font-family: "Droid Sans Mono", monospace;
-    font-size: 10pt;
+    font-size: 8pt;
 }
 
 .oc-frame .oc-frame-header label {
@@ -119,6 +119,13 @@
     border-style: none;
     box-shadow: none;
     outline: none;
+}
+
+/* The collapse arrow is the first header button. A centered
+   scale leaves empty space before the title. Pin the glyph
+   to the title. The button box is the padding. */
+.oc-frame .oc-frame-header > button:first-child {
+    transform-origin: right center;
 }
 
 .oc-frame button:hover,

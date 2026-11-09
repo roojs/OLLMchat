@@ -1,6 +1,6 @@
 # Agent Pi bash and read calls failed
 
-**Status:** ✅ FIXED 2026-11-05. Bash calls run. Issues 1 through 6 stay in the tree. Restored rendering is [`2026-11-05-restore-bash-tool-output.md`](../2026-11-05-restore-bash-tool-output.md).
+**Status:** ✅ FIXED 2026-11-05. Bash calls run. Issues 1 through 6 stay in the tree. Restored rendering is [`2026-11-05-CLOSED-restore-bash-tool-output.md`](2026-11-05-CLOSED-restore-bash-tool-output.md).
 
 Agent Pi was asked to fold `FileConnectionAdd` into the source-diff test. It tried to list that folder and read the file. The commands and the path were fine. Two things in the harness stopped it.
 

@@ -2,7 +2,7 @@
 
 **Status:** ⏳ proposed. No product code.
 
-**ℹ️** Follows [`2026-11-05-restore-bash-tool-output.md`](2026-11-05-restore-bash-tool-output.md). That cut connects `stop_clicked` with no id and stops every entry in `active_tools`.
+**ℹ️** Follows [`2026-11-05-CLOSED-restore-bash-tool-output.md`](done/2026-11-05-CLOSED-restore-bash-tool-output.md). That cut connects `stop_clicked` with no id and stops every entry in `active_tools`.
 
 ## Problem
 

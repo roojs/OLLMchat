@@ -34,7 +34,7 @@
 
 - ✔️ Read the four suite `Packages` files and this host's girepository / GJS / libc.
 - ✔️ `.github/workflows/x-debian.yml` Ubuntu job is a three-row matrix (`+plucky`, `+questing`, plain resolute).
-- ✅ 2026-11-07. User closed this. Trixie WebDriver stays open in `docs/bugs/2026-11-06-trixie-webkit-webdriver.md`.
+- ✅ 2026-11-07. User closed this. Trixie WebDriver is closed in `docs/bugs/done/2026-11-06-CLOSED-trixie-webkit-webdriver.md`.
 
 ## Next
 

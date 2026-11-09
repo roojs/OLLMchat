@@ -1,6 +1,6 @@
 # Trixie cannot install libocrpc1: girepository 2.0 >= 2.85.1
 
-**Status:** ✅ 2026-11-07. User closed it. Trixie `libocrpc1` is `1.4.6-1+trixie` and depends on `libgirepository-1.0-1`. WebDriver stays [`2026-11-06-trixie-webkit-webdriver.md`](../2026-11-06-trixie-webkit-webdriver.md).
+**Status:** ✅ 2026-11-07. User closed it. Trixie `libocrpc1` is `1.4.6-1+trixie` and depends on `libgirepository-1.0-1`. WebDriver is [`2026-11-06-CLOSED-trixie-webkit-webdriver.md`](2026-11-06-CLOSED-trixie-webkit-webdriver.md).
 
 ## Problem
 
@@ -47,7 +47,7 @@ Depends: libavahi-gobject0 (>= 0.6.22), libc6 (>= 2.27), libffi8 (>= 3.4), libge
 - ✔️ One **Debian packages** job ran `scripts/ci/build-debian-packages.sh` in `ubuntu:26.04`, then in `debian:trixie`, and the collect step required both. Release `v1.4.6` run `42186821962` linked the Ubuntu 25.04 WebDriver library into the Trixie root. `libwebkitgtk-6.0-webdriver.so.4` has undefined `WTF` / `JSC` references against Trixie's JavaScriptCore. The Ubuntu `.deb` files were already built and were not uploaded.
 - ✔️ That combined job replaced the `ubuntu:26.04` container job. The container job is restored as **Debian packages** (plain revision, artifact `ollmchat-debian`). **Trixie packages** is a second job (`continue-on-error`).
 - ✔️ Release `v1.4.6` run `42189995538`: **Trixie packages** failed at apt with `libwebkitgtk-6.0-webdriver-dev` has no installation candidate. The job now sets `WEBKIT_WEBDRIVER=disabled` and drops that build dependency. Trixie links stock `webkitgtk-6.0`.
-- ✅ 2026-11-07. User closed the girepository split. WebDriver stays open in [`2026-11-06-trixie-webkit-webdriver.md`](../2026-11-06-trixie-webkit-webdriver.md).
+- ✅ 2026-11-07. User closed the girepository split. WebDriver is closed in [`2026-11-06-CLOSED-trixie-webkit-webdriver.md`](2026-11-06-CLOSED-trixie-webkit-webdriver.md).
 
 ## Next
 
