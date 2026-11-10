@@ -85,6 +85,16 @@ if android_cross_build
     subproject('glib-networking')
   endif
 
+  # The from-source wrap checks out subprojects/libgee-0.20.8 and Meson feeds
+  # that VAPI to library() compiles. The pixie package is pkg-config, so valac
+  # looks up gee-0.8 by name. The runner does not install libgee-dev; the
+  # VAPI is in the sysroot.
+  gee_dep = dependency('gee-0.8')
+  if gee_dep.type_name() == 'pkgconfig'
+    gee_vapi_dir = gee_dep.get_variable(pkgconfig: 'prefix') / 'share' / 'vala' / 'vapi'
+    add_project_arguments(['--vapidir', gee_vapi_dir], language: 'vala')
+  endif
+
   # GObject introspection is disabled on Android, so Meson does not attach
   # --pkg lines for C-library deps to library() targets. Bundled vapis under
   # vapi/ still need explicit --pkg flags at compile time.
@@ -93,8 +103,9 @@ if android_cross_build
   # --pkg=gee-0.8 here duplicates the vapi ("Gee already contains definition")
   # or fails lookup ("Package gee-0.8 not found"). See docs/android-build.md
   # (Vala / gee-0.8). Custom vapi targets are the exception — they need
-  # --vapidir subprojects/libgee-0.20.8/gee plus --pkg=gee-0.8 in their
-  # custom_target command, not on executables.
+  # --vapidir gee_vapi_dir plus --pkg=gee-0.8 in their custom_target command,
+  # not on executables. gee_vapi_dir is the libgee checkout, or the pixie
+  # share/vala/vapi when the dependency is pkg-config.
   add_project_arguments([
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',

@@ -52,5 +52,6 @@
 ## Next
 
 - ✔️ 2026-11-10. Local `PIXIEWOOD_USE_PIXIE=1` build produced `app-arm64-v8a-debug.apk` (verify OK, runtime tag `pixie-gtk`). The 24 packages stay in `.pixiewood/pixie` (127 MB). A second fetch did not download them again. That pass still built `webkitgtk-android` from the wrap. The next fetch expects the published package and replaces that tree.
-- ⏳ 🔷 Run Release - Android and confirm the APK links the pixie sysroot (runtime tag `pixie-gtk`, IME handlers still in `classes.dex`).
+- ✔️ 2026-11-10. Release `v1.4.10` Android job `129764971985` configured the pixie sysroot (`webkitgtk-android-1` 0.1.6) and stopped in valac: `Package gee-0.8 not found`. The runner has no `libgee-dev`. The VAPI is `share/vala/vapi/gee-0.8.vapi` in the sysroot. `meson.build` adds that directory when gee is a pkg-config dependency.
+- ⏳ 🔷 Run Release - Android again and confirm the APK links the pixie sysroot (runtime tag `pixie-gtk`, IME handlers still in `classes.dex`).
 - ⏳ 🔷 On the next version tag, confirm `https://roojs.github.io/OLLMchat/release.pins` lists every library the Android build installed, each URL downloads, and `https://roojs.github.io/OLLMchat/ollmchat/index.htm` is still Valadoc.

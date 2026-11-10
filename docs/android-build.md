@@ -280,9 +280,9 @@ from desktop. **Do not cargo-cult `--pkg=gee-0.8` onto every target.**
 
 | Target kind | `dependency('gee-0.8')` | `--pkg=gee-0.8` | `--vapidir …/libgee-0.20.8/gee` |
 |-------------|-------------------------|-----------------|----------------------------------|
-| `library()` / `executable()` (e.g. `libollmchat`, `ollmchat-android-poc`) | yes | **no** — Meson already passes `gee-0.8.vapi`; duplicate `--pkg` causes *Package gee-0.8 not found* or *Gee already contains definition* | no |
-| Root `add_project_arguments` on Android (`meson.build`) | n/a | **no** (same reason) | n/a |
-| `custom_target` vapi generators (`ocmarkdown-vapi`, `ocsqlite-vapi`, `ollamaweb-vapi`, `ocrpc-vapi`) | n/a | **yes** | **yes** on Android — see `gee_vapi_dir` in each lib's `meson.build` |
+| `library()` / `executable()` (e.g. `libollmchat`, `ollmchat-android-poc`) | yes | **no** — the from-source wrap makes Meson pass `gee-0.8.vapi`; a second `--pkg` causes *Gee already contains definition* | no |
+| Root `add_project_arguments` on Android (`meson.build`) | n/a | **no** (same reason) | pixie only: `share/vala/vapi` from the gee pkg-config prefix. The GitHub runner has no `libgee-dev`, so `--pkg gee-0.8` fails without that directory |
+| `custom_target` vapi generators (`ocmarkdown-vapi`, `ocsqlite-vapi`, `ollamaweb-vapi`, `ocrpc-vapi`) | n/a | **yes** | **yes** on Android — `gee_vapi_dir` is the libgee checkout, or the pixie `share/vala/vapi` when gee comes from pkg-config |
 
 Host GTK toolkit vapis (`gtk4`, `libadwaita-1`, `gtksourceview-5`) are **not**
 produced by the Android wraps (introspection is off). `gtk4.vapi` ships with
