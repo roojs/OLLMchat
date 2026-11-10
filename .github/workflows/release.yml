@@ -110,7 +110,15 @@ jobs:
             case "$f" in
               *.deb|*.rpm) mv "$f" artifacts/packages/ ;;
               *.AppImage|*.exe|*.apk|*.pixie|*.pkg.tar.zst|*.pkg.tar.zst.sig) mv "$f" artifacts/main/ ;;
-              release.pins) mv "$f" artifacts/pixie-release.pins ;;
+              # Pin lists are published on GitHub Pages. They are not release assets.
+              # The path is artifacts/release.pins; a bare release.pins pattern does not match.
+              *.pins)
+                if [ "$(basename "$f")" = release.pins ]; then
+                  mv "$f" artifacts/pixie-release.pins
+                else
+                  rm -f "$f"
+                fi
+                ;;
               *)
                 echo "unclassified release asset: $f" >&2
                 exit 1

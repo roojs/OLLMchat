@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Pack each Android library this build installed into a .pixie file and
-# write release.pins for that set. Publish uploads the files, commits
-# the pin on main, and puts that file on GitHub Pages.
+# write release.pins for that set. Publish uploads the .pixie files.
+# release.pins is committed on main and published on GitHub Pages.
+# It is not a release asset.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
