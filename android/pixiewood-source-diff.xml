@@ -57,7 +57,6 @@
   </dependencies>
   <build target="oc-test-source-diff">
     <configure-options>
-      <option>-Dandroid_poc=true</option>
       <option>-Dlocal_gguf=disabled</option>
       <option>-Ddocs=false</option>
       <option>-Dexamples=false</option>

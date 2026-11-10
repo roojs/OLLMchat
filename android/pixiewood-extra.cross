@@ -48,11 +48,9 @@ docs = false
 examples = false
 tests = false
 local_gguf = 'disabled'
-android_poc = true
 
 [ollmchat:project options]
 docs = false
 examples = false
 tests = false
 local_gguf = 'disabled'
-android_poc = true

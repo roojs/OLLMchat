@@ -11,6 +11,7 @@ packaging/msys2/*.pkg.tar.zst.sig
 .android-sdk
 .android-tools
 .pixiewood
+pixie-artifacts/
 android/local-build.env
 .buildconfig
 .rpmbuild/

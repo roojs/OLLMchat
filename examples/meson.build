@@ -53,11 +53,15 @@ test_window_deps = [
 
 # Android APK of this smoke window. The chat APK stays ollmchat-android-poc.
 # Desktop examples are the rest of this file.
-if host_machine.system() == 'android' and get_option('android_poc')
+if host_machine.system() == 'android'
+  gioopenssl_dep = dependency('gioopenssl')
+  if gioopenssl_dep.type_name() == 'pkgconfig'
+    gioopenssl_dep = dependency('gioopenssl', static: true)
+  endif
   executable('oc-test-source-diff',
     dependencies: [
       test_window_deps,
-      dependency('gioopenssl'),
+      gioopenssl_dep,
       ocsqlite_vapi_dep,
       ocfiles_vapi_dep,
       ollmchat_vapi_dep,

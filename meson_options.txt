@@ -8,12 +8,6 @@ option(
   description: 'Build the local GGUF/libllama phase-1 embedding probe'
 )
 option(
-  'android_poc',
-  type: 'boolean',
-  value: false,
-  description: 'Build the stripped-down remote-chat Android proof-of-concept target'
-)
-option(
   'android_shell_poc',
   type: 'boolean',
   value: false,

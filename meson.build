@@ -1,5 +1,5 @@
 project('ollmchat', 'vala', 'c', 'cpp',
-  version: '1.4.9',
+  version: '1.4.10',
   license: 'LGPL',
   default_options: [
     'default_library=shared',
@@ -13,24 +13,8 @@ gnome = import('gnome')
 fs = import('fs')
 
 android_shell_poc = get_option('android_shell_poc')
-android_poc_opt = get_option('android_poc')
-android_cross_build = host_machine.system() == 'android' and (
-  android_shell_poc or android_poc_opt
-)
-
-android_poc_count = 0
-if android_shell_poc
-  android_poc_count += 1
-endif
-if android_poc_opt
-  android_poc_count += 1
-endif
-if android_poc_count > 1
-  error('Only one of android_shell_poc, android_poc may be set')
-endif
-if android_poc_opt and host_machine.system() != 'android'
-  error('android_poc is Android cross-build only (APK); do not enable on the host')
-endif
+android_cross_build = host_machine.system() == 'android'
+android_app = android_cross_build and not android_shell_poc
 
 # libocvector2.so is the daemon FAISS lib; app uses liboctools/CodebaseSearch (RPC).
 ocfiles_lib = 'ocfiles'
@@ -94,11 +78,12 @@ debian_llama_libdir = ''
 gee_vapi_dir = meson.project_source_root() / 'subprojects/libgee-0.20.8/gee'
 
 if android_cross_build
-  # GIO TLS for libsoup HTTPS: build OpenSSL + glib-networking GIO modules.
-  # TLS modules are copied into APK assets (see install_gio_modules_to_assets
-  # in scripts/android/build-pixiewood-apk.sh); main() calls
-  # ollmapp_configure_android_gio_tls_modules() before any network I/O.
-  subproject('glib-networking')
+  # GIO TLS for libsoup HTTPS: static gioopenssl, loaded with
+  # g_io_openssl_load. The pixie sysroot already ships gioopenssl.pc.
+  # Compile the glib-networking subproject only when that package is absent.
+  if not dependency('gioopenssl', required: false).found()
+    subproject('glib-networking')
+  endif
 
   # GObject introspection is disabled on Android, so Meson does not attach
   # --pkg lines for C-library deps to library() targets. Bundled vapis under
@@ -144,7 +129,7 @@ endif
 # Build libraries in dependency order
 if android_shell_poc
   subdir('ollmapp')         # Minimal Android APK shell target only
-elif android_poc_opt and host_machine.system() == 'android'
+elif android_app
   subdir('libocmarkdown')
   subdir('libocmarkdowngtk')
   subdir('libocsqlite')
@@ -205,7 +190,7 @@ if android_shell_poc
   executables_info = [
     ['ollmchat-android-shell-poc', 'ollmapp/ollmchat-android-shell-poc'],
   ]
-elif android_poc_opt and host_machine.system() == 'android'
+elif android_app
   executables_info = [
     ['ollmchat-android-poc', 'ollmapp/ollmchat-android-poc'],
     ['oc-test-source-diff', 'examples/oc-test-source-diff'],

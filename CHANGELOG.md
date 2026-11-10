@@ -11,7 +11,20 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.9] - Unreleased
+## [1.4.10] - Unreleased
+
+Work since **1.4.9** (2026-11-09).
+
+### Changed
+
+#### Android
+
+- The Android build links the published Pixie packages instead of compiling GTK and the rest of that stack
+- Those packages are downloaded once and reused on the next build
+- A version tag publishes one `.pixie` per Android library the build installed
+- `https://roojs.github.io/OLLMchat/release.pins` lists those files
+
+## [1.4.9] - 2026-11-09
 
 Work since **1.4.8** (2026-11-07).
 

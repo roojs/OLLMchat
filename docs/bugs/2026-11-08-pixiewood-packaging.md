@@ -1,6 +1,6 @@
 # Pixiewood packaging
 
-**Status:** ⏳ open. [pixiewood-pkgs](https://github.com/roojs/pixiewood-pkgs) is the distribution. This APK still compiles the GTK stack from source, and this tree does not publish Android library bundles. Stays open until both parts below are done.
+**Status:** ⏳ open. The Android job now links published `.pixie` files, and a version tag publishes this tree's libraries. Not verified in CI yet. `webkitgtk-android` is still compiled from the wrap.
 
 **Pointer:** `docs/bug-fix-process.md`, `docs/android-build.md`
 
@@ -29,15 +29,15 @@
 ### 1. Build the APK from the packages
 
 - 🔷 When release `1.261108` (or the release that replaces it) has assets, the Android job downloads that sysroot and builds `ollmchat-android-poc` against it.
+- ✔️ 2026-11-10. `PIXIEWOOD_USE_PIXIE=1` on the GitHub Android job. `gtk` is `android/pixie-gtk.pins` (Knowles/gtk `4.25.1`). The other libraries come from `https://roojs.github.io/pixiewood-pkgs/release.pins`, plus `fontconfig` from `snapshot.pins` on that site.
 - 🔷 Dependencies listed in that sysroot's `MANIFEST.json` are not compiled from `android/pixiewood-wraps/`.
-- ⏳ 🔷 The IME patch stays until a `Knowles.android-ime` bundle exists. Unpatched `gnome` GTK does not replace `android-bugs.patch`.
 - ⏳ 🔷 `webkitgtk-android` stays a wrap until `roojs/webkitgtk-android` publishes its `.pixie`. The browser library is not in the gnome set.
-- 🚫 Switch the APK to the gnome sysroot while those two dependencies are still missing.
+- 🚫 Use the unpatched gnome `gtk` pin. The Android job uses the Knowles/gtk file in `android/pixie-gtk.pins`.
 - 🚫 Vendor another copy of the GTK sources inside this tree.
 
 ### 2. Export the libraries
 
-- 🔷 This repository publishes Android bundles of the libraries a consumer links, following `docs/own-distribution.md` in pixiewood-pkgs. Argus downloads those bundles and links the RPC layer (`libocrpc`). It does not configure or compile this tree.
+- ✔️ 2026-11-10. A version tag packs every Android library the build installed (`ocsqlite`, `ocrpc`, `ocmarkdown`, `ollamaweb`, `ochf`, `ocmarkdowngtk`, `ocfiles`, `ollmchat`, `ocwebkit`, `ocmcp`, `octools`, `occoder`, `ollmchatgtk` — whichever `.so` is present), uploads `<name>-arm-v31-<version>.pixie` on the version release, commits `release.pins` on `main`, and publishes that list at `https://roojs.github.io/OLLMchat/release.pins`.
 - 🔷 Pins for the shared stack stay on `roojs/pixiewood-pkgs`. This distribution uploads only the libraries built here.
 - ℹ️ Which siblings of `libocrpc` Argus links on Android is outside this tree. The Android POC already builds the set in Evidence.
 - 🚫 Teach the Argus workflow from this bug. Argus is not in this tree.
@@ -45,8 +45,12 @@
 ## Attempts / changelog
 
 - ✔️ 2026-11-08. Read pixiewood-pkgs `README.md`, `current.pins`, `build-order.txt`, `docs/plans.md`, `docs/own-distribution.md`, and `docs/pixiewood-sysroot.md`. Confirmed zero GitHub releases.
+- ✔️ 2026-11-10. pixiewood-pkgs `release.pins` on `main` points at GitHub release `1.261109` (openssl through glib-networking, arm64-v8a). `fontconfig` is only on `snapshot.pins`. Knowles/gtk tag `4.25.1-20261110g-pixie` published `gtk-arm-v31-4.25.1.pixie` (17 108 844 bytes, sha256 `d3b5bbcfa75dd6dbbd467be435d6b94e774a58a80ae40b403bc8a02fa5b7cc6e`). The generic download by numeric project id returns 404; `projects/Knowles%2Fgtk/packages/generic/...` returns the file. The archive's `ImContext.java` has `syncEditableFromGtk`. `libgtk-4.so` does not contain `ollmchat-android-bugs-v16`.
+- ✔️ 2026-11-10. Android CI sets `PIXIEWOOD_USE_PIXIE=1`. `scripts/android/fetch-pixie-deps.sh` merges the pixiewood-pkgs GitHub Pages release and snapshot pins and replaces `gtk` from `android/pixie-gtk.pins`. The APK manifest drops dependencies listed in the sysroot and points Java glue at the pixie tree. `webkitgtk-android` stays a wrap. A tag release runs `scripts/android/pack-pixie-libs.sh`, uploads each library `.pixie` on the version release, commits `release.pins` on `main`, and deploys that file onto the existing Valadoc Pages site.
+- ✔️ 2026-11-10. pixie-pkg reads `https://roojs.github.io/pixiewood-pkgs/release.pins` and `snapshot.pins`. `PIXIE_REPO` still reads a git branch, so consumers of this tree use `--pins https://roojs.github.io/OLLMchat/release.pins`.
 
 ## Next
 
-- ⏳ 🔷 Wait until pixiewood-pkgs publishes the gnome bundles, and until the IME GTK and webkitgtk-android bundles exist.
-- ⏳ 🔷 Then do part 1 (APK links the sysroot) and part 2 (this tree publishes the RPC libraries).
+- ✔️ 2026-11-10. Local `PIXIEWOOD_USE_PIXIE=1` build produced `app-arm64-v8a-debug.apk` (verify OK, runtime tag `pixie-gtk`). The 24 packages stay in `.pixiewood/pixie` (127 MB). A second fetch did not download them again. `webkitgtk-android` is still built from the wrap.
+- ⏳ 🔷 Run Release - Android and confirm the APK links the pixie sysroot (runtime tag `pixie-gtk`, IME handlers still in `classes.dex`).
+- ⏳ 🔷 On the next version tag, confirm `https://roojs.github.io/OLLMchat/release.pins` lists every library the Android build installed, each URL downloads, and `https://roojs.github.io/OLLMchat/ollmchat/index.htm` is still Valadoc.

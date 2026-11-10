@@ -84,7 +84,7 @@ build_rpath = ':'.join([
 ])
 
 android_poc_settings_sources = []
-if get_option('android_poc')
+if host_machine.system() == 'android'
   android_poc_settings_sources = [
     'SettingsDialog/SettingsPage.vala',
     'SettingsDialog/ConnectionsPage.vala',
@@ -118,11 +118,18 @@ if get_option('android_poc')
   ]
 endif
 
-if get_option('android_poc') and host_machine.system() == 'android'
+if host_machine.system() == 'android'
   if not meson.version().version_compare('>=1.8.0')
-    error('android_poc on Android requires Meson >= 1.8.0 for android_exe_type')
+    error('Android requires Meson >= 1.8.0 for android_exe_type')
   endif
 
+  gioopenssl_dep = dependency('gioopenssl')
+  # The pixie file is a static archive. pkg-config hides libssl and libcrypto
+  # in Requires.private unless the lookup is static. The from-source subproject
+  # is an internal dependency and already carries those libraries.
+  if gioopenssl_dep.type_name() == 'pkgconfig'
+    gioopenssl_dep = dependency('gioopenssl', static: true)
+  endif
   android_poc_deps = [
     dependency('gtk4'),
     dependency('libadwaita-1'),
@@ -133,7 +140,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
     dependency('gobject-2.0'),
     dependency('json-glib-1.0'),
     dependency('libsoup-3.0'),
-    dependency('gioopenssl'),
+    gioopenssl_dep,
     dependency('webkitgtk-android-1'),
     valac.find_library('posix'),
   ]

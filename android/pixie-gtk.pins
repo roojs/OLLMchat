@@ -1,0 +1,13 @@
+{
+  "packages": [
+    {
+      "abi": "arm64-v8a",
+      "repo": "https://gitlab.gnome.org/GNOME/gtk.git",
+      "name": "gtk",
+      "track": "4.25.1",
+      "resolved": "e1d396d5f8cf178cb73b50e1a8d1c4f6cae0a313",
+      "inputs": "d3b5bbcfa75dd6dbbd467be435d6b94e774a58a80ae40b403bc8a02fa5b7cc6e",
+      "url": "https://gitlab.gnome.org/api/v4/projects/Knowles%2Fgtk/packages/generic/gtk/4.25.1-20261110g-pixie/gtk-arm-v31-4.25.1.pixie"
+    }
+  ]
+}

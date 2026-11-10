@@ -18,6 +18,8 @@ PIXIEWOOD_PHASE="${PIXIEWOOD_PHASE:-all}"
 # Strip native debug symbols on meson install (debug buildtype, debug Gradle APK).
 # Used for GitHub Release assets; local/manual builds leave this unset.
 PIXIEWOOD_STRIP_DEBUG="${PIXIEWOOD_STRIP_DEBUG:-}"
+# 1: link the published .pixie sysroot instead of compiling the GTK stack.
+PIXIEWOOD_USE_PIXIE="${PIXIEWOOD_USE_PIXIE:-}"
 
 read_gtk_android_builder_revision() {
   local revision_file="$ROOT_DIR/scripts/android/gtk-android-builder.revision"
@@ -58,6 +60,10 @@ install_pixiewood_extra_wraps() {
 
 pixiewood_prefix_has_pkg() {
   local pkg="$1"
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ] && [ -n "${PIXIEWOOD_PIXIE:-}" ]; then
+    [ -f "$PIXIEWOOD_PIXIE/lib/arm64-v8a/pkgconfig/$pkg.pc" ]
+    return
+  fi
   find "$PIXIEWOOD_BUILD_DIR" -name "$pkg.pc" -print -quit 2>/dev/null | grep -q .
 }
 
@@ -79,13 +85,20 @@ needs_pixiewood_prepare() {
     return 0
   fi
 
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ] &&
+     ! grep -q 'pkg-config-wrapper' "$PIXIEWOOD_BUILD_DIR/meson-logs/meson-log.txt" 2>/dev/null; then
+    echo "Pixiewood build was not configured against the pixie sysroot; rerunning prepare." >&2
+    return 0
+  fi
+
   if [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-chat-poc.xml ]] &&
      ! chat_pixiewood_prefix_ready; then
     echo "Pixiewood prefix is missing chat POC dependencies; rerunning prepare." >&2
     return 0
   fi
 
-  if [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-chat-poc.xml ]] &&
+  if [ "$PIXIEWOOD_USE_PIXIE" != 1 ] &&
+     [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-chat-poc.xml ]] &&
      ! pixiewood_prefix_has_patched_gtk; then
     echo "Pixiewood prefix was built without OLLMchat GTK fork markers; rerunning prepare." >&2
     return 0
@@ -146,6 +159,13 @@ drop_meson_subproject_trees() {
 
 download_meson_subprojects() {
   local meson="$1"
+
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
+    if compgen -G "$ROOT_DIR/subprojects/*.wrap" > /dev/null; then
+      with_android_meson_path "$meson" subprojects download --sourcedir "$ROOT_DIR"
+    fi
+    return
+  fi
 
   if ! compgen -G "$ROOT_DIR/subprojects/*.wrap" > /dev/null; then
     return
@@ -243,6 +263,61 @@ reconfigure_pixiewood_build() {
     "$ROOT_DIR"
 }
 
+activate_pixie_sysroot() {
+  local base provided java manifest
+  base="$(dirname "$PIXIEWOOD_BUILD_DIR")"
+  PIXIEWOOD_PIXIE="$base/pixie"
+  export PIXIEWOOD_PIXIE
+  PIXIEWOOD_PIXIE="$(OLLMCHAT_PIXIEWOOD="$base" "$ROOT_DIR/scripts/android/fetch-pixie-deps.sh")"
+  export PIXIEWOOD_PIXIE
+  export PIXIEWOOD_REAL_MESON="${PIXIEWOOD_REAL_MESON:-$("$ROOT_DIR/scripts/android/ensure-meson.sh")}"
+  java="$PIXIEWOOD_PIXIE/share/pixiewood/gtk-android-java"
+  if [ ! -d "$java" ]; then
+    echo "Pixie GTK Java glue missing: $java" >&2
+    exit 1
+  fi
+  manifest="$base/pixiewood-from-pixie.xml"
+  python3 - "$PIXIEWOOD_MANIFEST" "$manifest" "$PIXIEWOOD_PIXIE/share/pixiewood/MANIFEST.json" "$java" <<'PY'
+import json
+import sys
+import xml.etree.ElementTree as ET
+
+src, dest, manifest_path, java = sys.argv[1:]
+PW = "https://sp1rit.arpa/pixiewood/"
+META = "https://specifications.freedesktop.org/metainfo/1.0"
+ET.register_namespace("", PW)
+ET.register_namespace("meta", META)
+provided = set(json.load(open(manifest_path))["provided_dependencies"])
+tree = ET.parse(src)
+root = tree.getroot()
+deps = root.find(f"{{{PW}}}dependencies")
+if deps is not None:
+    for child in list(deps):
+        if child.tag.split("}")[-1] in provided:
+            deps.remove(child)
+build = root.find(f"{{{PW}}}build")
+if build is None:
+    raise SystemExit("Pixiewood manifest has no build element")
+build.set("java-sources", java)
+tree.write(dest, encoding="unicode", xml_declaration=True)
+PY
+  PIXIEWOOD_MANIFEST="$manifest"
+  export PIXIEWOOD_MANIFEST
+}
+
+drop_pixie_satisfied_wraps() {
+  local manifest name wrap
+  manifest="$(dirname "$PIXIEWOOD_BUILD_DIR")/pixie/share/pixiewood/MANIFEST.json"
+  if [ ! -f "$manifest" ]; then
+    echo "Pixie manifest missing: $manifest" >&2
+    exit 1
+  fi
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    rm -f "$ROOT_DIR/subprojects/$name.wrap"
+  done < <(jq -r '.provided_dependencies[]' "$manifest")
+}
+
 init_pixiewood_env() {
   if [ ! -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ] ||
      [ ! -d "$ANDROID_SDK_ROOT/ndk" ]; then
@@ -250,7 +325,13 @@ init_pixiewood_env() {
   fi
 
   ensure_gtk_android_builder
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
+    activate_pixie_sysroot
+  fi
   install_pixiewood_extra_wraps
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
+    drop_pixie_satisfied_wraps
+  fi
   ensure_pixiewood_compile_state_consistent
 
   export ANDROID_HOME="$ANDROID_SDK_ROOT"
@@ -261,6 +342,16 @@ init_pixiewood_env() {
   export CXX_FOR_BUILD="${CXX_FOR_BUILD:-g++}"
   ensure_android_meson
   mapfile -t PIXIEWOOD_CONFIGURE_OPTIONS < <(pixiewood_configure_options)
+
+  # Meson --reconfigure keeps the first setup's cross binaries and options.
+  # A from-source build has no pkg-config and still records -Dandroid_poc,
+  # so the pixie cross file never applies. Start that directory clean.
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ] &&
+     [ -d "$PIXIEWOOD_BUILD_DIR" ] &&
+     ! grep -q 'pkg-config-wrapper' "$PIXIEWOOD_BUILD_DIR/meson-logs/meson-log.txt" 2>/dev/null; then
+    echo "Removing the previous Android build so Meson loads the pixie cross file."
+    rm -rf "$PIXIEWOOD_BUILD_DIR"
+  fi
 }
 
 run_pixiewood() {
@@ -292,7 +383,11 @@ write_ollmchat_android_runtime_tag() {
   local dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share"
 
   mkdir -p "$dest"
-  printf 'ollmchat-android-bugs-v16\n' > "$dest/ollmchat-android-runtime.tag"
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
+    printf 'pixie-gtk\n' > "$dest/ollmchat-android-runtime.tag"
+  else
+    printf 'ollmchat-android-bugs-v16\n' > "$dest/ollmchat-android-runtime.tag"
+  fi
 }
 
 # Android native code has no /etc/ssl/certs/. Ship the build host's Debian
@@ -583,6 +678,11 @@ run_pixiewood_gradle_assemble() {
 maybe_download_meson_subprojects() {
   local meson="$1"
 
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
+    download_meson_subprojects "$meson"
+    return
+  fi
+
   prepare_android_subprojects_before_meson
   discard_floating_glib_stack_checkouts
   ensure_pinned_wrap_git_checkouts
@@ -715,6 +815,17 @@ run_pixiewood_build() {
   # generate force_symlinks jniLibs -> root/lib; a prior materialize leaves a real
   # directory and unlink(2) fails with EISDIR.
   rm -rf "$ROOT_DIR/.pixiewood/android/app/src/main/jniLibs"
+
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
+    local base clone
+    base="$(dirname "$PIXIEWOOD_BUILD_DIR")"
+    clone="$base/pixie-pkg/scripts/stage-runtime.sh"
+    if [ ! -x "$clone" ]; then
+      echo "pixie-pkg stage-runtime missing: $clone" >&2
+      exit 1
+    fi
+    "$clone" "$PIXIEWOOD_PIXIE" "$base/root"
+  fi
 
   sync_pixiewood_ini_manifest
   run_pixiewood generate

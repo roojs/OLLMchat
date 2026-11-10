@@ -40,9 +40,30 @@ The existing release automation builds:
 - Debian packages for amd64
 - a Windows NSIS installer
 
-The repository includes a Pixiewood-based Android packaging path. Pixiewood
-generates the Gradle project, Android manifest, and Android NDK cross files
-under `.pixiewood/` at build time.
+The repository includes a Pixiewood-based Android packaging path. GitHub Actions
+sets `PIXIEWOOD_USE_PIXIE=1`. That downloads the published `.pixie` libraries
+from `https://roojs.github.io/pixiewood-pkgs/release.pins` and `snapshot.pins`,
+with `gtk` replaced by `android/pixie-gtk.pins`, and links the APK against them.
+`webkitgtk-android` stays a wrap. A local build compiles the stack from source
+unless the same variable is set:
+
+```bash
+PIXIEWOOD_USE_PIXIE=1 scripts/android/build-chat-poc-apk.sh
+```
+
+That downloads the packages once into `.pixiewood/pixie` and reuses them.
+`PIXIEWOOD_REFRESH_SUBPROJECTS=1` downloads them again.
+
+`release.pins` in the repository root is the pin list for the Android libraries
+this project publishes. A version tag uploads one `.pixie` per library that the
+Android build installed, commits `release.pins` on `main`, and publishes that
+list at `https://roojs.github.io/OLLMchat/release.pins` (the Valadoc site stays
+in place). pixie-pkg reads pin lists from GitHub Pages:
+
+```bash
+pixie-pkg fetch --dest "$HOME/ollmchat-pixie" \
+  --pins https://roojs.github.io/OLLMchat/release.pins
+```
 
 ## Minimal Android proof of concept
 
@@ -76,10 +97,10 @@ This is the correct application surface for the first mobile target. It keeps
 Android focused on "can GTK launch and can remote chat work?" instead of trying
 to port the full desktop app at once.
 
-When Meson is cross-building for `host_machine.system() == 'android'`, the POC
+When Meson is cross-building for `host_machine.system() == 'android'`, that
 target is declared with `android_exe_type: 'application'` so Android can load it
-as an application shared object. `-Dandroid_poc=true` is Android cross-build
-only; enabling it on the host is an error.
+as an application shared object. The Android host selects this build. There is
+no separate POC option.
 
 Build the debug APK locally with:
 
@@ -270,8 +291,8 @@ produced by the Android wraps (introspection is off). `gtk4.vapi` ships with
 host GTK library without the Debian package will pass on a desktop and fail in
 CI.
 
-When adding new Android Vala targets, mirror `ollmapp/meson.build` (`android_poc`
-block before the shell refactor): list `dependency('gee-0.8')` in `dependencies`
+When adding new Android Vala targets, mirror `ollmapp/meson.build` (the
+`host_machine.system() == 'android'` block): list `dependency('gee-0.8')` in `dependencies`
 and omit `--pkg=gee-0.8` from `vala_args`.
 
 Successful debug builds produce APKs under:

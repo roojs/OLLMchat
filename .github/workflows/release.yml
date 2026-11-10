@@ -109,7 +109,8 @@ jobs:
             [ -f "$f" ] || continue
             case "$f" in
               *.deb|*.rpm) mv "$f" artifacts/packages/ ;;
-              *.AppImage|*.exe|*.apk|*.pkg.tar.zst|*.pkg.tar.zst.sig) mv "$f" artifacts/main/ ;;
+              *.AppImage|*.exe|*.apk|*.pixie|*.pkg.tar.zst|*.pkg.tar.zst.sig) mv "$f" artifacts/main/ ;;
+              release.pins) mv "$f" artifacts/pixie-release.pins ;;
               *)
                 echo "unclassified release asset: $f" >&2
                 exit 1
@@ -180,6 +181,57 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           ./scripts/release/finalize-changelog.sh "$GITHUB_REF_NAME"
           git add CHANGELOG.md debian/changelog
+          if [ -f artifacts/pixie-release.pins ]; then
+            cp artifacts/pixie-release.pins release.pins
+            git add release.pins
+          fi
           git diff --staged --quiet && exit 0
           git commit -m "Finalize changelog for $GITHUB_REF_NAME"
           git push origin HEAD:main
+
+  stage-pins:
+    name: Stage pin page
+    needs: publish
+    if: needs.publish.result == 'success' && startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref_name, '-packages')
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download pixie pins
+        uses: actions/download-artifact@v5
+        with:
+          name: ollmchat-pixie
+          path: pins
+
+      - name: Stage the current site with the new pin list
+        run: scripts/android/stage-pins-page.sh --pins pins/release.pins --out site
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy-pins:
+    name: Publish pin page
+    needs: stage-pins
+    if: needs.stage-pins.result == 'success' && startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref_name, '-packages')
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: ollmchat-github-pages
+      cancel-in-progress: false
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

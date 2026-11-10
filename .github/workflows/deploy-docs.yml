@@ -106,6 +106,36 @@ jobs:
         run: |
           touch build/valadoc/.nojekyll
 
+      - name: Keep pin lists on the documentation site
+        run: |
+          set -euo pipefail
+          python3 - << 'PY'
+          import json
+          import pathlib
+          import urllib.request
+
+          root = pathlib.Path("build/valadoc")
+          for name in ("release.pins", "snapshot.pins"):
+              src = pathlib.Path(name)
+              if not src.is_file():
+                  continue
+              git = json.loads(src.read_text())
+              dest = root / name
+              dest.write_text(src.read_text())
+              if git.get("packages"):
+                  continue
+              try:
+                  with urllib.request.urlopen(
+                      f"https://roojs.github.io/OLLMchat/{name}", timeout=30
+                  ) as response:
+                      live = json.load(response)
+              except Exception:
+                  continue
+              packages = live.get("packages")
+              if isinstance(packages, list) and packages:
+                  dest.write_text(json.dumps(live, indent=2) + "\n")
+          PY
+
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
@@ -116,6 +146,9 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: valadoc
     runs-on: ubuntu-latest
+    concurrency:
+      group: ollmchat-github-pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

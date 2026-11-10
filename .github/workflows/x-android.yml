@@ -30,7 +30,7 @@ jobs:
 
       - name: Compute Pixiewood cache key hashes
         run: |
-          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/icons/**', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/build-pixiewood-apk.sh', 'scripts/android/gtk-subproject.sh', 'scripts/android/pixiewood-cache.sh', 'scripts/android/validate-restored-caches.sh', 'scripts/android/run-android-regression-tests.sh', 'scripts/android/regression/**', 'scripts/android/verify-android-ci-preflight.sh', 'scripts/android/verify-apk.sh', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
+          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/icons/**', 'android/pixiewood-extra.cross', 'android/pixie-gtk.pins', 'android/pixiewood-wraps/**', 'scripts/android/build-pixiewood-apk.sh', 'scripts/android/fetch-pixie-deps.sh', 'scripts/android/pack-pixie-libs.sh', 'scripts/android/gtk-subproject.sh', 'scripts/android/pixiewood-cache.sh', 'scripts/android/validate-restored-caches.sh', 'scripts/android/run-android-regression-tests.sh', 'scripts/android/regression/**', 'scripts/android/verify-android-ci-preflight.sh', 'scripts/android/verify-apk.sh', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'scripts/android/meson-for-pixiewood.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
           echo "PIXIEWOOD_APP_HASH=${{ hashFiles('meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/android/**') }}" >> "$GITHUB_ENV"
 
       - name: Restore Android SDK and NDK cache
@@ -81,9 +81,9 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v3-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+          key: pixiewood-build-v4-pixie-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
           restore-keys: |
-            pixiewood-build-v3-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-
+            pixiewood-build-v4-pixie-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-
 
       - name: Validate restored caches
         id: validate-pixiewood-build-cache
@@ -152,6 +152,7 @@ jobs:
             libtext-template-perl \
             libxml2-utils \
             meson \
+            jq \
             nasm \
             ninja-build \
             openjdk-17-jdk \
@@ -176,6 +177,7 @@ jobs:
       - name: Pixiewood setup (SDK, GTK prefix, subprojects)
         id: pixiewood-setup
         env:
+          PIXIEWOOD_USE_PIXIE: "1"
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
           PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
         run: PIXIEWOOD_PHASE=setup scripts/android/build-chat-poc-apk.sh
@@ -239,6 +241,7 @@ jobs:
       - name: Meson cross configure
         id: pixiewood-configure
         env:
+          PIXIEWOOD_USE_PIXIE: "1"
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
           PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
           PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.validate-pixiewood-build-cache.outputs.usable == 'true' && '1' || '' }}
@@ -248,6 +251,7 @@ jobs:
       - name: Build chat APK
         id: build-apk
         env:
+          PIXIEWOOD_USE_PIXIE: "1"
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
           PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
           PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.validate-pixiewood-build-cache.outputs.usable == 'true' && '1' || '' }}
@@ -270,7 +274,7 @@ jobs:
              [ -f .pixiewood/toolchain.cross ] &&
              [ -f .pixiewood/bin-aarch64/build.ninja ] &&
              find .pixiewood/bin-aarch64 -type f \( -name '*.o' -o -name '*.so' -o -name '*.a' \) -print -quit | grep -q . &&
-             find .pixiewood/bin-aarch64 -name 'gdkandroidollmchatpatch*.o' -print -quit | grep -q .; then
+             find .pixiewood/bin-aarch64 -name 'libollmchat.so' -print -quit | grep -q .; then
             save_pixiewood_build=true
           fi
 
@@ -294,7 +298,7 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v3-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+          key: pixiewood-build-v4-pixie-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
 
       - name: Save Pixiewood compile cache (partial)
         if: always() && steps.build-apk.outcome != 'success' && steps.post-build-cache.outputs.pixiewood-build == 'true'
@@ -304,7 +308,7 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v3-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-${{ github.run_id }}
+          key: pixiewood-build-v4-pixie-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-${{ github.run_id }}
 
       - name: Collect APK artifact
         id: collect-apk
@@ -329,4 +333,16 @@ jobs:
         with:
           name: ollmchat-android
           path: android-artifacts/*.apk
+          if-no-files-found: error
+
+      - name: Pack Android library pixies
+        if: inputs.upload_to_release
+        run: scripts/android/pack-pixie-libs.sh
+
+      - name: Upload pixie artifacts
+        if: inputs.upload_to_release
+        uses: actions/upload-artifact@v7
+        with:
+          name: ollmchat-pixie
+          path: pixie-artifacts/*
           if-no-files-found: error
