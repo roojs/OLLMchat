@@ -130,6 +130,7 @@ if host_machine.system() == 'android'
   if gioopenssl_dep.type_name() == 'pkgconfig'
     gioopenssl_dep = dependency('gioopenssl', static: true)
   endif
+  webkitgtk_android_dep = dependency('webkitgtk-android-1')
   android_poc_deps = [
     dependency('gtk4'),
     dependency('libadwaita-1'),
@@ -141,9 +142,16 @@ if host_machine.system() == 'android'
     dependency('json-glib-1.0'),
     dependency('libsoup-3.0'),
     gioopenssl_dep,
-    dependency('webkitgtk-android-1'),
+    webkitgtk_android_dep,
     valac.find_library('posix'),
   ]
+  webkitgtk_android_vala_args = []
+  if webkitgtk_android_dep.type_name() == 'pkgconfig'
+    webkitgtk_android_vala_args = [
+      '--vapidir',
+      webkitgtk_android_dep.get_variable(pkgconfig: 'prefix') / 'share' / 'vala' / 'vapi',
+    ]
+  endif
 
   android_poc_sources = [
     'android/android-gio-tls.c',
@@ -241,7 +249,7 @@ if host_machine.system() == 'android'
       '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
       '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
       '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-    ],
+    ] + webkitgtk_android_vala_args,
     android_exe_type: 'application',
     install: true,
     install_dir: get_option('libdir')

@@ -41,6 +41,13 @@ install_pixiewood_extra_wraps() {
   local dep_dir dep dest wrap
   for dep_dir in "$extra"/*/; do
     dep="$(basename "$dep_dir")"
+    # The pixie sysroot supplies this library. Leaving the wrap in place
+    # makes Meson compile webkitgtk-android when the package lookup misses.
+    if [ "$PIXIEWOOD_USE_PIXIE" = 1 ] && [ "$dep" = webkitgtk-android ]; then
+      rm -rf "$PIXIEWOOD_DIR/prepare/wraps/$dep"
+      rm -f "$ROOT_DIR/subprojects/$dep.wrap"
+      continue
+    fi
     dest="$PIXIEWOOD_DIR/prepare/wraps/$dep"
     mkdir -p "$dest"
     cp -a "$dep_dir"/* "$dest/"
@@ -452,6 +459,19 @@ install_poc_java() {
   cp -a "$app_src" "$dest_dir/OllmApplication.java"
   cp -a "$fg_src" "$dest_dir/StreamingForeground.java"
   cp -a "$fgs_src" "$dest_dir/StreamingForegroundService.java"
+
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
+    local java_src="${PIXIEWOOD_PIXIE}/share/pixiewood/webkitgtk-android-java/org/roojs/webkitgtk/android"
+    local java_dest="$java_root/org/roojs/webkitgtk/android"
+    if [ ! -f "$java_src/WebViewHost.java" ]; then
+      echo "Pixie webkit Java missing: $java_src" >&2
+      exit 1
+    fi
+    mkdir -p "$java_dest"
+    rm -f "$java_dest/WakeA11yService.java"
+    cp -a "$java_src"/*.java "$java_dest/"
+    return 0
+  fi
 
   if [ -x "$wka_dir/scripts/android/install-webview-java.sh" ]; then
     wka_install="$wka_dir/scripts/android/install-webview-java.sh"

@@ -172,7 +172,11 @@ jobs:
           key: apt-android-v1-stable-${{ hashFiles('.github/workflows/release-android.yml', '.github/workflows/x-android.yml') }}
 
       - name: Android build regression tests
-        run: scripts/android/run-android-regression-tests.sh --full
+        # --full runs the from-source GTK configure and ninja compile
+        # (verify-android-ci-preflight.sh, then verify-cross-compile.sh).
+        # This job links the published Pixie packages instead. That compile
+        # would build the stack and then throw the build directory away.
+        run: scripts/android/run-android-regression-tests.sh
 
       - name: Pixiewood setup (SDK, GTK prefix, subprojects)
         id: pixiewood-setup

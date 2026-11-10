@@ -43,9 +43,9 @@ The existing release automation builds:
 The repository includes a Pixiewood-based Android packaging path. GitHub Actions
 sets `PIXIEWOOD_USE_PIXIE=1`. That downloads the published `.pixie` libraries
 from `https://roojs.github.io/pixiewood-pkgs/release.pins` and `snapshot.pins`,
-with `gtk` replaced by `android/pixie-gtk.pins`, and links the APK against them.
-`webkitgtk-android` stays a wrap. A local build compiles the stack from source
-unless the same variable is set:
+with `gtk` replaced by `android/pixie-gtk.pins`. `webkitgtk-android` is added
+from `https://roojs.github.io/webkitgtk-android/release.pins`. A local build
+compiles the stack from source unless the same variable is set:
 
 ```bash
 PIXIEWOOD_USE_PIXIE=1 scripts/android/build-chat-poc-apk.sh
@@ -481,11 +481,11 @@ application target, because that path needs `android_exe_type`.
 3. Add Meson options to disable Android-hostile subsystems independently:
    vector search, command execution sandboxing, MCP stdio, and `ollmfilesd`.
 4. Extend Android wraps or subproject handling for any libraries needed beyond
-   the current chat POC stack. **Browser tool:** `android/pixiewood-wraps/webkitgtk-android/`
-   provides `webkitgtk-android-1` (Meson subproject + `override_dependency`);
-   APK Java host classes are installed via sibling
-   `scripts/android/install-webview-java.sh` from `install_poc_java` in
-   `scripts/android/build-pixiewood-apk.sh` (see [`5.0.2`](plans/done/5.0.2-DONE-android-webkit-control.md)).
+   the current chat POC stack. **Browser tool:** with `PIXIEWOOD_USE_PIXIE=1`
+   the build links `webkitgtk-android-1` from
+   `https://roojs.github.io/webkitgtk-android/release.pins` and copies
+   `WebViewHost` Java from that package. A from-source build still uses
+   `android/pixiewood-wraps/webkitgtk-android/` (see [`5.0.2`](plans/done/5.0.2-DONE-android-webkit-control.md)).
 5. Reintroduce larger desktop features only after the app launches and basic
    chat works reliably on device.
 

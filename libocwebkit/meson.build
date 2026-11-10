@@ -33,10 +33,19 @@ elif is_android_cross
   # for the shared library. Do not also pass --pkg=webkitgtk-android-1 there
   # (duplicate definitions). The ocwebkit.vapi custom_target does not get that
   # injection, so it still needs --pkg + --vapidir.
-  ocwebkit_deps += dependency('webkitgtk-android-1')
+  webkitgtk_android_dep = dependency('webkitgtk-android-1')
+  ocwebkit_deps += webkitgtk_android_dep
+  # The wrap injects its VAPI into the library compile. The pixie file is a
+  # pkg-config package, so valac has to be pointed at the sysroot VAPI.
+  if webkitgtk_android_dep.type_name() == 'pkgconfig'
+    webkitgtk_android_vapidir = webkitgtk_android_dep.get_variable(pkgconfig: 'prefix') / 'share' / 'vala' / 'vapi'
+    ocwebkit_platform_vala_args += ['--vapidir', webkitgtk_android_vapidir]
+  else
+    webkitgtk_android_vapidir = meson.current_build_dir() / '..' / 'subprojects' / 'webkitgtk-android'
+  endif
   ocwebkit_vapi_platform_pkgs += [
     '--pkg', 'webkitgtk-android-1',
-    '--vapidir', meson.current_build_dir() / '..' / 'subprojects' / 'webkitgtk-android',
+    '--vapidir', webkitgtk_android_vapidir,
   ]
 else
   # Link WebKit with interactions; optional navigator-policy from .so probe.
