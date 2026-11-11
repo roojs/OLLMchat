@@ -87,6 +87,9 @@ jobs:
     needs: [build-appimage, build-debian, build-rpm-fedora, build-rpm-opensuse, build-windows, build-android]
     if: startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref_name, '-packages')
     runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -185,6 +188,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           ./scripts/release/finalize-changelog.sh "$GITHUB_REF_NAME"
@@ -194,52 +198,14 @@ jobs:
             git add release.pins
           fi
           git diff --staged --quiet && exit 0
+          publish_pins=0
+          if git diff --staged --name-only -- release.pins | grep -q .; then
+            publish_pins=1
+          fi
           git commit -m "Finalize changelog for $GITHUB_REF_NAME"
           git push origin HEAD:main
-
-  stage-pins:
-    name: Stage pin page
-    needs: publish
-    if: needs.publish.result == 'success' && startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref_name, '-packages')
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: read
-      contents: read
-      pages: write
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download pixie pins
-        uses: actions/download-artifact@v5
-        with:
-          name: ollmchat-pixie
-          path: pins
-
-      - name: Stage the current site with the new pin list
-        run: scripts/android/stage-pins-page.sh --pins pins/release.pins --out site
-
-      - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: site
-
-  deploy-pins:
-    name: Publish pin page
-    needs: stage-pins
-    if: needs.stage-pins.result == 'success' && startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref_name, '-packages')
-    runs-on: ubuntu-24.04
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: ollmchat-github-pages
-      cancel-in-progress: false
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          # The release token's push does not start other workflows.
+          # Pages deploys are allowed from main, not from this tag.
+          if [ "$publish_pins" = 1 ]; then
+            gh workflow run deploy-docs.yml --ref main
+          fi

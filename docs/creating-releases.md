@@ -115,7 +115,7 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    | `OLLMchat-<version>-Setup.exe` | Windows installer (MSYS2 / WebView2); remote backends only |
    | `mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst` | Windows UCRT64 library (DLL, import library, header, VAPI; GIR when the build emits one). One file per library: `libocsqlite`, `libocrpc`, `libocmarkdown`, `libollamaweb`, `libochf`, `libocmarkdowngtk`, `libocfiles`, `libollmchat`, `libocwebkit`, `libocvector2`, `libocbwrap`, `libocmcp`, `liboctools`, `liboccoder`, `libollmchatgtk`. `libocvector2` also contains `libfaiss.dll`. |
    | `ollmchat-android-v*-debug.apk` | Android client (arm64; sideload) |
-   | `<name>-arm-v31-<version>.pixie` | Android library (one file per library the APK build installed). `https://roojs.github.io/OLLMchat/release.pins` points at these files and is committed on `main`. That pin file is not attached to the release. |
+   | `<name>-arm-v31-<version>.pixie` | Android library (one file per library the APK build installed). `release.pins` on `main` points at these files. The Valadoc Pages workflow publishes it at `https://roojs.github.io/OLLMchat/release.pins`. The pin file is not attached to the release. |
 
    **Packages tag** (`v1.3.0-packages`):
 

@@ -56,9 +56,11 @@ That downloads the packages once into `.pixiewood/pixie` and reuses them.
 
 `release.pins` in the repository root is the pin list for the Android libraries
 this project publishes. A version tag uploads one `.pixie` per library that the
-Android build installed, commits `release.pins` on `main`, and publishes that
-list at `https://roojs.github.io/OLLMchat/release.pins` (the Valadoc site stays
-in place). pixie-pkg reads pin lists from GitHub Pages:
+Android build installed, commits `release.pins` on `main`, and starts the
+Valadoc GitHub Pages workflow. That workflow copies `release.pins` and
+`snapshot.pins` into the documentation site, so the list is at
+`https://roojs.github.io/OLLMchat/release.pins`. pixie-pkg reads pin lists from
+GitHub Pages:
 
 ```bash
 pixie-pkg fetch --dest "$HOME/ollmchat-pixie" \

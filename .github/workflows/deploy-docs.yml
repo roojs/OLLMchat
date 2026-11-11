@@ -25,6 +25,11 @@ on:
       - 'docs/run-valadoc.sh'
       - 'docs/fix-valadoc-index-links.sh'
       - '.github/workflows/deploy-docs.yml'
+      # Copied into the site below. A version tag commits release.pins with
+      # the release token, which does not start this push trigger. That
+      # workflow dispatches this file on main instead.
+      - 'release.pins'
+      - 'snapshot.pins'
   workflow_dispatch:
 
 permissions:
