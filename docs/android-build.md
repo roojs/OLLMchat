@@ -43,8 +43,8 @@ The existing release automation builds:
 The repository includes a Pixiewood-based Android packaging path. GitHub Actions
 sets `PIXIEWOOD_USE_PIXIE=1`. That downloads the published `.pixie` libraries
 from `https://roojs.github.io/pixiewood-pkgs/release.pins` and `snapshot.pins`,
-with `gtk` replaced by `android/pixie-gtk.pins`. `webkitgtk-android` is added
-from `https://roojs.github.io/webkitgtk-android/release.pins`. A local build
+with `gtk` replaced by `android/pixie-gtk.pins`. `webkitgtk-android` is
+`android/pixie-webkit.pins` (0.1.7). A local build
 compiles the stack from source unless the same variable is set:
 
 ```bash
@@ -483,7 +483,7 @@ application target, because that path needs `android_exe_type`.
 4. Extend Android wraps or subproject handling for any libraries needed beyond
    the current chat POC stack. **Browser tool:** with `PIXIEWOOD_USE_PIXIE=1`
    the build links `webkitgtk-android-1` from
-   `https://roojs.github.io/webkitgtk-android/release.pins` and copies
+   `android/pixie-webkit.pins` and copies
    `WebViewHost` Java from that package. A from-source build still uses
    `android/pixiewood-wraps/webkitgtk-android/` (see [`5.0.2`](plans/done/5.0.2-DONE-android-webkit-control.md)).
 5. Reintroduce larger desktop features only after the app launches and basic

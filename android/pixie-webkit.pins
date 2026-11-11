@@ -1,0 +1,13 @@
+{
+  "packages": [
+    {
+      "abi": "arm64-v8a",
+      "repo": "https://github.com/roojs/webkitgtk-android.git",
+      "name": "webkitgtk-android",
+      "track": "0.1.7",
+      "resolved": "5133f6d962f78d74aa49d092149c00d0e8a57320",
+      "inputs": "3932fd0290dc763e3b60abee7ac2556fd0e42d4535a456c18eeea20171525161",
+      "url": "https://github.com/roojs/webkitgtk-android/releases/download/v0.1.7/webkitgtk-android-arm-v31-0.1.7.pixie"
+    }
+  ]
+}
