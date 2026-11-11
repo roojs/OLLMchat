@@ -1,6 +1,6 @@
 # Pixiewood packaging
 
-**Status:** ⏳ open. The Android job now links published `.pixie` files, including `webkitgtk-android` from its GitHub Pages pin list, and a version tag publishes this tree's libraries. Not verified in CI yet. The webkit pin list has to be live before that job can succeed.
+**Status:** ✅ 2026-11-11. User closed it. The Android job links published `.pixie` files, including `webkitgtk-android` from its pin list, and a version tag publishes this tree's libraries.
 
 **Pointer:** `docs/bug-fix-process.md`, `docs/android-build.md`
 
@@ -56,6 +56,6 @@
 - ✔️ 2026-11-10. Release `v1.4.10` run [42798264736](https://github.com/roojs/OLLMchat/actions/runs/42798264736) job `129768894849` fetched the pixie sysroot and configured. Build chat APK stopped in valac: `refresh_async` does not exist on `OLLMwebkit.A11y.dump` (`libocwebkit/A11y.vala:95`). The 0.1.6 library exports `android_atspi_refresh_async`. The hand-written VAPI in that pixie does not declare it.
 - ℹ️ Bug report: webkitgtk-android [`docs/bugs/2026-11-11-refresh-async-missing-from-vapi.md`](file:///home/alan/git/webkitgtk-android/docs/bugs/2026-11-11-refresh-async-missing-from-vapi.md). No OLLMchat workaround.
 - ✔️ 2026-11-11. `android/pixie-webkit.pins` pins `webkitgtk-android` 0.1.7 (`5133f6d`, sha256 `3932fd0290dc763e3b60abee7ac2556fd0e42d4535a456c18eeea20171525161`). That pixie's VAPI declares `refresh_async`. A sysroot whose stamp is not that hash is downloaded again. `repo` is `https://github.com/roojs/webkitgtk-android.git`. Fetch updates `pixie-pkg` so that URL is kept.
-- ⏳ 🔷 Run Release - Android again and confirm the APK links the pixie sysroot (runtime tag `pixie-gtk`, IME handlers still in `classes.dex`).
-- ℹ️ 2026-11-11. [Release v1.4.10](https://github.com/roojs/OLLMchat/actions/runs/42939379856) committed ten pins on `main` (`191a397`). The tag job that mirrored the Valadoc site and tried to deploy it was rejected. Follow-up: `docs/bugs/2026-11-11-pages-pin-republish.md`.
+- ✅ 2026-11-11. User closed it. A local pixie build produced `app-arm64-v8a-debug.apk` (runtime tag `pixie-gtk`). `webkitgtk-android` 0.1.7 declares `refresh_async`.
+- ℹ️ 2026-11-11. [Release v1.4.10](https://github.com/roojs/OLLMchat/actions/runs/42939379856) committed ten pins on `main` (`191a397`). The tag job that mirrored the Valadoc site and tried to deploy it was rejected. Follow-up: [`2026-11-11-FIXED-pages-pin-republish.md`](2026-11-11-FIXED-pages-pin-republish.md).
 - ✔️ 2026-11-11. [Valadoc dispatch 42944870414](https://github.com/roojs/OLLMchat/actions/runs/42944870414) published the ten pins. Each package URL returned HTTP 200. `https://roojs.github.io/OLLMchat/ollmchat/index.htm` is still Valadoc.

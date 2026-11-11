@@ -1,6 +1,6 @@
 # Pages pin republish
 
-**Status:** ⏳ process change is local, not on `main` yet. v1.4.10's pin list is live: the Valadoc workflow was dispatched and the site now has those ten packages. The next tag still mirrors the site until this change is on `main`.
+**Status:** ✅ 2026-11-11. User closed it. v1.4.10's pin list is live. `94874cca` on `main` dispatches the Valadoc workflow after a pin commit. The next tag is the first run of that path.
 
 **Pointer:** `docs/bug-fix-process.md`, `.github/workflows/release.yml`, `.github/workflows/deploy-docs.yml`
 
@@ -67,4 +67,4 @@ gh workflow run deploy-docs.yml --ref main
 
 - ✔️ 2026-11-11. Dispatched [X - Publish Valadoc to GitHub Pages](https://github.com/roojs/OLLMchat/actions/runs/42944870414) on `main` (`workflow_dispatch`). That run uses the workflow already on `main`, which copies `release.pins` from the checkout.
 - ✔️ 2026-11-11. That run succeeded (Valadoc 1m47s, deploy 9s). `https://roojs.github.io/OLLMchat/release.pins` is 3995 bytes and lists the ten libraries. Each package URL returned HTTP 200. `https://roojs.github.io/OLLMchat/ollmchat/index.htm` returned HTTP 200 (147114 bytes). `snapshot.pins` is still the empty list.
-- ⏳ 🔷 On the next version tag, after this change is on `main`, confirm Publish dispatches that workflow and does not mirror the site.
+- ✅ 2026-11-11. User closed it. `94874cca` is on `main`. The mirror jobs and `scripts/android/stage-pins-page.sh` are gone. Publish runs `gh workflow run deploy-docs.yml --ref main` when the pin commit includes `release.pins`.

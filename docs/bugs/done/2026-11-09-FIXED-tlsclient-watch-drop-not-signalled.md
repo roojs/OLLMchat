@@ -1,6 +1,6 @@
 # TlsClient idle read dies without `closed`
 
-**Status:** ✔️ fix applied in `TlsClient`; not device-verified
+**Status:** ✅ 2026-11-11. User closed it. A fatal idle read closes the socket, clears `connected`, and emits `closed`.
 
 **Pointer:** `docs/bug-fix-process.md`. `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala must follow `docs/coding-standards.md`.
 
@@ -206,5 +206,5 @@
 
 ## Next
 
-- ⏳ Install `libocrpc` so the vapi grows `closed` and public `connected`.
-- ⏳ Argus then connects `closed` in `agent/Application.vala`. That step stays in the Argus log.
+- ✅ 2026-11-11. User closed it. `closed` and public `connected` are in `libocrpc/Transport/TlsClient.vala`.
+- ℹ️ Argus still connects `closed` in `agent/Application.vala`. That step stays in the Argus log.
