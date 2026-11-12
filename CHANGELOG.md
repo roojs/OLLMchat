@@ -11,7 +11,34 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.10] - Unreleased
+## [1.4.11] - Unreleased
+
+Work since **1.4.10** (2026-11-11).
+
+### Changed
+
+#### Android
+
+- `webkitgtk-android` is pin 0.1.7
+- The pin list is published by the docs workflow
+
+#### Packaging
+
+- Releases build the x86_64 AppImage only
+- The Windows build does not compile FAISS, and it does not ship `ollmfilesd` or `libocvector2`
+
+### Fixed
+
+#### Chat
+
+- Stop on a shell frame stops that tool
+- The file tree reloads when the project cache is invalidated
+
+#### libocrpc
+
+- On Windows, `args` and `val` advance the varargs cursor, so each signature letter reads the next value
+
+## [1.4.10] - 2026-11-11
 
 Work since **1.4.9** (2026-11-09).
 
