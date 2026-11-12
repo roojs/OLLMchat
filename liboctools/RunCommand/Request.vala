@@ -313,6 +313,7 @@ namespace OLLMtools.RunCommand
 				method = "client.run_tool.start",
 				message = this.command.strip(),
 				action = run_status,
+				id = this.request_id,
 			});
 			this.spill_path = GLib.Path.build_filename(
 				this.agent.chat().agent.session.task_dir(),

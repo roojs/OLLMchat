@@ -277,6 +277,7 @@ This request asks for write permission to these folders: """ +
 				method = "client.run_tool.start",
 				message = this.command.strip(),
 				action = run_status,
+				id = this.request_id,
 			});
 			try {
 				return yield this.bash_remote();

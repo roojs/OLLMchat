@@ -156,6 +156,7 @@ namespace OLLMcoder
 						|| notif.message != this.manager.active_project.path) {
 						return;
 					}
+					this.manager.review_files.refresh.begin();
 					if (this.current_file == null) {
 						return;
 					}

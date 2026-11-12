@@ -132,10 +132,12 @@ namespace OLLMchatGtk
 			this.renderer.start_new_chat_requested.connect((text) => {
 				this.chat_widget.start_new_chat_with_text.begin(text);
 			});
-			this.renderer.stop_clicked.connect(() => {
-				foreach (var req in this.chat_widget.manager.session.agent.active_tools.values) {
-					req.stop();
+			this.renderer.stop_clicked.connect((request_id) => {
+				var tools = this.chat_widget.manager.session.agent.active_tools;
+				if (!tools.has_key(request_id)) {
+					return;
 				}
+				tools.get(request_id).stop();
 			});
 
 			this.scrolled_window = new Gtk.ScrolledWindow() {

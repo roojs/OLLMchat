@@ -1,6 +1,6 @@
 # Stop one tool
 
-**Status:** ⏳ proposed. No product code.
+**Status:** ✔️ hunks applied. §2 skipped: `ollmapp/android/tools/Bash/Request.vala` is not in the tree.
 
 **ℹ️** Follows [`2026-11-05-CLOSED-restore-bash-tool-output.md`](done/2026-11-05-CLOSED-restore-bash-tool-output.md). That cut connects `stop_clicked` with no id and stops every entry in `active_tools`.
 
@@ -193,4 +193,5 @@ Request id from `client.run_tool.start`. Stop passes this value.
 
 ## Next
 
-- ⏳ 🔷 Apply these hunks.
+- ✔️ 🔷 Applied §1 and §3–§7.
+- ℹ️ §2 skipped. `ollmapp/android/tools/Bash/Request.vala` is not in the tree. Start is only emitted from `liboctools/Bash/Request.vala` and `liboctools/RunCommand/Request.vala`.

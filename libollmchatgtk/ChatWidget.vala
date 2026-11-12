@@ -252,6 +252,7 @@ namespace OLLMchatGtk
 					this.chat_view.renderer.on_code_block(true,
 						"bash.oc-frame-info " + notif.message);
 					this.chat_view.renderer.tool_view.status = notif.action;
+					this.chat_view.renderer.tool_view.request_id = notif.id;
 					return;
 
 				case "client.run_tool.output":

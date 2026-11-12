@@ -1383,6 +1383,23 @@ list.remove_at(index);
 
 **IMPORTANT:** Do NOT use table aliases in SQL queries. Always use full table names. This improves readability and avoids confusion.
 
+**Approved multi-line layout:** A query that spans more than one line puts each SQL keyword at the left of the query. The body of that clause is indented under the keyword. A comma ends a select item. It does not start the next line. A short query may stay on one line.
+
+**Good (keywords left, bodies indented):**
+```vala
+query.selectQuery(@"
+    SELECT
+        $(columns),
+        os_version.name as name
+    FROM
+        system_info
+    LEFT JOIN
+        os_version
+    ON
+        os_version.agent_id = system_info.agent_id
+", rows);
+```
+
 **Bad:**
 ```vala
 var sql = "SELECT DISTINCT vm.vector_id FROM vector_metadata vm WHERE vm.file_id IN (1, 2, 3)";

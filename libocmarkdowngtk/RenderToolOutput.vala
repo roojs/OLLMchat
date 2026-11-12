@@ -51,6 +51,10 @@ namespace MarkdownGtk
 		 * ''Running command as root (sudo)'' adds the ''root'' class.
 		 */
 		public string status { get; set; default = ""; }
+		/**
+		 * Request id from ''client.run_tool.start''. Stop passes this value.
+		 */
+		public int request_id { get; set; default = 0; }
 
 		private Gtk.Button stop;
 		private Gtk.Button collapse;
@@ -131,7 +135,7 @@ namespace MarkdownGtk
 			};
 			this.stop.clicked.connect(() => {
 				this.stop.visible = false;
-				this.renderer.stop_clicked();
+				this.renderer.stop_clicked(this.request_id);
 			});
 			var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				css_classes = { "oc-frame-header" }

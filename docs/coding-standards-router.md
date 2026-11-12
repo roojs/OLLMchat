@@ -71,7 +71,7 @@ Answer each question for your task. **Yes** → add the section slug(s).
 | Add `GLib.debug`, `GLib.warning`, or change logging? | `debug-warning-statements` |
 | Use `Gee.HashMap` with `[]` accessors? | `gee-hashmap-access` |
 | Use `Gee.ArrayList` (non-string element type)? | `gee-arraylist-access` |
-| Embed SQL in Vala source? | `sql-table-aliases` |
+| Embed SQL in Vala source? | `sql-table-aliases` — no aliases; multi-line keywords stay left, bodies indented |
 | Build strings inside a `for` / `while` / `foreach` loop? | `building-strings-in-loops` |
 | Loop over string characters or index `str[i]`? | `character-looping` |
 | Slice string arrays or join lines with `string.joinv`? | `string-array-operations`, `arraylist-for-strings` |

@@ -226,13 +226,23 @@ namespace OLLMcoder.File
 				this.choose(file);
 			});
 			this.manager.rpc.notification.connect((notif) => {
-				if (notif.method != "event.filesystem.scan_end") {
-					return;
-				}
 				if (!this.project.is_project) {
 					return;
 				}
-				if (notif.args.get(0).get_string() != this.project.path) {
+				var path = "";
+				switch (notif.method) {
+					case "event.filesystem.scan_end":
+						path = notif.args.get(0).get_string();
+						break;
+
+					case "event.project.invalidate_cache":
+						path = notif.message;
+						break;
+
+					default:
+						return;
+				}
+				if (path != this.project.path) {
 					return;
 				}
 				this.folder_tree.folders.loaded.remove(this.project.path);

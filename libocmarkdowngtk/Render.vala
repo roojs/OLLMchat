@@ -96,8 +96,12 @@ namespace MarkdownGtk
 		public signal void code_block_content_updated();
 		/** Emitted when user clicks "Start new chat with this" on a user-sent frame. Connect to start a new chat with the given text. */
 		public signal void start_new_chat_requested(string text);
-		/** Stop was clicked on the open shell frame. */
-		public signal void stop_clicked();
+		/**
+		 * Stop was clicked on the open shell frame.
+		 *
+		 * @param request_id key in ''active_tools'' for that frame
+		 */
+		public signal void stop_clicked(int request_id);
 
 		/**
 		 * Creates a renderer that appends content to the given box.
