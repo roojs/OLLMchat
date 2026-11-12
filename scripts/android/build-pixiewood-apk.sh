@@ -556,9 +556,16 @@ patch_android_manifest() {
 # read resource://. The manager looks in XDG_DATA_HOME/gtksourceview-5/
 # language-specs first, and GTK extracts assets/share/ there.
 install_gtksourceview_language_schema() {
-  local spec_src="$ROOT_DIR/subprojects/gtksourceview-5.16.0/data/language-specs"
-  local dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/gtksourceview-5/language-specs"
-  local name
+  local spec_src dest name
+
+  # Pixie mode deletes the gtksourceview wrap. The schema ships in that
+  # package. A from-source build still has the wrap checkout.
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
+    spec_src="${PIXIEWOOD_PIXIE}/share/gtksourceview-5/language-specs"
+  else
+    spec_src="$ROOT_DIR/subprojects/gtksourceview-5.16.0/data/language-specs"
+  fi
+  dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/gtksourceview-5/language-specs"
 
   if [ ! -f "$spec_src/language2.rng" ]; then
     echo "GtkSourceView language schema missing: $spec_src/language2.rng" >&2

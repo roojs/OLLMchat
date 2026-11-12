@@ -21,6 +21,7 @@ Work since **1.4.10** (2026-11-11).
 
 - `webkitgtk-android` is pin 0.1.7
 - The pin list is published by the docs workflow
+- The APK copies the GtkSourceView language schema from the pixie package
 
 #### Packaging
 
