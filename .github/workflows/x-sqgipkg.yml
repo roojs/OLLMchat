@@ -22,8 +22,7 @@ jobs:
     name: AppImage
     runs-on: ubuntu-24.04
     # Ubuntu 24.04 has no roojs suite. x86_64 sysroot needs plucky plus
-    # libwebkitgtk-6.0-webdriver-dev. aarch64 has no arm64 webdriver package
-    # and meson is configured with -Dwebkit_webdriver=disabled.
+    # libwebkitgtk-6.0-webdriver-dev. aarch64 AppImage is off for now.
     container:
       image: ubuntu:25.04
     steps:
@@ -50,7 +49,6 @@ jobs:
         with:
           path: |
             OLLMchat/build-linux-x86_64
-            OLLMchat/build-linux-aarch64
           key: sqgipkg-meson-v3-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/**/*.vala', 'OLLMchat/**/meson.build', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
           restore-keys: |
             sqgipkg-meson-v3-stable-
@@ -99,7 +97,6 @@ jobs:
       - name: Install AppImage build dependencies
         run: |
           sudo apt-get install -y --no-install-recommends \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static binfmt-support \
             squashfs-tools
 
       - name: Build and install sqgi
@@ -113,16 +110,11 @@ jobs:
         working-directory: OLLMchat
         run: sqgipkg --target appimage --appimage-arch x86_64 --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
 
-      - name: Build Linux aarch64 AppImage
-        working-directory: OLLMchat
-        run: sqgipkg --target appimage --appimage-arch aarch64 --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
-
       - name: Collect artifacts
         working-directory: OLLMchat
         run: |
           mkdir -p artifacts
           cp dist-linux-x86_64/OLLMchat.AppImage artifacts/OLLMchat-remote-only-x86_64.AppImage
-          cp dist-linux-aarch64/OLLMchat.AppImage artifacts/OLLMchat-remote-only-aarch64.AppImage
           ls -lh artifacts
 
       - name: Upload build artifacts

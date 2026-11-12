@@ -36,7 +36,7 @@ search, and the GTK chat UI.
 
 The existing release automation builds:
 
-- Linux AppImages for x86_64 and aarch64
+- Linux AppImage for x86_64
 - Debian packages for amd64
 - a Windows NSIS installer
 

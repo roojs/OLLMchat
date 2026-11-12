@@ -163,9 +163,14 @@ else
   subdir('libocfiles')       # Depends on libocsqlite
   subdir('libollmchat')      # Depends on libocsqlite
   subdir('libocwebkit')      # Browser tool — depends on libollmchat + WebKitGTK
-  subdir('libocvector2')     # Depends on libocsqlite, libollmchat (no libocfiles)
+  # FAISS is the file server. Windows skips both until a prebuilt libfaiss exists.
+  if host_machine.system() != 'windows'
+    subdir('libocvector2')   # Depends on libocsqlite, libollmchat (no libocfiles)
+  endif
   subdir('libocbwrap')     # bwrap / overlay / seccomp — full on Linux, stubs elsewhere
-  subdir('ollmfilesd')       # Headless file daemon — Unix socket on Unix, TCP on Windows
+  if host_machine.system() != 'windows'
+    subdir('ollmfilesd')     # Headless file daemon — Unix socket on Unix, TCP on Windows
+  endif
   subdir('libocmcp')         # Depends on libollmchat, libocfiles
   subdir('liboctools')       # Depends on libollmchat, libocfiles
   subdir('liboccoder')       # Depends on libocsqlite, libocfiles, libollmchat

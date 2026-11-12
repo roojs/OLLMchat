@@ -69,7 +69,7 @@ jobs:
             mingw-w64-ucrt-x86_64-cantarell-fonts
             mingw-w64-ucrt-x86_64-cmake
 
-      - name: Build OLLMchat (FAISS + webview2gtk pacman + meson)
+      - name: Build OLLMchat (webview2gtk pacman + meson)
         run: |
           chmod +x scripts/ci/windows-msys2-build.sh
           ./scripts/ci/windows-msys2-build.sh

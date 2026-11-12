@@ -99,7 +99,11 @@ namespace OLLMrpc
 	 * @param l varargs cursor
 	 * @return boxed value
 	 */
+#if G_OS_WIN32
+	private GLib.Value to_value(string tag, ref va_list l)
+#else
 	private GLib.Value to_value(string tag, va_list l)
+#endif
 	{
 		switch (tag) {
 			case "s":
@@ -256,7 +260,11 @@ namespace OLLMrpc
 		if (rest != "") {
 			GLib.error("val() takes one complete type, got %s", signature);
 		}
+#if G_OS_WIN32
+		var v = to_value(tag, ref l);
+#else
 		var v = to_value(tag, l);
+#endif
 		if (!v.type().is_a(typeof(Gee.ArrayList))) {
 			return v;
 		}
@@ -329,7 +337,11 @@ namespace OLLMrpc
 				tag = rest.substring(0, n);
 				offset += (int) n;
 			}
+#if G_OS_WIN32
+			packed.add(to_value(tag, ref l));
+#else
 			packed.add(to_value(tag, l));
+#endif
 		}
 		return packed;
 	}

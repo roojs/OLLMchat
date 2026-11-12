@@ -54,16 +54,19 @@ else
 endif
 
 # --- FAISS (libocvector2 / ollmfilesd) ---
-if bundle_using_sysroot
-  faiss_lib = cc.find_library('faiss', dirs: bundle_lib_dirs, required: true)
-  faiss_dep = declare_dependency(
-    dependencies: [faiss_lib],
-    compile_args: bundle_include_args,
-  )
-else
-  faiss_dep = declare_dependency(
-    dependencies: [cc.find_library('faiss', required: true)],
-  )
+# Windows skips the source build until a prebuilt package exists.
+if host_machine.system() != 'windows'
+  if bundle_using_sysroot
+    faiss_lib = cc.find_library('faiss', dirs: bundle_lib_dirs, required: true)
+    faiss_dep = declare_dependency(
+      dependencies: [faiss_lib],
+      compile_args: bundle_include_args,
+    )
+  else
+    faiss_dep = declare_dependency(
+      dependencies: [cc.find_library('faiss', required: true)],
+    )
+  endif
 endif
 
 # --- BLAS/LAPACK link flags for libocvector2 (not passed through Vala deps) ---

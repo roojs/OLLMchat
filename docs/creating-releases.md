@@ -51,7 +51,7 @@ Fedora 44 is the RPM base. openSUSE uses the same spec; CI does **not** share on
 |--------|---------------|----------|-------|
 | APT / `.deb` | amd64 | **split `ollmchat`**: yes · **ollmchat-remote-only**: no | Users: `apt-get update && apt-get install ollmchat` (or `libocrpc-dev`) after adding [the repo](https://roojs.github.io/repos/) |
 | RPM | x86_64 | same split + remote-only | Fedora 44 and openSUSE Tumbleweed; FAISS on Fedora comes from the roojs repo (nicked from Tumbleweed) |
-| AppImage | x86_64, aarch64 | No | Self-contained; remote backends only |
+| AppImage | x86_64 | No | Self-contained; remote backends only. aarch64 is not built. |
 | Windows `.exe` | x86_64 | No | Native MSYS2 NSIS: **`OLLMchat-<version>-Setup.exe`**. Same release has one UCRT64 pacman package per library. |
 | Android `.apk` | arm64-v8a | No | Android client; sideload from GitHub Releases |
 
@@ -111,9 +111,8 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    | File | Platform |
    |------|----------|
    | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only |
-   | `OLLMchat-remote-only-aarch64.AppImage` | Linux 64-bit (ARM); remote backends only |
    | `OLLMchat-<version>-Setup.exe` | Windows installer (MSYS2 / WebView2); remote backends only |
-   | `mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst` | Windows UCRT64 library (DLL, import library, header, VAPI; GIR when the build emits one). One file per library: `libocsqlite`, `libocrpc`, `libocmarkdown`, `libollamaweb`, `libochf`, `libocmarkdowngtk`, `libocfiles`, `libollmchat`, `libocwebkit`, `libocvector2`, `libocbwrap`, `libocmcp`, `liboctools`, `liboccoder`, `libollmchatgtk`. `libocvector2` also contains `libfaiss.dll`. |
+   | `mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst` | Windows UCRT64 library (DLL, import library, header, VAPI; GIR when the build emits one). One file per library: `libocsqlite`, `libocrpc`, `libocmarkdown`, `libollamaweb`, `libochf`, `libocmarkdowngtk`, `libocfiles`, `libollmchat`, `libocwebkit`, `libocbwrap`, `libocmcp`, `liboctools`, `liboccoder`, `libollmchatgtk`. `libocvector2` is omitted until FAISS is a prebuilt package. The installer does not include `ollmfilesd`. |
    | `ollmchat-android-v*-debug.apk` | Android client (arm64; sideload) |
    | `<name>-arm-v31-<version>.pixie` | Android library (one file per library the APK build installed). `release.pins` on `main` points at these files. The Valadoc Pages workflow publishes it at `https://roojs.github.io/OLLMchat/release.pins`. The pin file is not attached to the release. |
 
@@ -161,12 +160,9 @@ If you have sqgi installed locally:
 ```bash
 # Linux x86_64 AppImage
 sqgipkg --target appimage --appimage-arch x86_64
-
-# Linux aarch64 AppImage (stock WebKit; no WebDriver interactions package)
-sqgipkg --target appimage --appimage-arch aarch64
 ```
 
-Outputs land under `dist-linux-x86_64/` and `dist-linux-aarch64/` in the repo root.
+Output lands under `dist-linux-x86_64/` in the repo root.
 
 ### Windows (native MSYS2)
 
