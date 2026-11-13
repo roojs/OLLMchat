@@ -1,6 +1,6 @@
 # Windows args() repeats the first value
 
-**Status:** ⏳ fix applied in `libocrpc/namespace.vala`. Awaiting a Windows registration check.
+**Status:** ✅ 2026-11-13. User closed it. `libocrpc/namespace.vala` advances `va_list` by reference on Windows.
 
 **Pointer:** `docs/bug-fix-process.md`
 
@@ -108,4 +108,4 @@
 
 ## Next
 
-- ⏳ On Windows, register again with `OLLMrpc.args("ssssbss", …)` and confirm the frame is the long one (CSR present, not the PIN repeated).
+- ✅ 2026-11-13. User closed it.

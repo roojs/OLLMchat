@@ -450,7 +450,11 @@ namespace OLLMrpc
 			// The channel only watches the socket fd for readiness; Bin.Stream
 			// reads the plaintext or TLS input stream selected above.
 			var fd = this.socket.get_socket().get_fd();
+#if G_OS_WIN32
+			this.read_channel = new GLib.IOChannel.win32_socket(fd);
+#else
 			this.read_channel = new GLib.IOChannel.unix_new(fd);
+#endif
 			this.read_channel.set_encoding(null);
 			this.read_channel.set_buffered(false);
 			this.read_watch_id = this.read_channel.add_watch(
@@ -1070,7 +1074,11 @@ namespace OLLMrpc
 			var poll_fd = -1;
 			var poll_source = GLib.PollFD();
 			if (this.read_channel != null) {
+#if G_OS_WIN32
+				poll_fd = this.read_channel.win32_get_fd();
+#else
 				poll_fd = this.read_channel.unix_get_fd();
+#endif
 				poll_source.fd = poll_fd;
 				poll_source.events = GLib.IOCondition.IN | GLib.IOCondition.ERR | GLib.IOCondition.HUP;
 			}

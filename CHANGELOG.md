@@ -11,7 +11,34 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.11] - Unreleased
+## [1.4.12] - Unreleased
+
+Work since **1.4.11** (2026-11-12).
+
+### Changed
+
+#### Packaging
+
+- The Windows build installs the prebuilt `faiss` MSYS2 package (`1.16.0`) and ships `libocvector2` and `ollmfilesd` again
+
+### Fixed
+
+#### Chat
+
+- Deleted and missing files in review show a deleted banner instead of an editable buffer
+- File review navigation shows pending action labels in the file popover and updates previous/next tooltips
+- Hunk accept/reject calls serialize cleanly and refresh the pending diff
+
+#### ollmfilesd
+
+- Ignored directories and files (including `.git`) are marked by `check_path_ignored` and excluded from pending reviews
+- Diff part generation handles deleted files without failing on missing disk paths
+
+#### libocrpc
+
+- On Windows, `Connection.start`, `Client.connect`, and `Client.call_poll` use `GLib.IOChannel.win32_socket` and `win32_get_fd` on Winsock sockets
+
+## [1.4.11] - 2026-11-12
 
 Work since **1.4.10** (2026-11-11).
 

@@ -28,6 +28,10 @@ if [[ ! -f "${EXE}" ]]; then
 	echo "windows-package-nsis: missing ${EXE} — run scripts/ci/windows-msys2-build.sh first" >&2
 	exit 1
 fi
+if [[ ! -f "${DAEMON}" ]]; then
+	echo "windows-package-nsis: missing ${DAEMON}" >&2
+	exit 1
+fi
 if ! command -v makensis >/dev/null 2>&1; then
 	echo "windows-package-nsis: install NSIS: pacman -S mingw-w64-ucrt-x86_64-nsis" >&2
 	exit 1
@@ -44,10 +48,7 @@ rm -rf "${STAGE}"
 mkdir -p "${STAGE}"
 
 cp -f "${EXE}" "${STAGE}/OLLMchat.exe"
-# File server stays out until FAISS is a prebuilt package.
-if [[ -f "${DAEMON}" ]]; then
-	cp -f "${DAEMON}" "${STAGE}/ollmfilesd.exe"
-fi
+cp -f "${DAEMON}" "${STAGE}/ollmfilesd.exe"
 
 # Project shared libraries from the Meson build tree.
 find "${BUILD_DIR}" -type f \( -name 'liboc*.dll' -o -name 'liboll*.dll' \) \
@@ -65,9 +66,7 @@ done
 
 chmod +x "${ROOT}/scripts/copy-exe-runtime-dlls.sh"
 "${ROOT}/scripts/copy-exe-runtime-dlls.sh" "${STAGE}/OLLMchat.exe" "${STAGE}" "${LOADER}"
-if [[ -f "${STAGE}/ollmfilesd.exe" ]]; then
-	"${ROOT}/scripts/copy-exe-runtime-dlls.sh" "${STAGE}/ollmfilesd.exe" "${STAGE}" ""
-fi
+"${ROOT}/scripts/copy-exe-runtime-dlls.sh" "${STAGE}/ollmfilesd.exe" "${STAGE}" ""
 
 mkdir -p "${OUT_DIR}"
 WIN_SRC="$(cygpath -aw "${STAGE}")"

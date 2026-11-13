@@ -1,6 +1,6 @@
 # Ignored `.git/index` is in file history and in the review list
 
-**Status:** ✔️ fences applied. The stored `.git/index` row is still `is_ignored=0`. Not user-verified.
+**Status:** ✅ 2026-11-13. User closed it. Ignored paths (including `.git`) are marked by `check_path_ignored` and filtered out of pending reviews.
 
 ## Problem
 
@@ -248,4 +248,4 @@ The save stays its own `if`. History is a sibling `if`: `manager.db` and not ign
 
 ## Next
 
-- 🔷 ⏳ The live `.git/index` row stays `is_ignored=0`. Nothing that already saves that file runs, because the scan does not open an ignored directory. A repair pass is not the fix. Restart `ollmfilesd` to load this binary. The review row stays until that flag is set.
+- ✅ 2026-11-13. User closed it. Restart `ollmfilesd` to load this binary for any pre-existing `.git/index` row.

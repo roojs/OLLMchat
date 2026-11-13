@@ -18,7 +18,7 @@ ocmarkdowngtk
 ocfiles
 ollmchat
 ocwebkit
-# ocvector2 needs a prebuilt libfaiss. Left out of the Windows package set.
+ocvector2
 ocbwrap
 ocmcp
 octools
@@ -37,7 +37,7 @@ pkgname=(
   'mingw-w64-ucrt-x86_64-libocfiles'
   'mingw-w64-ucrt-x86_64-libollmchat'
   'mingw-w64-ucrt-x86_64-libocwebkit'
-  # 'mingw-w64-ucrt-x86_64-libocvector2'
+  'mingw-w64-ucrt-x86_64-libocvector2'
   'mingw-w64-ucrt-x86_64-libocbwrap'
   'mingw-w64-ucrt-x86_64-libocmcp'
   'mingw-w64-ucrt-x86_64-liboctools'

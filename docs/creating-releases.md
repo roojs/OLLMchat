@@ -112,7 +112,7 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    |------|----------|
    | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only |
    | `OLLMchat-<version>-Setup.exe` | Windows installer (MSYS2 / WebView2); remote backends only |
-   | `mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst` | Windows UCRT64 library (DLL, import library, header, VAPI; GIR when the build emits one). One file per library: `libocsqlite`, `libocrpc`, `libocmarkdown`, `libollamaweb`, `libochf`, `libocmarkdowngtk`, `libocfiles`, `libollmchat`, `libocwebkit`, `libocbwrap`, `libocmcp`, `liboctools`, `liboccoder`, `libollmchatgtk`. `libocvector2` is omitted until FAISS is a prebuilt package. The installer does not include `ollmfilesd`. |
+   | `mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst` | Windows UCRT64 library (DLL, import library, header, VAPI; GIR when the build emits one). One file per library: `libocsqlite`, `libocrpc`, `libocmarkdown`, `libollamaweb`, `libochf`, `libocmarkdowngtk`, `libocfiles`, `libollmchat`, `libocwebkit`, `libocvector2`, `libocbwrap`, `libocmcp`, `liboctools`, `liboccoder`, `libollmchatgtk`. `libocvector2` also contains `libfaiss.dll`. |
    | `ollmchat-android-v*-debug.apk` | Android client (arm64; sideload) |
    | `<name>-arm-v31-<version>.pixie` | Android library (one file per library the APK build installed). `release.pins` on `main` points at these files. The Valadoc Pages workflow publishes it at `https://roojs.github.io/OLLMchat/release.pins`. The pin file is not attached to the release. |
 

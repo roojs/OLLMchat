@@ -348,7 +348,7 @@ if (this.code_language == "raw") {
 ## Plan
 
 - ℹ️ The design and the applied hunks are in this file.
-- ℹ️ Stop still calls every `active_tools` entry. Follow-up: [`2026-11-06-stop-one-tool.md`](../2026-11-06-stop-one-tool.md).
+- ℹ️ Stop still calls every `active_tools` entry. Follow-up: [`2026-11-06-FIXED-stop-one-tool.md`](2026-11-06-FIXED-stop-one-tool.md).
 - 🔷 Two classes. `on_code_block` constructs `RenderSourceView` or the shell class.
 - 🔷 A type registry was a plugin example. `ToolOutput`'s only chat dependency is `History.Manager`, and only for Stop.
 - 🚫 The registry. Withdrawn.
@@ -923,4 +923,4 @@ Delete `libollmchatgtk/ToolOutput.vala`.
 
 - 🚫 More hunks in this file. The accepted proposal stays as applied.
 - ✔️ 2026-11-09 — the frame is in the chat. [`2026-11-08-FIXED-bash-frame-not-in-chat.md`](2026-11-08-FIXED-bash-frame-not-in-chat.md).
-- ⏳ 🔷 Stop one request. [`2026-11-06-stop-one-tool.md`](../2026-11-06-stop-one-tool.md).
+- ✅ 2026-11-13. Stop one request: [`2026-11-06-FIXED-stop-one-tool.md`](2026-11-06-FIXED-stop-one-tool.md).

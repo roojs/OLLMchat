@@ -74,7 +74,7 @@ jobs:
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-nsis
 
-      - name: Build OLLMchat (webview2gtk pacman + meson)
+      - name: Build OLLMchat (FAISS + webview2gtk pacman + meson)
         run: |
           chmod +x scripts/ci/windows-msys2-build.sh
           ./scripts/ci/windows-msys2-build.sh

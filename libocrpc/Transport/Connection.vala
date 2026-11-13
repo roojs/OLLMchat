@@ -176,7 +176,11 @@ namespace OLLMrpc.Transport
 			this.running = true;
 			try {
 				var fd = this.stream.get_socket().get_fd();
+#if G_OS_WIN32
+				this.channel = new GLib.IOChannel.win32_socket(fd);
+#else
 				this.channel = new GLib.IOChannel.unix_new(fd);
+#endif
 				this.channel.set_encoding(null);
 				this.channel.set_buffered(false);
 				this.channel_open = true;

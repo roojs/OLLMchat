@@ -1,5 +1,5 @@
 project('ollmchat', 'vala', 'c', 'cpp',
-  version: '1.4.11',
+  version: '1.4.12',
   license: 'LGPL',
   default_options: [
     'default_library=shared',
@@ -163,14 +163,9 @@ else
   subdir('libocfiles')       # Depends on libocsqlite
   subdir('libollmchat')      # Depends on libocsqlite
   subdir('libocwebkit')      # Browser tool — depends on libollmchat + WebKitGTK
-  # FAISS is the file server. Windows skips both until a prebuilt libfaiss exists.
-  if host_machine.system() != 'windows'
-    subdir('libocvector2')   # Depends on libocsqlite, libollmchat (no libocfiles)
-  endif
-  subdir('libocbwrap')     # bwrap / overlay / seccomp — full on Linux, stubs elsewhere
-  if host_machine.system() != 'windows'
-    subdir('ollmfilesd')     # Headless file daemon — Unix socket on Unix, TCP on Windows
-  endif
+  subdir('libocvector2')     # Depends on libocsqlite, libollmchat (no libocfiles)
+  subdir('libocbwrap')       # bwrap / overlay / seccomp — full on Linux, stubs elsewhere
+  subdir('ollmfilesd')       # Headless file daemon — Unix socket on Unix, TCP on Windows
   subdir('libocmcp')         # Depends on libollmchat, libocfiles
   subdir('liboctools')       # Depends on libollmchat, libocfiles
   subdir('liboccoder')       # Depends on libocsqlite, libocfiles, libollmchat

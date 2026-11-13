@@ -135,8 +135,8 @@ for name in "${LIBS[@]}"; do
 	stage_lib "${name}"
 done
 
-# FAISS is built from source into the UCRT64 prefix. It is not an MSYS2
-# package, and libocvector2 will not load without its DLL.
+# FAISS is installed from a prebuilt release package into the UCRT64 prefix.
+# libocvector2 will not load without its DLL.
 if printf '%s\n' "${LIBS[@]}" | grep -qx 'ocvector2'; then
 	faiss_dll=""
 	for candidate in "${PREFIX}/bin/libfaiss.dll" "${PREFIX}/lib/libfaiss.dll"; do

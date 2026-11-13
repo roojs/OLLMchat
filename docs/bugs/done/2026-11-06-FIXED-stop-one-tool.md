@@ -1,6 +1,6 @@
 # Stop one tool
 
-**Status:** ✔️ hunks applied. §2 skipped: `ollmapp/android/tools/Bash/Request.vala` is not in the tree.
+**Status:** ✅ 2026-11-13. User closed it. Stop on a shell frame stops that request id. §2 skipped: `ollmapp/android/tools/Bash/Request.vala` is not in the tree.
 
 **ℹ️** Follows [`2026-11-05-CLOSED-restore-bash-tool-output.md`](done/2026-11-05-CLOSED-restore-bash-tool-output.md). That cut connects `stop_clicked` with no id and stops every entry in `active_tools`.
 
