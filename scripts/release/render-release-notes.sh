@@ -20,7 +20,7 @@ tmp="$(mktemp)"
   echo
   echo "\`.deb\` / \`.rpm\` files for this version are on [${TAG}-packages](https://github.com/${repo}/releases/tag/${TAG}-packages)."
   echo
-  echo "This GitHub Release is AppImage, Windows, and Android."
+  echo "This GitHub Release is Windows and Android."
   echo
   echo "---"
   echo

@@ -20,6 +20,7 @@ Work since **1.4.11** (2026-11-12).
 #### Packaging
 
 - The Windows build installs the prebuilt `faiss` MSYS2 package (`1.16.0`) and ships `libocvector2` and `ollmfilesd` again
+- Release CI skips the AppImage build for now (manual **Release - AppImage** remains available)
 
 ### Fixed
 
