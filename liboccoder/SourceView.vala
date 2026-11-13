@@ -70,6 +70,7 @@ namespace OLLMcoder
 			 */
 			private ChangeView change_view;
 			private Gtk.ScrolledWindow scrolled_window;
+			private Gtk.Label deleted_banner;
 			private Gtk.CssProvider font_css { get; set; default = new Gtk.CssProvider(); }
 			private double source_font_px = 14;
 			private double pinch_origin = 14;
@@ -321,6 +322,13 @@ namespace OLLMcoder
 				};
 				editor_overlay.set_child(this.scrolled_window);
 				editor_overlay.add_overlay(this.review_bar.review_overlay);
+				this.deleted_banner = new Gtk.Label("This file was deleted") {
+					visible = false,
+					halign = Gtk.Align.CENTER,
+					valign = Gtk.Align.CENTER,
+					css_classes = { "oc-file-deleted-mask" },
+				};
+				editor_overlay.add_overlay(this.deleted_banner);
 	#if ANDROID
 				this.source_view.editable = false;
 				this.source_view.cursor_visible = false;
@@ -336,7 +344,8 @@ namespace OLLMcoder
 				this.phone_hold = new Gtk.GestureLongPress();
 				this.phone_hold.propagation_phase = Gtk.PropagationPhase.CAPTURE;
 				this.phone_hold.begin.connect((sequence) => {
-					if (this.source_view.editable || this.diff_active) {
+					if (this.source_view.editable || this.diff_active ||
+						this.deleted_banner.visible) {
 						this.phone_hold.set_state(Gtk.EventSequenceState.DENIED);
 						return;
 					}
@@ -345,7 +354,8 @@ namespace OLLMcoder
 					}
 				});
 				this.phone_hold.pressed.connect((x, y) => {
-					if (this.source_view.editable || this.diff_active) {
+					if (this.source_view.editable || this.diff_active ||
+						this.deleted_banner.visible) {
 						return;
 					}
 					if (this.current_file != null && this.current_file.delete_id > 0) {
@@ -561,12 +571,14 @@ namespace OLLMcoder
 			 
 			
 				// Load file content asynchronously if buffer hasn't been loaded
+				var missing = false;
 				if (!file.buffer.is_loaded) {
 					try {
 						yield file.read();
 					} catch (Error e) {
 						GLib.warning("Failed to read file %s: %s", file.path, e.message);
 						gtk_buffer.text = "";
+						missing = true;
 					}
 					GLib.debug("file read path=%s loaded=%s chars=%d",
 						file.path, file.buffer.is_loaded.to_string(),
@@ -602,16 +614,17 @@ namespace OLLMcoder
 				this.delete_id_handler_id = file.notify["delete-id"].connect(() => {
 					if (file.delete_id > 0) {
 						this.handle_file_deleted(file);
+						this.show_pending_diff.begin(file);
 					}
 				});
-			
-				this.scrolled_window.visible = true;
-			
-				// Check if file is already deleted
-				if (file.delete_id > 0) {
+
+				if (missing || file.delete_id > 0) {
 					this.handle_file_deleted(file);
-				} else {
-					// Remove deleted CSS class if it was set
+					yield this.show_pending_diff(file);
+				}
+				if (!missing && file.delete_id == 0) {
+					this.deleted_banner.visible = false;
+					this.scrolled_window.visible = true;
 					this.source_view.remove_css_class("file-deleted");
 				
 					// Enable save button when file is open
@@ -822,6 +835,12 @@ namespace OLLMcoder
 				(this.source_view.buffer as GtkSource.Buffer).set_modified(false);
 				this.scrolled_window.visible = true;
 				this.review_bar.update_diff(parts, this.review_bar.file_index);
+				if (!this.deleted_banner.visible) {
+					return;
+				}
+				var shown = (this.source_view.buffer as GtkSource.Buffer).text != "";
+				this.scrolled_window.visible = shown;
+				this.deleted_banner.valign = shown ? Gtk.Align.START : Gtk.Align.CENTER;
 			}
 		
 			/**
@@ -1125,43 +1144,25 @@ namespace OLLMcoder
 			}
 		
 			/**
-			 * Handle file deletion in editor.
-			 * 
-			 * Called when delete_id > 0 is detected on the current file.
-			 * Clears buffer contents, shows "file deleted" indicator, and disables editing.
-			 * 
+			 * Show a deleted file as not editable.
+			 *
+			 * The mask says the file was deleted. The editor stays
+			 * hidden until a diff paints removed text.
+			 *
 			 * @param file The deleted file
 			 */
 			private void handle_file_deleted(OLLMfiles.File file)
 			{
-				// Clear buffer contents
-				if (file.buffer != null) {
-					file.buffer.clear.begin((obj, res) => {
-						try {
-							file.buffer.clear.end(res);
-						} catch (Error e) {
-							GLib.warning("Failed to clear buffer for deleted file %s: %s", file.path, e.message);
-						}
-					});
-				}
 				(this.source_view.buffer as GtkSource.Buffer).set_text("", -1);
 				this.change_view.parts.clear();
 				this.change_view.empty = true;
-			
-				// Show "file deleted" indicator in placeholder
-			
-				// Disable editing
 				this.source_view.editable = false;
-			
-				// Disable save button
 				this.save_button.sensitive = false;
-			
-				// Add CSS class to indicate deleted state (for potential styling)
 				this.source_view.add_css_class("file-deleted");
-			
-				// Note: Future enhancement - when sourceview can handle diffs, show the original file
-				// content as red deleted (like a diff view showing deleted lines)
-				// Can access deletion info via: file.delete_id -> FileHistory record
+				this.scrolled_window.visible = false;
+				this.deleted_banner.label = "This file was deleted";
+				this.deleted_banner.valign = Gtk.Align.CENTER;
+				this.deleted_banner.visible = true;
 			}
 		
 		}

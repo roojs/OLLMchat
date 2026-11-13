@@ -499,21 +499,16 @@ namespace OLLMfilesd
 			}
 			var file = this.rpc_manager.get_file_from_active_project(
 				histories.get(0).path);
-			if (file == null) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error.INTERNAL_ERROR("file not found")
-				});
-				return;
-			}
-			var stamp = file.mtime_on_disk();
-			if (this.live.has_key((int) id) && this.live_stamp.has_key((int) id) &&
-				this.live_stamp.get((int) id) == (int) stamp) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					retval = OLLMrpc.val("o", this.live.get((int) id))
-				});
-				return;
+			if (file != null && GLib.FileUtils.test(file.path, GLib.FileTest.EXISTS)) {
+				var stamp = file.mtime_on_disk();
+				if (this.live.has_key((int) id) && this.live_stamp.has_key((int) id) &&
+					this.live_stamp.get((int) id) == (int) stamp) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						retval = OLLMrpc.val("o", this.live.get((int) id))
+					});
+					return;
+				}
 			}
 			Gee.ArrayList<FileDiffPart> rows;
 			try {
@@ -624,15 +619,16 @@ namespace OLLMfilesd
 				backup = (string) GLib.File.new_for_path(
 					history.backup_path).load_bytes(null).get_data();
 			}
+			var project = "";
+			var stamp = (int64) 0;
 			var file = this.rpc_manager.get_file_from_active_project(history.path);
-			if (file == null) {
-				throw new GLib.IOError.FAILED("file not found");
+			if (file != null && GLib.FileUtils.test(file.path, GLib.FileTest.EXISTS)) {
+				if (file.buffer == null) {
+					file.manager.buffer_provider.create_buffer(file);
+				}
+				project = file.buffer.get_text();
+				stamp = file.mtime_on_disk();
 			}
-			if (file.buffer == null) {
-				file.manager.buffer_provider.create_buffer(file);
-			}
-			var project = file.buffer.get_text();
-			var stamp = file.mtime_on_disk();
 			var differ = new OLLMfiles.Diff.Differ(backup, project);
 			var patches = differ.diff();
 			var fresh = new Gee.ArrayList<FileDiffPart>();

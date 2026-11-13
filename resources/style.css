@@ -295,6 +295,14 @@ label.error {
   border-radius: 6px;
 }
 
+.oc-file-deleted-mask {
+  margin: 12px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  background-color: alpha(@window_bg_color, 0.92);
+  color: @error_color;
+}
+
 .oc-diff-hunk-map {
   min-height: 28px;
   background-color: @window_bg_color;

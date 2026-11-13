@@ -105,7 +105,7 @@
 - ℹ️ 2026-11-12: log opened from the failed local create.
 - ✔️ 2026-11-12: read both debug logs. Shell hypothesis dropped. The notification did arrive.
 - ✔️ 2026-11-12: applied the `Nav` switch and the `SourceView` `review_files.refresh()` call. `liboccoder` built.
-- ✅ 2026-11-12: user confirmed the notification arrives and the editor opens the new file. Review of those changes is a separate log: `docs/bugs/2026-11-12-review-deleted-and-file-list.md`.
+- ✅ 2026-11-12: user confirmed the notification arrives and the editor opens the new file. Review of those changes is a separate log: `docs/bugs/done/2026-11-12-FIXED-review-deleted-and-file-list.md`.
 
 ## Next
 

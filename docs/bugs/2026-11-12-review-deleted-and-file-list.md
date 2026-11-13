@@ -1,6 +1,6 @@
 # Review after a change treats a missing file as editable, and deciding a hunk aborts
 
-**Status:** ⏳ root cause confirmed. Complete proposal below. Fix not applied.
+**Status:** ✅ 2026-11-13. User archived it.
 
 ## Problem
 
@@ -685,7 +685,9 @@ The buffer edit and `next()` above this stay.
 - ✔️ 2026-11-12: client log, daemon log, coredump stack, and `files.sqlite` read. No product code changed.
 - 🔷 2026-11-12: deleted view is two cases. Content stays, in red, under a deleted mask. An empty delete is the mask only. Previous and next hover show the file name that button opens.
 - ✔️ 2026-11-12: proposal completed. The missing piece was `FileHistory.parts`: a deleted path never produced the remove patch, so the editor had nothing red to show. No product code changed.
+- ✔️ 2026-11-13: proposal applied. `FileHistory.parts` and `rebuild_parts` skip a missing path and diff backup against empty text. The editor mask and open path, the file popover, previous and next names, and `send_part` are in. `liboccoder`, `ollmfilesd`, and `libollmchat` compiled.
+- ✅ 2026-11-13: user archived the log.
 
 ## Next
 
-- 🔷 ⏳ Apply the proposal. Order: `FileHistory.parts` / `rebuild_parts`, then the editor mask and open path, then the file button, tooltips, and `send_part`.
+- ✔️ Closed.

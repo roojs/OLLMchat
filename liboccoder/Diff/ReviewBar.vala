@@ -153,6 +153,7 @@ namespace OLLMcoder.Diff
 			get; set; default = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
 		}
 		private int active = -1;
+		private bool part_sending = false;
 		private int file_count = 1;
 		public int file_index = 0;
 		private bool mock_inactive = false;
@@ -233,24 +234,46 @@ namespace OLLMcoder.Diff
 			};
 			this.file_prev = new Gtk.Button() {
 				icon_name = "go-previous-symbolic",
-				tooltip_text = "Previous pending file",
 			};
 			this.file_prev.clicked.connect(() => {
 				((Gtk.Popover) this.file_menu_popover).popdown();
 				this.file_index = (this.file_index - 1 + this.file_count) % this.file_count;
 				this.file_nav_btn.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
+				if (this.queue.size > 1) {
+					this.file_prev.tooltip_text = this.queue.get(
+						(this.file_index - 1 + this.file_count) % this.file_count).path_basename;
+					this.file_next.tooltip_text = this.queue.get(
+						(this.file_index + 1) % this.file_count).path_basename;
+				}
+				if (this.queue.size < 2 && this.file_labels.length > 1) {
+					this.file_prev.tooltip_text = this.file_labels[
+						(this.file_index - 1 + this.file_count) % this.file_count];
+					this.file_next.tooltip_text = this.file_labels[
+						(this.file_index + 1) % this.file_count];
+				}
 				this.file_index_changed(this.file_index);
 			});
 			this.file_next = new Gtk.Button() {
 				icon_name = "go-next-symbolic",
-				tooltip_text = "Next pending file",
 			};
 			this.file_next.clicked.connect(() => {
 				((Gtk.Popover) this.file_menu_popover).popdown();
 				this.file_index = (this.file_index + 1) % this.file_count;
 				this.file_nav_btn.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
+				if (this.queue.size > 1) {
+					this.file_prev.tooltip_text = this.queue.get(
+						(this.file_index - 1 + this.file_count) % this.file_count).path_basename;
+					this.file_next.tooltip_text = this.queue.get(
+						(this.file_index + 1) % this.file_count).path_basename;
+				}
+				if (this.queue.size < 2 && this.file_labels.length > 1) {
+					this.file_prev.tooltip_text = this.file_labels[
+						(this.file_index - 1 + this.file_count) % this.file_count];
+					this.file_next.tooltip_text = this.file_labels[
+						(this.file_index + 1) % this.file_count];
+				}
 				this.file_index_changed(this.file_index);
 			});
 			this.file_nav_btn = new Gtk.Button.with_label("");
@@ -263,6 +286,12 @@ namespace OLLMcoder.Diff
 			this.file_nav.append(this.file_nav_btn);
 			this.file_nav.append(this.file_next);
 			this.file_nav.visible = this.file_count > 1;
+			if (this.file_labels.length > 1) {
+				this.file_prev.tooltip_text = this.file_labels[
+					(this.file_index - 1 + this.file_count) % this.file_count];
+				this.file_next.tooltip_text = this.file_labels[
+					(this.file_index + 1) % this.file_count];
+			}
 
 			var file_menu = new GLib.Menu();
 			var file_actions = new GLib.SimpleActionGroup();
@@ -275,6 +304,18 @@ namespace OLLMcoder.Diff
 						this.file_index = pick;
 						this.file_nav_btn.label = "File %d of %d".printf(
 							pick + 1, this.file_count);
+						if (this.queue.size > 1) {
+							this.file_prev.tooltip_text = this.queue.get(
+								(this.file_index - 1 + this.file_count) % this.file_count).path_basename;
+							this.file_next.tooltip_text = this.queue.get(
+								(this.file_index + 1) % this.file_count).path_basename;
+						}
+						if (this.queue.size < 2 && this.file_labels.length > 1) {
+							this.file_prev.tooltip_text = this.file_labels[
+								(this.file_index - 1 + this.file_count) % this.file_count];
+							this.file_next.tooltip_text = this.file_labels[
+								(this.file_index + 1) % this.file_count];
+						}
 						this.file_index_changed(pick);
 					}
 					((Gtk.Popover) this.file_menu_popover).popdown();
@@ -287,7 +328,7 @@ namespace OLLMcoder.Diff
 			this.file_menu_popover.set_parent(this.file_nav_btn);
 			((Gtk.Popover) this.file_menu_popover).autohide = false;
 			this.file_nav_btn.clicked.connect(() => {
-				if (this.file_count < 2 || this.file_labels.length < 1) {
+				if (this.file_count < 2) {
 					return;
 				}
 				if (this.file_popover_hide_id != 0) {
@@ -303,7 +344,7 @@ namespace OLLMcoder.Diff
 #if !ANDROID
 			var file_anchor_motion = new Gtk.EventControllerMotion();
 			file_anchor_motion.enter.connect(() => {
-				if (this.file_count < 2 || this.file_labels.length < 1) {
+				if (this.file_count < 2) {
 					return;
 				}
 				if (this.file_popover_hide_id != 0) {
@@ -1338,6 +1379,9 @@ namespace OLLMcoder.Diff
 		 */
 		private async void send_part(int action)
 		{
+			if (this.part_sending) {
+				return;
+			}
 			if (this.active < 0 || this.active >= this.parts.size) {
 				return;
 			}
@@ -1347,8 +1391,10 @@ namespace OLLMcoder.Diff
 			if (action == 0 && this.parts.get(this.active).accepted == 0) {
 				return;
 			}
-			var before = this.parts.get(this.active);
+			var part_index = this.active;
+			var before = this.parts.get(part_index);
 			var file = this.source_view.current_file;
+			this.part_sending = true;
 			OLLMrpc.Response response;
 			try {
 				response = yield this.source_view.manager.rpc.call(new OLLMrpc.Request() {
@@ -1356,26 +1402,32 @@ namespace OLLMcoder.Diff
 					args = OLLMrpc.args("xi", before.id, action)
 				});
 			} catch (GLib.Error e) {
+				this.part_sending = false;
 				GLib.warning("Failed to apply diff item: %s", e.message);
 				return;
 			}
 			if (response.error != null) {
+				this.part_sending = false;
 				GLib.warning("Failed to apply diff item: %s", response.error.message);
 				return;
 			}
-			this.parts.set(this.active,
+			if (part_index >= this.parts.size || part_index >= this.hunks.size) {
+				this.part_sending = false;
+				return;
+			}
+			this.parts.set(part_index,
 				(OLLMfiles.FileDiffPart) response.retval.get_object());
 			switch (action) {
 				case 1:
-					this.hunks.get(this.active).decision = HunkDecision.ACCEPTED;
+					this.hunks.get(part_index).decision = HunkDecision.ACCEPTED;
 					break;
 
 				case -1:
-					this.hunks.get(this.active).decision = HunkDecision.REJECTED;
+					this.hunks.get(part_index).decision = HunkDecision.REJECTED;
 					break;
 
 				default:
-					this.hunks.get(this.active).decision = HunkDecision.PENDING;
+					this.hunks.get(part_index).decision = HunkDecision.PENDING;
 					break;
 			}
 			if (action == 0) {
@@ -1417,8 +1469,9 @@ namespace OLLMcoder.Diff
 				}
 			}
 			if (file != null) {
-				this.source_view.show_pending_diff.begin(file);
+				yield this.source_view.show_pending_diff(file);
 			}
+			this.part_sending = false;
 		}
 
 		/**
@@ -1556,6 +1609,12 @@ namespace OLLMcoder.Diff
 				this.file_index = 0;
 			}
 			this.pending_label.visible = !on_list;
+			if (this.file_count > 1) {
+				this.file_prev.tooltip_text = this.queue.get(
+					(this.file_index - 1 + this.file_count) % this.file_count).path_basename;
+				this.file_next.tooltip_text = this.queue.get(
+					(this.file_index + 1) % this.file_count).path_basename;
+			}
 			this.map_area.visible = on_list;
 			this.map_scroll_left.visible = on_list;
 			this.map_scroll_right.visible = on_list;
@@ -1578,8 +1637,14 @@ namespace OLLMcoder.Diff
 						rel = rel.substring(1);
 					}
 				}
+				var row_label = this.queue.get(fi).path_basename;
+				if (this.queue.get(fi).last_change_type != "") {
+					row_label = "%s — %s".printf(
+						this.queue.get(fi).last_change_type,
+						row_label);
+				}
 				var row_btn = new Gtk.Button() {
-					label = this.queue.get(fi).path_basename,
+					label = row_label,
 					tooltip_text = rel,
 					has_frame = false,
 				};
@@ -1591,6 +1656,18 @@ namespace OLLMcoder.Diff
 						this.file_index = pick;
 						this.file_nav_btn.label = "File %d of %d".printf(
 							pick + 1, this.file_count);
+						if (this.queue.size > 1) {
+							this.file_prev.tooltip_text = this.queue.get(
+								(this.file_index - 1 + this.file_count) % this.file_count).path_basename;
+							this.file_next.tooltip_text = this.queue.get(
+								(this.file_index + 1) % this.file_count).path_basename;
+						}
+						if (this.queue.size < 2 && this.file_labels.length > 1) {
+							this.file_prev.tooltip_text = this.file_labels[
+								(this.file_index - 1 + this.file_count) % this.file_count];
+							this.file_next.tooltip_text = this.file_labels[
+								(this.file_index + 1) % this.file_count];
+						}
 						this.file_index_changed(pick);
 					}
 					((Gtk.Popover) this.file_menu_popover).popdown();
