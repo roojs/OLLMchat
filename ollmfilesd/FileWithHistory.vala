@@ -139,6 +139,8 @@ WHERE
 	AND
 		COALESCE(filebase.base_type, file_history.base_type) = 'f'
 	AND
+		COALESCE(filebase.is_ignored, 0) = 0
+	AND
 	(
 		file_history.reviewed != 0
 		OR

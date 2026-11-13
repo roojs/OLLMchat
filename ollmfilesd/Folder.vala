@@ -767,7 +767,7 @@ namespace OLLMfilesd
 		 * @param path The full path to check
 		 * @return true if the path is ignored, false otherwise
 		 */
-		private bool check_path_ignored(string path)
+		internal bool check_path_ignored(string path)
 		{
 			// If parent is already ignored, child is also ignored
 			if (this.is_ignored) {
@@ -1053,11 +1053,6 @@ namespace OLLMfilesd
 				
 				// Skip "." and ".." entries explicitly (shouldn't appear, but be safe)
 				if (name == "." || name == "..") {
-					continue;
-				}
-				
-				// Skip .git directories and other hidden/system folders
-				if (name == ".git") {
 					continue;
 				}
 				
@@ -1620,7 +1615,9 @@ GROUP BY
 				this,
 				folder_info,
 				child_path
-			);
+			) {
+				is_ignored = this.check_path_ignored(child_path)
+			};
 			
 			// Add to parent's children
 			this.children.append(child_folder);
@@ -1770,6 +1767,9 @@ GROUP BY
 			this.parent = parent_folder;
 			this.parent_id = parent_folder.id;
 			this.id = 0;
+			this.is_ignored = this.manager.active_project.check_path_ignored(
+				this.path
+			);
 			var file_history = new FileHistory(
 				this.manager.db,
 				this,

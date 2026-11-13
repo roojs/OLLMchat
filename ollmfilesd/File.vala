@@ -424,7 +424,15 @@ namespace OLLMfilesd
 						if (file.id < 0) {
 							yield file.to_real();
 						}
-						if (change_type == "modified" && this.manager.db != null) {
+						if (this.manager.active_project != null) {
+							file.is_ignored =
+								this.manager.active_project.check_path_ignored(
+									file.path
+								);
+						}
+						if (change_type == "modified" &&
+							this.manager.db != null &&
+							!file.is_ignored) {
 							file.is_need_approval = true;
 							file.last_change_type = "modified";
 							var file_history = new FileHistory(
@@ -748,8 +756,11 @@ namespace OLLMfilesd
 			}
 			parent_folder.children.append(this);
 			this.manager.buffer_provider.create_buffer(this);
+			this.is_ignored = found_base_folder.check_path_ignored(this.path);
 			if (this.manager.db != null) {
 				this.saveToDB(this.manager.db, null, false);
+			}
+			if (this.manager.db != null && !this.is_ignored) {
 				this.is_need_approval = true;
 				this.last_change_type = "added";
 				var file_history = new FileHistory(
