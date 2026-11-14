@@ -40,17 +40,22 @@
 
 ### Android APK naming / build type
 
-- 🔷 Decide product intent:
-  - **A)** Keep debug Meson/Gradle but **drop `-debug` from the release asset name** once symbols are stripped (`PIXIEWOOD_STRIP_DEBUG=1`), **or**
-  - **B)** Add a real **release** APK path (Gradle `release` + Meson `release` / `minsize` or documented equivalent) and publish that on the version tag.
-- 💩 If **B** needs Pixiewood upstream support, document the blocker and ship **A** as an interim.
+- 🔷 **User direction (2026-11-14):** ship a **proper release APK** on the version tag (option **B**), not a renamed debug artifact.
+- 🔷 Tag / **Release** path: Meson **`--buildtype release`** (or `minsize` if we document why), Gradle **`assembleRelease`**, asset name **`ollmchat-android-<tag>.apk`** (no `-debug`). **`PIXIEWOOD_STRIP_DEBUG`** may fold into that path or go away once release install rules own stripping.
+- 🔷 **Release signing** is still missing (`docs/android-build.md` lists it under “does not yet run”). Need a CI keystore (GitHub secret) or an explicit sideload policy (unsigned release is not installable on most devices).
+- 🔷 **Do not publish both variants on tag builds by default** — one native compile + one Gradle variant keeps CI time sane. Keep full **debug** for manual **Release - Android** and local dev.
+- ℹ️ **Build time (dual vs single):**
+  - **Release-only on tags** (replace today’s debug+strip): one Meson configure/compile. Release objects cost more CPU than debug, but it is still **one** pass — typically **not** a doubling; often modestly **slower** than debug on a cold cache, sometimes similar when the compile cache hits.
+  - **Both APKs from one native tree** (`assembleDebug` then `assembleRelease` with the same `jniLibs`): Gradle-only second step — usually **minutes**, not hours.
+  - **Both APKs with different Meson buildtypes** (debug tree + release tree): **two full native rebuilds** — that **does** approach **2×** the expensive part of the Android job (Pixiewood/Meson compile dominates when caches miss).
 
 ## Next
 
 - ⏳ 🔷 User confirms: libraries + pixies **only** on `-packages` (installer + APK stay on version tag), or a different split.
-- ⏳ 💩 For Android, pick **A** vs **B** before changing CI.
+- ⏳ 💩 Implement Android **B** + signing before the next tag publish.
 - ⏳ 💩 After approval, adjust `release.yml` publish step and docs; re-run a manual **Release - …** smoke or wait for next tag.
 
 ## Attempts / changelog
 
 - ✔️ 2026-11-14 — opened this log from release-field review (Windows libs, pixies, APK `-debug`).
+- ✔️ 2026-11-14 — user chose proper release APK on tags; dual publish optional, dual native buildtypes would hurt CI most.
