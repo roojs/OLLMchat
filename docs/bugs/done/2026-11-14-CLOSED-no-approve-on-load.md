@@ -1,6 +1,6 @@
 # No approve option on load
 
-Status: ✔️ built, not user-verified
+Status: 🚫 superseded by [`2026-11-14-approval-bar-hidden.md`](../2026-11-14-approval-bar-hidden.md). The bar is still hidden after the pending list loads.
 
 ## Problem
 
@@ -93,7 +93,35 @@ file nav. Hide Accept and return.
 			}
 ```
 
+## Later session
+
+ℹ️ Client log `~/.cache/ollmchat/ollmchat.debug.log` at 12:47–12:48.
+
+- ✔️ Project pick logged `opening project path=/home/alan/gitlive/OLLMchat`, then `File.read` of `tests/README.md`.
+- ✔️ That log has no `Folder.fetch_pending_approvals` and no `FileHistory.parts`.
+- ✔️ `ProjectSelector.choose` called `activate_project(folder, false)`. That flag skips `review_files.refresh`.
+- ✔️ Opening a file only loads parts when `review_files.file_map` already has the path, so the bar stays hidden.
+
+## Proposed fix
+
+🔷 Choose uses the same activate call as restore. Pending approvals load, and the existing refresh handler opens the first pending file.
+
+#### Remove
+
+```vala
+			yield this.manager.activate_project(folder, false);
+```
+
+#### Replace with
+
+```vala
+			yield this.manager.activate_project(folder);
+```
+
+## Attempts / changelog
+
+- ✔️ 2026-11-14: Applied the restore-style activate call in `liboccoder/ProjectSelector.vala`.
+
 ## Next
 
-⏳ Restart the daemon and the app. The first pending file should open and
-Accept should be visible. 🚫 Do not add a `/.git/` path test.
+🔷 ⏳ Pick the project again. The pending list loads, the first unapproved file opens, and Accept is visible. 🚫 Do not add a `/.git/` path test.

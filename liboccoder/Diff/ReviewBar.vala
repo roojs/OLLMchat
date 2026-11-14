@@ -1040,6 +1040,8 @@ namespace OLLMcoder.Diff
 				this.accept_btn.visible = this.file_count > 0;
 				this.reject_btn.visible = this.file_count > 0;
 				this.unapprove_btn.visible = false;
+				GLib.debug("review bar visible=%s files=%d parts=0 hunks=0",
+					this.visible.to_string(), this.file_count);
 				return;
 			}
 			var same_file = this.parts.size > 0 && parts.size > 0
@@ -1125,6 +1127,8 @@ namespace OLLMcoder.Diff
 			this.accept_btn.visible = show_review;
 			this.reject_btn.visible = show_review;
 			this.visible = this.file_count > 0 || this.hunks.size > 0;
+			GLib.debug("review bar visible=%s files=%d parts=%d hunks=%d",
+				this.visible.to_string(), this.file_count, this.parts.size, this.hunks.size);
 			this.file_nav.visible = this.live_queue ? this.file_count > 0 : this.file_count > 1;
 			this.feedback_btn.visible = this.review_responses.size > 0;
 			this.unapprove_btn.visible = false;
@@ -1620,6 +1624,8 @@ namespace OLLMcoder.Diff
 			this.file_count = this.queue.size;
 			this.file_bulk = new HunkDecision[int.max(1, this.file_count)];
 			this.visible = this.file_count > 0;
+			GLib.debug("review queue files=%d visible=%s",
+				this.file_count, this.visible.to_string());
 			this.file_nav.visible = this.file_count > 0;
 			this.file_prev.visible = this.file_count > 1;
 			this.file_next.visible = this.file_count > 1;

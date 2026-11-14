@@ -50,8 +50,7 @@ namespace OLLMapp
 				spacing = 12
 			};
 
-			var spinner = new Gtk.Spinner() {
-				spinning = true,
+			var spinner = new Adw.Spinner() {
 				halign = Gtk.Align.CENTER,
 				width_request = 48,
 				height_request = 48

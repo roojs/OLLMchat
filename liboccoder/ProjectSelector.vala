@@ -797,7 +797,7 @@ namespace OLLMcoder
 			this.list.visible = false;
 			this.selector.visible = false;
 			this.chosen(folder);
-			yield this.manager.activate_project(folder, false);
+			yield this.manager.activate_project(folder);
 		}
 
 	}

@@ -245,10 +245,11 @@ namespace OLLMapp
 				wrap_mode = Pango.WrapMode.WORD,
 				max_width_chars = 40,
 			};
-			var startup_spinner = new Gtk.Spinner () {
+			var startup_spinner = new Adw.Spinner () {
 				halign = Gtk.Align.CENTER,
+				width_request = 48,
+				height_request = 48,
 			};
-			startup_spinner.start ();
 			this.startup_panel = new Gtk.Box (
 				Gtk.Orientation.VERTICAL, 12) {
 				margin_top = 24,
