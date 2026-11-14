@@ -213,18 +213,34 @@ namespace OLLMfilesd
 				FROM
 					filebase
 				WHERE
-					filebase.delete_id = 0
-					AND 
-					filebase.last_viewed >= 1
-					AND 
 					filebase.base_type = 'f'
 					AND 
 					filebase.is_text = 1
 					AND 
 					filebase.is_ignored = 0
 					AND 
-					filebase.parent_id IN ("""
+					(
+						(
+							filebase.delete_id = 0
+							AND 
+							filebase.last_viewed >= 1
+							AND 
+							filebase.parent_id IN ("""
 						+ string.joinv(", ", parents.to_array()) + """
+							)
+						)
+						OR 
+						(
+							filebase.is_need_approval = 1
+							AND 
+							(
+								instr(filebase.path, '"""
+						+ project.path.replace("'", "''") + """/') = 1
+								OR 
+								filebase.path = '"""
+						+ project.path.replace("'", "''") + """'
+							)
+						)
 					)
 					AND 
 					(
@@ -774,7 +790,9 @@ namespace OLLMfilesd
 				return true;
 			}
 			
-			// Check if repository exists
+			if (!this.manager.git_provider.repository_exists(this)) {
+				this.discover_repository(this.is_project);
+			}
 			if (!this.manager.git_provider.repository_exists(this)) {
 				return false;
 			}

@@ -620,6 +620,9 @@ namespace OLLMcoder
 
 				if (missing || file.delete_id > 0) {
 					this.handle_file_deleted(file);
+					var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+					rows.add_all(this.manager.review_files.file_map.values);
+					this.review_bar.sync_pending(rows, file);
 					yield this.show_pending_diff(file);
 				}
 				if (!missing && file.delete_id == 0) {

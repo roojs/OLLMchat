@@ -145,7 +145,8 @@ namespace OLLMcoder.Skill
 						this.project_manager.active_project.path;
 					this.widget.files.project = this.project_manager.active_project;
 				}
-				if (this.project_manager.active_file != null) {
+				if (this.project_manager.review_files.get_n_items() < 1 &&
+					this.project_manager.active_file != null) {
 					yield this.widget.editor.open_file(this.project_manager.active_file);
 				}
 			} catch (GLib.Error e) {

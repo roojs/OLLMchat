@@ -142,7 +142,11 @@ WHERE
 		COALESCE(filebase.is_ignored, 0) = 0
 	AND
 	(
-		file_history.reviewed != 0
+		(
+			file_history.reviewed != 0
+			AND
+			COALESCE(filebase.is_need_approval, 0) = 0
+		)
 		OR
 		(
 			file_history.reviewed = 0
@@ -161,6 +165,9 @@ ORDER BY
 			);
 			query.selectQuery(q, rows);
 			foreach (var row in rows) {
+				if (project.check_path_ignored(row.path)) {
+					continue;
+				}
 				list.add(row);
 			}
 			return list;

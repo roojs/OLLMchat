@@ -472,7 +472,8 @@ namespace OLLMcoder.File
 						if (file.base_type == "d" || file.base_type == "da") {
 							continue;
 						}
-						if (slot == Slot.HISTORY && file.last_viewed < 1) {
+						if (slot == Slot.HISTORY && file.last_viewed < 1 &&
+							!file.is_need_approval) {
 							continue;
 						}
 						if (row is OLLMfiles.File) {

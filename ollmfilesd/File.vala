@@ -218,9 +218,25 @@ namespace OLLMfilesd
 			}
 			var project_file = project.project_files.child_map.get(path);
 			if (project_file == null) {
+				var found = new Gee.ArrayList<FileBase>();
+				FileBase.query(this.manager.db, this.manager).select(
+					"WHERE path = '" + path.replace("'", "''")
+						+ "' AND is_need_approval = 1 AND is_ignored = 0"
+						+ " AND base_type = 'f'",
+					found
+				);
+				if (found.size < 1) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						msg = "file not found"
+					});
+					return;
+				}
+				var row = new File(this.manager);
+				row.copy_from(found.get(0), {"manager", "buffer", "parent"});
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					msg = "file not found"
+					retval = OLLMrpc.val("o", row)
 				});
 				return;
 			}

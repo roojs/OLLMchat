@@ -183,7 +183,8 @@ namespace OLLMcoder.Diff
 		private Gtk.Button map_scroll_right;
 		private Gtk.Label pending_label;
 		private Gtk.Button bulk_btn;
-		private Gtk.PopoverMenu file_menu_popover;
+		private Gtk.Popover file_menu_popover;
+		private Gtk.ListBox file_list;
 		private Gtk.PopoverMenu bulk_menu_popover;
 		private uint file_popover_hide_id = 0;
 		private uint bulk_popover_hide_id = 0;
@@ -252,6 +253,8 @@ namespace OLLMcoder.Diff
 					this.file_next.tooltip_text = this.file_labels[
 						(this.file_index + 1) % this.file_count];
 				}
+				this.file_list.select_row(
+					this.file_list.get_row_at_index(this.file_index));
 				this.file_index_changed(this.file_index);
 			});
 			this.file_next = new Gtk.Button() {
@@ -274,6 +277,8 @@ namespace OLLMcoder.Diff
 					this.file_next.tooltip_text = this.file_labels[
 						(this.file_index + 1) % this.file_count];
 				}
+				this.file_list.select_row(
+					this.file_list.get_row_at_index(this.file_index));
 				this.file_index_changed(this.file_index);
 			});
 			this.file_nav_btn = new Gtk.Button.with_label("");
@@ -293,42 +298,49 @@ namespace OLLMcoder.Diff
 					(this.file_index + 1) % this.file_count];
 			}
 
-			var file_menu = new GLib.Menu();
-			var file_actions = new GLib.SimpleActionGroup();
+			this.file_list = new Gtk.ListBox() {
+				selection_mode = Gtk.SelectionMode.SINGLE,
+				activate_on_single_click = true,
+			};
 			for (var fi = 0; fi < this.file_labels.length; fi++) {
-				var pick = fi;
-				var action_name = "pick-%u".printf(fi);
-				var pick_action = new GLib.SimpleAction(action_name, null);
-				pick_action.activate.connect(() => {
-					if (this.file_index != pick) {
-						this.file_index = pick;
-						this.file_nav_btn.label = "File %d of %d".printf(
-							pick + 1, this.file_count);
-						if (this.queue.size > 1) {
-							this.file_prev.tooltip_text = this.queue.get(
-								(this.file_index - 1 + this.file_count) % this.file_count).path_basename;
-							this.file_next.tooltip_text = this.queue.get(
-								(this.file_index + 1) % this.file_count).path_basename;
-						}
-						if (this.queue.size < 2 && this.file_labels.length > 1) {
-							this.file_prev.tooltip_text = this.file_labels[
-								(this.file_index - 1 + this.file_count) % this.file_count];
-							this.file_next.tooltip_text = this.file_labels[
-								(this.file_index + 1) % this.file_count];
-						}
-						this.file_index_changed(pick);
-					}
-					((Gtk.Popover) this.file_menu_popover).popdown();
+				this.file_list.append(new Gtk.Label(this.file_labels[fi]) {
+					xalign = 0.0f,
+					hexpand = true,
 				});
-				file_actions.add_action(pick_action);
-				file_menu.append(this.file_labels[fi], "file.%s".printf(action_name));
 			}
-			this.insert_action_group("file", file_actions);
-			this.file_menu_popover = new Gtk.PopoverMenu.from_model(file_menu);
+			this.file_list.select_row(
+				this.file_list.get_row_at_index(this.file_index));
+			this.file_list.row_activated.connect((line) => {
+				var pick = line.get_index();
+				if (this.file_index == pick) {
+					this.file_menu_popover.popdown();
+					return;
+				}
+				this.file_index = pick;
+				this.file_nav_btn.label = "File %d of %d".printf(
+					pick + 1, this.file_count);
+				if (this.queue.size > 1) {
+					this.file_prev.tooltip_text = this.queue.get(
+						(this.file_index - 1 + this.file_count) % this.file_count).path_basename;
+					this.file_next.tooltip_text = this.queue.get(
+						(this.file_index + 1) % this.file_count).path_basename;
+				}
+				if (this.queue.size < 2 && this.file_labels.length > 1) {
+					this.file_prev.tooltip_text = this.file_labels[
+						(this.file_index - 1 + this.file_count) % this.file_count];
+					this.file_next.tooltip_text = this.file_labels[
+						(this.file_index + 1) % this.file_count];
+				}
+				this.file_index_changed(pick);
+				this.file_menu_popover.popdown();
+			});
+			this.file_menu_popover = new Gtk.Popover() {
+				autohide = false,
+				child = this.file_list,
+			};
 			this.file_menu_popover.set_parent(this.file_nav_btn);
-			((Gtk.Popover) this.file_menu_popover).autohide = false;
 			this.file_nav_btn.clicked.connect(() => {
-				if (this.file_count < 2) {
+				if (this.file_count < 1) {
 					return;
 				}
 				if (this.file_popover_hide_id != 0) {
@@ -344,7 +356,7 @@ namespace OLLMcoder.Diff
 #if !ANDROID
 			var file_anchor_motion = new Gtk.EventControllerMotion();
 			file_anchor_motion.enter.connect(() => {
-				if (this.file_count < 2) {
+				if (this.file_count < 1) {
 					return;
 				}
 				if (this.file_popover_hide_id != 0) {
@@ -1019,6 +1031,17 @@ namespace OLLMcoder.Diff
 			Gee.ArrayList<OLLMfiles.FileDiffPart> parts,
 			int file_index = -1)
 		{
+			if (parts.size < 1) {
+				this.parts = parts;
+				this.hunks.clear();
+				this.hunk_line_sum = 0;
+				this.visible = this.file_count > 0;
+				this.file_nav.visible = this.file_count > 0;
+				this.accept_btn.visible = this.file_count > 0;
+				this.reject_btn.visible = this.file_count > 0;
+				this.unapprove_btn.visible = false;
+				return;
+			}
 			var same_file = this.parts.size > 0 && parts.size > 0
 				&& this.parts.get(0).file_history_id == parts.get(0).file_history_id;
 			var keep = this.active;
@@ -1098,8 +1121,11 @@ namespace OLLMcoder.Diff
 			}
 			var pending = this.active >= 0
 				&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
-			this.accept_btn.visible = pending;
-			this.reject_btn.visible = pending;
+			var show_review = pending || this.file_count > 0;
+			this.accept_btn.visible = show_review;
+			this.reject_btn.visible = show_review;
+			this.visible = this.file_count > 0 || this.hunks.size > 0;
+			this.file_nav.visible = this.live_queue ? this.file_count > 0 : this.file_count > 1;
 			this.feedback_btn.visible = this.review_responses.size > 0;
 			this.unapprove_btn.visible = false;
 			this.map_width = 0;
@@ -1608,6 +1634,8 @@ namespace OLLMcoder.Diff
 				this.file_nav_btn.label = "%d files".printf(this.file_count);
 				this.file_index = 0;
 			}
+			this.accept_btn.visible = true;
+			this.reject_btn.visible = true;
 			this.pending_label.visible = !on_list;
 			if (this.file_count > 1) {
 				this.file_prev.tooltip_text = this.queue.get(
@@ -1621,15 +1649,13 @@ namespace OLLMcoder.Diff
 			if (!on_list) {
 				this.pending_label.label = "%d changes pending review".printf(
 					this.file_count);
-				this.accept_btn.visible = false;
-				this.reject_btn.visible = false;
-				this.feedback_btn.visible = false;
-				this.unapprove_btn.visible = false;
 			}
-			var file_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+			this.file_list = new Gtk.ListBox() {
+				selection_mode = Gtk.SelectionMode.SINGLE,
+				activate_on_single_click = true,
+			};
 			var project = this.source_view.manager.active_project;
 			for (var fi = 0; fi < this.queue.size; fi++) {
-				var pick = fi;
 				var rel = this.queue.get(fi).path;
 				if (project != null && rel.has_prefix(project.path)) {
 					rel = rel.substring(project.path.length);
@@ -1637,44 +1663,62 @@ namespace OLLMcoder.Diff
 						rel = rel.substring(1);
 					}
 				}
-				var row_label = this.queue.get(fi).path_basename;
-				if (this.queue.get(fi).last_change_type != "") {
-					row_label = "%s — %s".printf(
-						this.queue.get(fi).last_change_type,
-						row_label);
-				}
-				var row_btn = new Gtk.Button() {
-					label = row_label,
-					tooltip_text = rel,
-					has_frame = false,
+				var row = this.queue.get(fi);
+				var row_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+					hexpand = true,
 				};
-				if (on_list && fi == this.file_index) {
-					row_btn.icon_name = "object-select-symbolic";
+				switch (row.last_change_type) {
+					case "added":
+						row_box.append(new Gtk.Image.from_icon_name("list-add-symbolic"));
+						break;
+
+					case "deleted":
+						row_box.append(new Gtk.Image.from_icon_name("user-trash-symbolic"));
+						break;
+
+					case "modified":
+						row_box.append(new Gtk.Image.from_icon_name("document-edit-symbolic"));
+						break;
+
+					default:
+						break;
 				}
-				row_btn.clicked.connect(() => {
-					if (this.file_index != pick) {
-						this.file_index = pick;
-						this.file_nav_btn.label = "File %d of %d".printf(
-							pick + 1, this.file_count);
-						if (this.queue.size > 1) {
-							this.file_prev.tooltip_text = this.queue.get(
-								(this.file_index - 1 + this.file_count) % this.file_count).path_basename;
-							this.file_next.tooltip_text = this.queue.get(
-								(this.file_index + 1) % this.file_count).path_basename;
-						}
-						if (this.queue.size < 2 && this.file_labels.length > 1) {
-							this.file_prev.tooltip_text = this.file_labels[
-								(this.file_index - 1 + this.file_count) % this.file_count];
-							this.file_next.tooltip_text = this.file_labels[
-								(this.file_index + 1) % this.file_count];
-						}
-						this.file_index_changed(pick);
-					}
-					((Gtk.Popover) this.file_menu_popover).popdown();
+				row_box.append(new Gtk.Label(row.path_basename) {
+					xalign = 0.0f,
+					hexpand = true,
+					tooltip_text = rel,
 				});
-				file_list.append(row_btn);
+				this.file_list.append(row_box);
 			}
-			((Gtk.Popover) this.file_menu_popover).set_child(file_list);
+			if (on_list) {
+				this.file_list.select_row(
+					this.file_list.get_row_at_index(this.file_index));
+			}
+			this.file_list.row_activated.connect((line) => {
+				var pick = line.get_index();
+				if (this.file_index == pick) {
+					this.file_menu_popover.popdown();
+					return;
+				}
+				this.file_index = pick;
+				this.file_nav_btn.label = "File %d of %d".printf(
+					pick + 1, this.file_count);
+				if (this.queue.size > 1) {
+					this.file_prev.tooltip_text = this.queue.get(
+						(this.file_index - 1 + this.file_count) % this.file_count).path_basename;
+					this.file_next.tooltip_text = this.queue.get(
+						(this.file_index + 1) % this.file_count).path_basename;
+				}
+				if (this.queue.size < 2 && this.file_labels.length > 1) {
+					this.file_prev.tooltip_text = this.file_labels[
+						(this.file_index - 1 + this.file_count) % this.file_count];
+					this.file_next.tooltip_text = this.file_labels[
+						(this.file_index + 1) % this.file_count];
+				}
+				this.file_index_changed(pick);
+				this.file_menu_popover.popdown();
+			});
+			this.file_menu_popover.child = this.file_list;
 		}
 	}
 }

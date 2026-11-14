@@ -351,9 +351,13 @@ namespace OLLMfilesd
 			// Note: this.remove() triggers ListModel signals for UI updates
 			var to_remove = new Gee.ArrayList<ProjectFile>();
 			foreach (var project_file in this.items) {
-				if (!found_files.contains(project_file.file.path)) {
-					to_remove.add(project_file);
+				if (found_files.contains(project_file.file.path)) {
+					continue;
 				}
+				if (project_file.file.is_need_approval) {
+					continue;
+				}
+				to_remove.add(project_file);
 			}
 			foreach (var project_file in to_remove) {
 				this.remove(project_file);
@@ -696,7 +700,10 @@ namespace OLLMfilesd
 			for (var i = (int)this.items.size - 1; i >= 0; i--) {
 				var project_file = this.items.get(i);
 				if (project_file.file.delete_id == 0) {
-					continue;  // Skip non-deleted files
+					continue;
+				}
+				if (project_file.file.is_need_approval) {
+					continue;
 				}
 				
 				// Remove from array and child_map immediately

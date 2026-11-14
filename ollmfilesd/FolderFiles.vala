@@ -221,7 +221,10 @@ namespace OLLMfilesd
 			for (var i = (int)this.items.size - 1; i >= 0; i--) {
 				var filebase = this.items.get(i);
 				if (filebase.delete_id == 0) {
-					continue;  // Skip non-deleted files
+					continue;
+				}
+				if (filebase.is_need_approval) {
+					continue;
 				}
 				
 				// If this is a deleted folder, recursively clean up its children first
