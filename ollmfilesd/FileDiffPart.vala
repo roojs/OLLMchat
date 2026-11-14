@@ -209,7 +209,59 @@ namespace OLLMfilesd
 					}
 				}
 				histories.get(0).reviewed = open ? 0 : 1;
+				if (!open) {
+					var max_stmt = FileHistory.query(db).selectPrepare(
+						"SELECT MAX(id) FROM file_history"
+					);
+					var max_ids = FileHistory.query(db).fetchAllInt64(max_stmt);
+					histories.get(0).since_id =
+						(max_ids.size > 0 ? max_ids.get(0) : (int64) 0) + 1;
+				}
 				FileHistory.query(db).updateById(histories.get(0));
+				if (!open) {
+					var left = new Gee.ArrayList<FileHistory>();
+					FileHistory.query(db).select(
+						"WHERE path = '"
+							+ histories.get(0).path.replace("'", "''")
+							+ "' AND reviewed = 0",
+						left
+					);
+					if (left.size < 1) {
+						var path = histories.get(0).path;
+						var row = history.rpc_manager.get_file_from_active_project(
+							path);
+						if (row == null) {
+							var found = new Gee.ArrayList<FileBase>();
+							FileBase.query(db, history.rpc_manager).select(
+								"WHERE path = '"
+									+ path.replace("'", "''")
+									+ "' AND base_type = 'f'",
+								found
+							);
+							if (found.size > 0) {
+								row = new File(history.rpc_manager);
+								row.copy_from(found.get(0), {
+									"manager", "buffer", "parent"
+								});
+							}
+						}
+						if (row != null) {
+							var targets = new Gee.ArrayList<FileBase>();
+							FileBase.query(db, row.manager).select(
+								"WHERE path = '" + path.replace("'", "''") + "'",
+								targets
+							);
+							foreach (var target in targets) {
+								target.is_need_approval = false;
+								target.last_change_type = "";
+								target.saveToDB(db, null, false);
+							}
+							row.is_need_approval = false;
+							row.last_change_type = "";
+							row.saveToDB(db, null, false);
+						}
+					}
+				}
 				return;
 			}
 			var insert = this.hunk_add;
@@ -260,7 +312,59 @@ namespace OLLMfilesd
 				}
 			}
 			histories.get(0).reviewed = open ? 0 : 1;
+			if (!open) {
+				var max_stmt = FileHistory.query(db).selectPrepare(
+					"SELECT MAX(id) FROM file_history"
+				);
+				var max_ids = FileHistory.query(db).fetchAllInt64(max_stmt);
+				histories.get(0).since_id =
+					(max_ids.size > 0 ? max_ids.get(0) : (int64) 0) + 1;
+			}
 			FileHistory.query(db).updateById(histories.get(0));
+			if (!open) {
+				var left = new Gee.ArrayList<FileHistory>();
+				FileHistory.query(db).select(
+					"WHERE path = '"
+						+ histories.get(0).path.replace("'", "''")
+						+ "' AND reviewed = 0",
+					left
+				);
+				if (left.size < 1) {
+					var path = histories.get(0).path;
+					var row = history.rpc_manager.get_file_from_active_project(
+						path);
+					if (row == null) {
+						var found = new Gee.ArrayList<FileBase>();
+						FileBase.query(db, history.rpc_manager).select(
+							"WHERE path = '"
+								+ path.replace("'", "''")
+								+ "' AND base_type = 'f'",
+							found
+						);
+						if (found.size > 0) {
+							row = new File(history.rpc_manager);
+							row.copy_from(found.get(0), {
+								"manager", "buffer", "parent"
+							});
+						}
+					}
+					if (row != null) {
+						var targets = new Gee.ArrayList<FileBase>();
+						FileBase.query(db, row.manager).select(
+							"WHERE path = '" + path.replace("'", "''") + "'",
+							targets
+						);
+						foreach (var target in targets) {
+							target.is_need_approval = false;
+							target.last_change_type = "";
+							target.saveToDB(db, null, false);
+						}
+						row.is_need_approval = false;
+						row.last_change_type = "";
+						row.saveToDB(db, null, false);
+					}
+				}
+			}
 		}
 
 		/**

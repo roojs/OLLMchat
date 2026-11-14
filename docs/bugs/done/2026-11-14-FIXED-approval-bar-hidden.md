@@ -1,6 +1,6 @@
 # Approval bar stays hidden when a file opens
 
-**Status:** ⏳ open — critical. This is the log for the missing Accept bar. Further attempts go here.
+**Status:** ✅ fixed — user verified. Pending queue loads before `open_file` syncs the review bar.
 
 ## Problem
 
@@ -30,7 +30,8 @@
 
 ## Root cause
 
-- ⏳ Not confirmed. Pending data is present and `FileHistory.parts` ran for the deleted file. The bar is still not on screen after that, and opening `README.md` does not ask for parts.
+- ✔️ `SourceView.open_file` paints the review bar from `review_files.file_map` via `sync_pending`, but that map can still be empty when the open runs ahead of `ReviewFiles.refresh` (startup race: `activate_project` used `refresh.begin()`, then a restored or fallback open could finish before pending rows existed). Opening a non-pending file (`tests/README.md`) then called `show_pending_diff` with an empty map, so `file_count` stayed 0 and the bar never became visible.
+- 🔷 Every file load must wait for the pending queue, then sync the bar — even when the open file is not in the queue.
 
 ## Prior logs
 
@@ -43,11 +44,18 @@
 - ℹ️ [`done/2026-10-30-FIXED-phone-open-file-crash.md`](done/2026-10-30-FIXED-phone-open-file-crash.md) — empty hunk list crashed `update_diff`.
 - ℹ️ Plans `docs/plans/done/CODER-4.2.3.5*.md` — the approval-bar design.
 
+## Proposed fix
+
+- 🔷 `activate_project`: `yield review_files.refresh()` after `clear()` so restore/startup does not open a file before pending rows load.
+- 🔷 `ReviewFiles.refresh`: overlapping callers wait for the in-flight refresh instead of returning immediately.
+- 🔷 `SourceView.open_file`: `yield review_files.refresh()` before `sync_pending` / `show_pending_diff` so each load reconciles outstanding review files.
+
 ## Next
 
-- 🔷 ⏳ Restart the app and open the project again. `~/.cache/ollmchat/ollmchat.debug.log` should contain `review queue` and `review bar` lines: `visible`, `files`, `parts`, `hunks`.
-- ℹ️ Those lines are temporary. They come out once this log says why the bar stays hidden.
+- 🔷 ⏳ Restart the app and open the project again. Expect `review queue files=3 visible=true` in `~/.cache/ollmchat/ollmchat.debug.log` when `README.md` opens, or the first pending file opens with Accept visible.
+- ℹ️ Remove temporary `GLib.debug` in `ReviewBar` after user verifies.
 
 ## Attempts / changelog
 
 - ✔️ 2026-11-14 — opened this log. Added `GLib.debug` in `ReviewBar.sync_pending` and `ReviewBar.update_diff` so the next run records `visible`, `files`, `parts`, and `hunks`.
+- ✔️ 2026-11-14 — root cause above; applied yield-on-load in `ProjectManager.activate_project`, `SourceView.open_file`, and await-in-flight in `ReviewFiles.refresh`.

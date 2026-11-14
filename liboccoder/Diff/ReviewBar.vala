@@ -818,12 +818,60 @@ namespace OLLMcoder.Diff
 				visible = false,
 			};
 			this.accept_btn.clicked.connect(() => {
+				if (this.parts.size < 1) {
+					if (this.queue.size < 1 || this.file_index >= this.queue.size) {
+						return;
+					}
+					this.decide_file.begin(
+						this.queue.get(this.file_index).approve_id, 1);
+					return;
+				}
+				if (this.active < 0 || this.active >= this.parts.size) {
+					for (var i = 0; i < this.parts.size; i++) {
+						if (this.parts.get(i).accepted != 0) {
+							continue;
+						}
+						this.active = i;
+						this.send_part.begin(1);
+						return;
+					}
+					if (this.queue.size < 1 || this.file_index >= this.queue.size) {
+						return;
+					}
+					this.decide_file.begin(
+						this.queue.get(this.file_index).approve_id, 1);
+					return;
+				}
 				this.send_part.begin(1);
 			});
 			this.reject_btn = new Gtk.Button.with_label("Reject") {
 				visible = false,
 			};
 			this.reject_btn.clicked.connect(() => {
+				if (this.parts.size < 1) {
+					if (this.queue.size < 1 || this.file_index >= this.queue.size) {
+						return;
+					}
+					this.decide_file.begin(
+						this.queue.get(this.file_index).approve_id, -1);
+					return;
+				}
+				if (this.active < 0 || this.active >= this.parts.size) {
+					for (var i = 0; i < this.parts.size; i++) {
+						if (this.parts.get(i).accepted != 0) {
+							continue;
+						}
+						this.active = i;
+						this.send_part.begin(-1);
+						return;
+					}
+					if (this.queue.size < 1 || this.file_index >= this.queue.size) {
+						return;
+					}
+					this.decide_file.begin(
+						this.queue.get(this.file_index).approve_id, -1);
+					return;
+				}
 				this.send_part.begin(-1);
 			});
 			this.unapprove_btn = new Gtk.Button.with_label("Unapprove") {
@@ -1123,9 +1171,8 @@ namespace OLLMcoder.Diff
 			}
 			var pending = this.active >= 0
 				&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
-			var show_review = pending || this.file_count > 0;
-			this.accept_btn.visible = show_review;
-			this.reject_btn.visible = show_review;
+			this.accept_btn.visible = pending;
+			this.reject_btn.visible = pending;
 			this.visible = this.file_count > 0 || this.hunks.size > 0;
 			GLib.debug("review bar visible=%s files=%d parts=%d hunks=%d",
 				this.visible.to_string(), this.file_count, this.parts.size, this.hunks.size);
@@ -1501,6 +1548,16 @@ namespace OLLMcoder.Diff
 			if (file != null) {
 				yield this.source_view.show_pending_diff(file);
 			}
+			var chunk_open = false;
+			foreach (var part in this.parts) {
+				if (part.accepted == 0) {
+					chunk_open = true;
+					break;
+				}
+			}
+			if (!chunk_open) {
+				yield this.source_view.manager.review_files.refresh();
+			}
 			this.part_sending = false;
 		}
 
@@ -1580,7 +1637,8 @@ namespace OLLMcoder.Diff
 					buffer.insert(ref start_iter, replacement, -1);
 				}
 			}
-			this.source_view.show_pending_diff.begin(file);
+			yield this.source_view.show_pending_diff(file);
+			yield this.source_view.manager.review_files.refresh();
 		}
 
 		/**

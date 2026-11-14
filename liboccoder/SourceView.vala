@@ -192,6 +192,9 @@ namespace OLLMcoder
 					rows.add_all(this.manager.review_files.file_map.values);
 					this.review_bar.sync_pending(rows, this.current_file);
 					if (this.review_bar.queue.size < 1) {
+						if (this.current_file != null) {
+							this.close_file();
+						}
 						return;
 					}
 					if (this.current_file != null
@@ -618,6 +621,7 @@ namespace OLLMcoder
 					}
 				});
 
+				yield this.manager.review_files.refresh();
 				if (missing || file.delete_id > 0) {
 					this.handle_file_deleted(file);
 					var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
@@ -1134,6 +1138,36 @@ namespace OLLMcoder
 				yield this.show_pending_diff(file);
 			}
 		
+			/**
+			 * Close the editor when no file should stay open.
+			 */
+			public void close_file()
+			{
+				if (this.diff_active) {
+					this.clear_diff();
+				}
+				this.disconnect_delete_id_handler();
+				if (this.current_file != null) {
+					this.save_current_file_state();
+				}
+				this.change_view.parts.clear();
+				this.change_view.empty = true;
+				(this.source_view.buffer as GtkSource.Buffer).set_text("", -1);
+				(this.source_view.buffer as GtkSource.Buffer).set_modified(false);
+				this.deleted_banner.visible = false;
+				this.scrolled_window.visible = true;
+				this.source_view.remove_css_class("file-deleted");
+				this.source_view.editable = true;
+				this.save_button.sensitive = false;
+				this.current_file = null;
+				this.manager.activate_file(null);
+				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+				rows.add_all(this.manager.review_files.file_map.values);
+				this.review_bar.sync_pending(rows, null);
+				this.review_bar.update_diff(
+					new Gee.ArrayList<OLLMfiles.FileDiffPart>(), -1);
+			}
+
 			/**
 			 * Disconnect delete_id signal handler.
 			 */

@@ -570,6 +570,61 @@ namespace OLLMfilesd
 			int action
 		)
 		{
+			if (rows.size < 1) {
+				if (action == 0) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						retval = OLLMrpc.val("o", this.live.get(id))
+					});
+					return;
+				}
+				var histories = new Gee.ArrayList<FileHistory>();
+				FileHistory.query(this.rpc_manager.db).select(
+					"WHERE id = %lld".printf(id),
+					histories
+				);
+				if (histories.size < 1) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error.INTERNAL_ERROR(
+							"history row not found")
+					});
+					return;
+				}
+				var path = histories.get(0).path;
+				var file = this.rpc_manager.get_file_from_active_project(path);
+				if (file == null) {
+					var found = new Gee.ArrayList<FileBase>();
+					FileBase.query(this.rpc_manager.db, this.rpc_manager).select(
+						"WHERE path = '" + path.replace("'", "''")
+							+ "' AND is_need_approval = 1 AND is_ignored = 0"
+							+ " AND base_type = 'f'",
+						found
+					);
+					if (found.size < 1) {
+						request.reply(new OLLMrpc.Response() {
+							id = request.id,
+							error = new OLLMrpc.Error.INTERNAL_ERROR(
+								"file not found")
+						});
+						return;
+					}
+					file = new File(this.rpc_manager);
+					file.copy_from(found.get(0), {
+						"manager", "buffer", "parent"
+					});
+				}
+				if (action == 1) {
+					histories.get(0).approve(this.rpc_manager.db, file);
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						retval = OLLMrpc.val("o", this.live.get(id))
+					});
+					return;
+				}
+				yield histories.get(0).revert(request, this.rpc_manager);
+				return;
+			}
 			try {
 				foreach (var part in rows) {
 					yield part.commit(this, this.rpc_manager.db, action);
@@ -741,11 +796,25 @@ namespace OLLMfilesd
 		{
 			var file = this.rpc_manager.get_file_from_active_project(path);
 			if (file == null) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error.INTERNAL_ERROR("file not found")
+				var found = new Gee.ArrayList<FileBase>();
+				FileBase.query(this.rpc_manager.db, this.rpc_manager).select(
+					"WHERE path = '" + path.replace("'", "''")
+						+ "' AND is_need_approval = 1 AND is_ignored = 0"
+						+ " AND base_type = 'f'",
+					found
+				);
+				if (found.size < 1) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error.INTERNAL_ERROR(
+							"file not found")
+					});
+					return;
+				}
+				file = new File(this.rpc_manager);
+				file.copy_from(found.get(0), {
+					"manager", "buffer", "parent"
 				});
-				return;
 			}
 			var rows = new Gee.ArrayList<FileHistory>();
 			FileHistory.query(this.rpc_manager.db).select(
@@ -844,15 +913,27 @@ namespace OLLMfilesd
 			OLLMrpc.Request request,
 			ProjectManager manager
 		) {
-			var file = manager.get_file_from_active_project(
-				request.args.get(0).get_string()
-			);
+			var file = manager.get_file_from_active_project(this.path);
 			if (file == null) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error.INTERNAL_ERROR("file not found")
+				var found = new Gee.ArrayList<FileBase>();
+				FileBase.query(manager.db, manager).select(
+					"WHERE path = '" + this.path.replace("'", "''")
+						+ "' AND is_need_approval = 1 AND is_ignored = 0"
+						+ " AND base_type = 'f'",
+					found
+				);
+				if (found.size < 1) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error.INTERNAL_ERROR(
+							"file not found")
+					});
+					return;
+				}
+				file = new File(manager);
+				file.copy_from(found.get(0), {
+					"manager", "buffer", "parent"
 				});
-				return;
 			}
 			if (this.change_type == "added") {
 				request.reply(new OLLMrpc.Response() {

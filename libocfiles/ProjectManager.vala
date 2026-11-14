@@ -280,7 +280,7 @@ namespace OLLMfiles
 
 			if (pending && project != null && project.is_project) {
 				this.review_files.clear();
-				this.review_files.refresh.begin();
+				yield this.review_files.refresh();
 			}
 		}
 		

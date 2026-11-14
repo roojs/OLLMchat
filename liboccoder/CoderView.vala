@@ -383,6 +383,24 @@ namespace OLLMcoder
 			this.files.chosen.connect((file) => {
 				this.editor.open_file.begin(file);
 			});
+			manager.active_file_changed.connect((file) => {
+				if (file != null) {
+					return;
+				}
+				this.files.label.label = "Select file";
+				this.search_context = null;
+				this.last_search_end = 0;
+				this.search_entry.text = "";
+				this.update_search_results();
+				showing_doc = false;
+				md_button.visible = false;
+				this.doc.visible = false;
+				this.editor.visible = true;
+				loading_spinner.spinning = false;
+				loading_row.visible = false;
+				editor_column.opacity = 1;
+				editor_column.sensitive = true;
+			});
 			this.editor.file_changed.connect((file) => {
 				var shown = file.path_basename;
 				if (this.files.form != Form.PHONE && this.files.project.path.length > 0

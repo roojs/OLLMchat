@@ -104,6 +104,13 @@ namespace OLLMfiles
 		{
 			if (this.refresh_running) {
 				this.refresh_queued = true;
+				SourceFunc resume = refresh.callback;
+				ulong hid = 0;
+				hid = this.refreshed.connect(() => {
+					this.disconnect(hid);
+					resume();
+				});
+				yield;
 				return;
 			}
 			this.refresh_running = true;
@@ -157,8 +164,8 @@ namespace OLLMfiles
 					this.append(file);
 				}
 			} while (this.refresh_queued);
-			this.refreshed();
 			this.refresh_running = false;
+			this.refreshed();
 		}
 
 		/**
