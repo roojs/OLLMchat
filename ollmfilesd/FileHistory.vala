@@ -503,9 +503,15 @@ namespace OLLMfilesd
 				var stamp = file.mtime_on_disk();
 				if (this.live.has_key((int) id) && this.live_stamp.has_key((int) id) &&
 					this.live_stamp.get((int) id) == (int) stamp) {
+					if (this.live.get((int) id).size > 0) {
+						request.reply(new OLLMrpc.Response() {
+							id = request.id,
+							retval = OLLMrpc.val("o", this.live.get((int) id))
+						});
+						return;
+					}
 					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						retval = OLLMrpc.val("o", this.live.get((int) id))
+						id = request.id
 					});
 					return;
 				}
@@ -520,9 +526,15 @@ namespace OLLMfilesd
 				});
 				return;
 			}
+			if (rows.size > 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("o", rows)
+				});
+				return;
+			}
 			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				retval = OLLMrpc.val("o", rows)
+				id = request.id
 			});
 		}
 
@@ -573,8 +585,7 @@ namespace OLLMfilesd
 			if (rows.size < 1) {
 				if (action == 0) {
 					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						retval = OLLMrpc.val("o", this.live.get(id))
+						id = request.id
 					});
 					return;
 				}
@@ -617,8 +628,7 @@ namespace OLLMfilesd
 				if (action == 1) {
 					histories.get(0).approve(this.rpc_manager.db, file);
 					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						retval = OLLMrpc.val("o", this.live.get(id))
+						id = request.id
 					});
 					return;
 				}
@@ -902,7 +912,7 @@ namespace OLLMfilesd
 			}
 			file.is_need_approval = false;
 			file.last_change_type = "";
-			file.saveToDB(db, null, false);
+			file.saveToDB(db, null, true);
 		}
 
 		/**
@@ -936,9 +946,40 @@ namespace OLLMfilesd
 				});
 			}
 			if (this.change_type == "added") {
+				var now = new GLib.DateTime.now_local();
+				var revert_history = new FileHistory(manager.db, file, "revert", now);
+				revert_history.reviewed = 1;
+				try {
+					yield revert_history.commit();
+					if (GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
+						yield GLib.File.new_for_path(this.path).delete_async();
+					}
+				} catch (GLib.Error e) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
+					});
+					return;
+				}
+				this.reviewed = 1;
+				var max_ids = FileHistory.query(manager.db).fetchAllInt64(
+					FileHistory.query(manager.db).selectPrepare("SELECT MAX(id) FROM file_history"));
+				this.since_id = (int64) 1;
+				if (max_ids.size > 0) {
+					this.since_id = max_ids.get(0) + 1;
+				}
+				FileHistory.query(manager.db).updateById(this);
+				file.delete_id = revert_history.id;
+				file.last_change_type = "";
+				file.is_need_approval = false;
+				file.saveToDB(manager.db, null, true);
+				yield manager.delete_manager.cleanup();
+				var row = new File(manager);
+				row.copy_from(file, { "manager", "buffer", "parent" });
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error.INTERNAL_ERROR("Cannot revert added files")
+					retval = OLLMrpc.val("o", row),
+					msg = "ok"
 				});
 				return;
 			}

@@ -10,7 +10,7 @@ on:
         type: boolean
         default: false
       upload_to_release:
-        description: Strip debug symbols on the APK (smaller download for GitHub Releases)
+        description: Tag-style APKs — strip native libs, assemble debug + release
         type: boolean
         default: false
 
@@ -250,6 +250,7 @@ jobs:
           PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
           PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.validate-pixiewood-build-cache.outputs.usable == 'true' && '1' || '' }}
           PIXIEWOOD_STRIP_DEBUG: ${{ inputs.upload_to_release && '1' || '' }}
+          PIXIEWOOD_ASSEMBLE_RELEASE: ${{ inputs.upload_to_release && '1' || '' }}
         run: PIXIEWOOD_PHASE=configure scripts/android/build-chat-poc-apk.sh
 
       - name: Build chat APK
@@ -259,9 +260,9 @@ jobs:
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
           PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
           PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.validate-pixiewood-build-cache.outputs.usable == 'true' && '1' || '' }}
-          # Tag releases: smaller debug APK (symbols stripped on meson install).
-          # Manual Android build workflow leaves this unset (full debug symbols).
+          # Tag releases: smaller native libs; debug + release Gradle APKs.
           PIXIEWOOD_STRIP_DEBUG: ${{ inputs.upload_to_release && '1' || '' }}
+          PIXIEWOOD_ASSEMBLE_RELEASE: ${{ inputs.upload_to_release && '1' || '' }}
         run: PIXIEWOOD_PHASE=build scripts/android/build-chat-poc-apk.sh
 
       - name: Detect post-build cache targets
@@ -319,18 +320,27 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p android-artifacts
-          src=.pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+          debug_src=.pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            dest="android-artifacts/ollmchat-android-${GITHUB_REF_NAME}-debug.apk"
+            cp "$debug_src" "android-artifacts/ollmchat-${GITHUB_REF_NAME}-debug.apk"
+            release_src=.pixiewood/android/app/build/outputs/apk/release/app-arm64-v8a-release.apk
+            if [ ! -f "$release_src" ]; then
+              echo "missing release APK: $release_src" >&2
+              exit 1
+            fi
+            cp "$release_src" "android-artifacts/ollmchat-${GITHUB_REF_NAME}.apk"
           else
-            dest="android-artifacts/ollmchat-android-poc-debug.apk"
+            cp "$debug_src" "android-artifacts/ollmchat-poc-debug.apk"
           fi
-          cp "$src" "$dest"
           ls -lh android-artifacts
-          echo "apk_path=$dest" >> "$GITHUB_OUTPUT"
+          echo "apk_path=android-artifacts/$(ls -1 android-artifacts | head -n1)" >> "$GITHUB_OUTPUT"
 
       - name: Verify APK contains application and chat libraries
-        run: scripts/android/verify-apk.sh "${{ steps.collect-apk.outputs.apk_path }}"
+        run: |
+          set -euo pipefail
+          for apk in android-artifacts/*.apk; do
+            scripts/android/verify-apk.sh "$apk"
+          done
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7

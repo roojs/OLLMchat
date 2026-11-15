@@ -306,8 +306,10 @@ Successful debug builds produce APKs under:
 **Debug stripped (release tags only):** GitHub Release builds set
 `PIXIEWOOD_STRIP_DEBUG=1`, which passes `-Dstrip=true` to Meson while keeping
 `--buildtype debug`. Pixiewood strips native libraries during `meson install`
-before Gradle packages the APK. Tag releases attach
-`ollmchat-android-<tag>-debug.apk` (for example `ollmchat-android-v1.3.0-debug.apk`).
+before Gradle packages the APK. Tag releases run `assembleDebug` and
+`assembleRelease` (one native tree) and attach `ollmchat-<tag>.apk` and
+`ollmchat-<tag>-debug.apk` (for example `ollmchat-v1.3.0.apk`). Release Gradle
+APKs use the debug keystore for sideload until a release signing secret exists.
 Manual **Release - Android** workflow
 runs and local builds pass `-Dstrip=false` on every reconfigure so native debug
 symbols are kept for testing (Meson otherwise retains `strip=true` from a prior
@@ -435,7 +437,7 @@ publish):
 3. Click **Run workflow** and select the branch to test.
 4. Optionally enable **Rebuild SDK and Pixiewood/GTK caches from scratch** when
    you need a cold build.
-5. Download `ollmchat-android-poc-debug.apk` from the completed run (uploaded
+5. Download `ollmchat-poc-debug.apk` from the completed run (uploaded
    as a direct `.apk`, not a zip).
 
 The workflow is deliberately manual-only (`workflow_dispatch`) because it

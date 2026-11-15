@@ -174,13 +174,12 @@ namespace OLLMfilesd
 		 * Store one decision and write the project file when the
 		 * hunk text on disk has to change.
 		 *
-		 * A decision that leaves the file alone stores and returns.
 		 * Reject of a pending or accepted hunk writes ''hunk_remove''.
 		 * Accept or reset of a rejected hunk writes ''hunk_add''
 		 * through the project file's buffer. Later hunks on the
 		 * remembered list shift by the line delta. Updates
 		 * ''live_stamp'' from {@link File.mtime_on_disk} after the
-		 * write. The store after a write repeats the no-write store.
+		 * write, then stores the decision and updates review state.
 		 *
 		 * @param history the registered {@code FileHistory} handler
 		 * @param db daemon database
@@ -190,120 +189,72 @@ namespace OLLMfilesd
 		public async void commit(FileHistory history, SQ.Database db, int action) throws GLib.Error
 		{
 			var histories = new Gee.ArrayList<FileHistory>();
-			FileHistory.query(db).select(
-				"WHERE id = %lld".printf(this.file_history_id),
-				histories
-			);
+			FileHistory.query(db).select("WHERE id = %lld".printf(this.file_history_id), histories);
 			if (histories.size == 0) {
 				throw new GLib.IOError.FAILED("history row not found");
 			}
 			var list = history.live.get((int) this.file_history_id);
-			if ((action != -1 && this.accepted != -1) || (action == -1 && this.accepted == -1)) {
-				this.accepted = action == 0 ? 0 : action;
-				this.decided_at = action == 0 ? (int64) 0 : GLib.get_real_time();
-				FileDiffPart.query(db).updateById(this);
-				var open = false;
-				foreach (var item in list) {
-					if (item.accepted == 0) {
-						open = true;
+			var added_delete_id = (int64) 0;
+			if ((action == -1 && this.accepted != -1) || (action != -1 && this.accepted == -1)) {
+				var file = history.rpc_manager.get_file_from_active_project(histories.get(0).path);
+				if (file == null) {
+					throw new GLib.IOError.FAILED("file not found");
+				}
+				if (action == -1 && histories.get(0).change_type == "added") {
+					var revert_history = new FileHistory(
+						db, file, "revert", new GLib.DateTime.now_local());
+					revert_history.reviewed = 1;
+					yield revert_history.commit();
+					added_delete_id = revert_history.id;
+					if (GLib.FileUtils.test(file.path, GLib.FileTest.EXISTS)) {
+						yield GLib.File.new_for_path(file.path).delete_async();
 					}
+					this.new_line_end = this.new_line_start - 1;
 				}
-				histories.get(0).reviewed = open ? 0 : 1;
-				if (!open) {
-					var max_stmt = FileHistory.query(db).selectPrepare(
-						"SELECT MAX(id) FROM file_history"
-					);
-					var max_ids = FileHistory.query(db).fetchAllInt64(max_stmt);
-					histories.get(0).since_id =
-						(max_ids.size > 0 ? max_ids.get(0) : (int64) 0) + 1;
-				}
-				FileHistory.query(db).updateById(histories.get(0));
-				if (!open) {
-					var left = new Gee.ArrayList<FileHistory>();
-					FileHistory.query(db).select(
-						"WHERE path = '"
-							+ histories.get(0).path.replace("'", "''")
-							+ "' AND reviewed = 0",
-						left
-					);
-					if (left.size < 1) {
-						var path = histories.get(0).path;
-						var row = history.rpc_manager.get_file_from_active_project(
-							path);
-						if (row == null) {
-							var found = new Gee.ArrayList<FileBase>();
-							FileBase.query(db, history.rpc_manager).select(
-								"WHERE path = '"
-									+ path.replace("'", "''")
-									+ "' AND base_type = 'f'",
-								found
-							);
-							if (found.size > 0) {
-								row = new File(history.rpc_manager);
-								row.copy_from(found.get(0), {
-									"manager", "buffer", "parent"
-								});
-							}
-						}
-						if (row != null) {
-							var targets = new Gee.ArrayList<FileBase>();
-							FileBase.query(db, row.manager).select(
-								"WHERE path = '" + path.replace("'", "''") + "'",
-								targets
-							);
-							foreach (var target in targets) {
-								target.is_need_approval = false;
-								target.last_change_type = "";
-								target.saveToDB(db, null, false);
-							}
-							row.is_need_approval = false;
-							row.last_change_type = "";
-							row.saveToDB(db, null, false);
-						}
+				if (added_delete_id == 0) {
+					var insert = this.hunk_add;
+					if (action == -1) {
+						insert = this.hunk_remove;
 					}
+					if (file.buffer == null) {
+						file.manager.buffer_provider.create_buffer(file);
+					}
+					var span = this.new_line_end < this.new_line_start
+						? 0 : this.new_line_end - this.new_line_start + 1;
+					if (this.accepted == -1) {
+						span = this.old_line_end < this.old_line_start
+							? 0 : this.old_line_end - this.old_line_start + 1;
+					}
+					var inserted = 0;
+					if (insert != "") {
+						inserted = insert.split("\n").length;
+					}
+					var changes = new Gee.ArrayList<FileChange>();
+					changes.add(new FileChange(file) {
+						start = this.new_line_start,
+						end = this.new_line_start + span,
+						replacement = insert
+					});
+					yield file.buffer.apply_edits(changes);
+					var delta = inserted - span;
+					this.new_line_end = inserted == 0
+						? this.new_line_start - 1
+						: this.new_line_start + inserted - 1;
+					foreach (var other in list) {
+						if (other.id == this.id || other.new_line_start < this.new_line_start + span) {
+							continue;
+						}
+						other.new_line_start += delta;
+						other.new_line_end += delta;
+					}
+					history.live_stamp.set((int) this.file_history_id, (int) file.mtime_on_disk());
 				}
-				return;
 			}
-			var insert = this.hunk_add;
-			if (action == -1) {
-				insert = this.hunk_remove;
-			}
-			var file = history.rpc_manager.get_file_from_active_project(
-				histories.get(0).path);
-			if (file == null) {
-				throw new GLib.IOError.FAILED("file not found");
-			}
-			if (file.buffer == null) {
-				file.manager.buffer_provider.create_buffer(file);
-			}
-			var add_count = this.new_line_end < this.new_line_start
-				? 0 : this.new_line_end - this.new_line_start + 1;
-			var remove_count = this.old_line_end < this.old_line_start
-				? 0 : this.old_line_end - this.old_line_start + 1;
-			var span = this.accepted == -1 ? remove_count : add_count;
-			var at = this.new_line_start;
-			var inserted = insert == "" ? 0 : insert.split("\n").length;
-			var changes = new Gee.ArrayList<FileChange>();
-			changes.add(new FileChange(file) {
-				start = at,
-				end = at + span,
-				replacement = insert
-			});
-			yield file.buffer.apply_edits(changes);
-			var delta = inserted - span;
-			this.new_line_end = inserted == 0
-				? this.new_line_start - 1
-				: this.new_line_start + inserted - 1;
-			foreach (var other in list) {
-				if (other.id == this.id || other.new_line_start < at + span) {
-					continue;
-				}
-				other.new_line_start += delta;
-				other.new_line_end += delta;
-			}
-			history.live_stamp.set((int) this.file_history_id, (int) file.mtime_on_disk());
 			this.accepted = action == 0 ? 0 : action;
-			this.decided_at = action == 0 ? (int64) 0 : GLib.get_real_time();
+			this.decided_at = 0;
+			if (action != 0) {
+				this.decided_at = GLib.get_real_time();
+			}
 			FileDiffPart.query(db).updateById(this);
 			var open = false;
 			foreach (var item in list) {
@@ -312,58 +263,61 @@ namespace OLLMfilesd
 				}
 			}
 			histories.get(0).reviewed = open ? 0 : 1;
-			if (!open) {
-				var max_stmt = FileHistory.query(db).selectPrepare(
-					"SELECT MAX(id) FROM file_history"
-				);
-				var max_ids = FileHistory.query(db).fetchAllInt64(max_stmt);
-				histories.get(0).since_id =
-					(max_ids.size > 0 ? max_ids.get(0) : (int64) 0) + 1;
+			if (open) {
+				FileHistory.query(db).updateById(histories.get(0));
+				db.backupDB();
+				return;
 			}
+			var max_ids = FileHistory.query(db).fetchAllInt64(
+				FileHistory.query(db).selectPrepare("SELECT MAX(id) FROM file_history"));
+			var poke = (int64) 1;
+			if (max_ids.size > 0) {
+				poke = max_ids.get(0) + 1;
+			}
+			histories.get(0).since_id = poke;
 			FileHistory.query(db).updateById(histories.get(0));
-			if (!open) {
-				var left = new Gee.ArrayList<FileHistory>();
-				FileHistory.query(db).select(
-					"WHERE path = '"
-						+ histories.get(0).path.replace("'", "''")
-						+ "' AND reviewed = 0",
-					left
-				);
-				if (left.size < 1) {
-					var path = histories.get(0).path;
-					var row = history.rpc_manager.get_file_from_active_project(
-						path);
-					if (row == null) {
-						var found = new Gee.ArrayList<FileBase>();
-						FileBase.query(db, history.rpc_manager).select(
-							"WHERE path = '"
-								+ path.replace("'", "''")
-								+ "' AND base_type = 'f'",
-							found
-						);
-						if (found.size > 0) {
-							row = new File(history.rpc_manager);
-							row.copy_from(found.get(0), {
-								"manager", "buffer", "parent"
-							});
-						}
-					}
-					if (row != null) {
-						var targets = new Gee.ArrayList<FileBase>();
-						FileBase.query(db, row.manager).select(
-							"WHERE path = '" + path.replace("'", "''") + "'",
-							targets
-						);
-						foreach (var target in targets) {
-							target.is_need_approval = false;
-							target.last_change_type = "";
-							target.saveToDB(db, null, false);
-						}
-						row.is_need_approval = false;
-						row.last_change_type = "";
-						row.saveToDB(db, null, false);
-					}
+			var left = new Gee.ArrayList<FileHistory>();
+			FileHistory.query(db).select(
+				"WHERE path = '" + histories.get(0).path.replace("'", "''") +
+					"' AND reviewed = 0 ORDER BY timestamp DESC", left);
+			if (left.size > 0) {
+				left.get(0).since_id = poke;
+				FileHistory.query(db).updateById(left.get(0));
+				db.backupDB();
+				return;
+			}
+			var row = history.rpc_manager.get_file_from_active_project(histories.get(0).path);
+			if (row == null) {
+				var found = new Gee.ArrayList<FileBase>();
+				FileBase.query(db, history.rpc_manager).select(
+					"WHERE path = '" + histories.get(0).path.replace("'", "''") +
+						"' AND base_type = 'f'", found);
+				if (found.size == 0) {
+					db.backupDB();
+					return;
 				}
+				row = new File(history.rpc_manager);
+				row.copy_from(found.get(0), { "manager", "buffer", "parent" });
+			}
+			var targets = new Gee.ArrayList<FileBase>();
+			FileBase.query(db, row.manager).select(
+				"WHERE path = '" + histories.get(0).path.replace("'", "''") + "'", targets);
+			foreach (var target in targets) {
+				target.is_need_approval = false;
+				target.last_change_type = "";
+				if (added_delete_id > 0) {
+					target.delete_id = added_delete_id;
+				}
+				target.saveToDB(db, null, false);
+			}
+			row.is_need_approval = false;
+			row.last_change_type = "";
+			if (added_delete_id > 0) {
+				row.delete_id = added_delete_id;
+			}
+			row.saveToDB(db, null, true);
+			if (added_delete_id > 0) {
+				yield history.rpc_manager.delete_manager.cleanup();
 			}
 		}
 

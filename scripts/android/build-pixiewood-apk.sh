@@ -18,6 +18,8 @@ PIXIEWOOD_PHASE="${PIXIEWOOD_PHASE:-all}"
 # Strip native debug symbols on meson install (debug buildtype, debug Gradle APK).
 # Used for GitHub Release assets; local/manual builds leave this unset.
 PIXIEWOOD_STRIP_DEBUG="${PIXIEWOOD_STRIP_DEBUG:-}"
+# 1: after assembleDebug, also assembleRelease (same native jniLibs; Gradle-only).
+PIXIEWOOD_ASSEMBLE_RELEASE="${PIXIEWOOD_ASSEMBLE_RELEASE:-}"
 # 1: link the published .pixie sysroot instead of compiling the GTK stack.
 PIXIEWOOD_USE_PIXIE="${PIXIEWOOD_USE_PIXIE:-}"
 
@@ -384,6 +386,40 @@ patch_pixiewood_gradle_native_libs() {
     }' "$gradle"
 }
 
+# assembleRelease needs a signingConfig. Sideload until CI has a release keystore.
+patch_pixiewood_gradle_release_signing() {
+  local gradle="$ROOT_DIR/.pixiewood/android/app/build.gradle"
+
+  if [ ! -f "$gradle" ] || grep -q 'OLLMCHAT_SIDLOAD_RELEASE_SIGNING' "$gradle"; then
+    return 0
+  fi
+
+  python3 - "$gradle" <<'PY'
+import re
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as fh:
+    lines = fh.read().splitlines()
+out = []
+inserted = False
+for line in lines:
+    out.append(line)
+    if inserted:
+        continue
+    if re.match(r"\s*release\s*\{", line):
+        indent = re.match(r"(\s*)", line).group(1) + "    "
+        out.append(f"{indent}// OLLMCHAT_SIDLOAD_RELEASE_SIGNING")
+        out.append(f"{indent}signingConfig signingConfigs.debug")
+        inserted = True
+if not inserted:
+    print("patch_pixiewood_gradle_release_signing: no release buildType", file=sys.stderr)
+    raise SystemExit(1)
+with open(path, "w", encoding="utf-8") as fh:
+    fh.write("\n".join(out) + "\n")
+PY
+}
+
 # Android only packages top-level lib/ABI/*.so from jniLibs. TLS uses static
 # gioopenssl linked into the app (g_io_openssl_load); no GIO modules in assets.
 write_ollmchat_android_runtime_tag() {
@@ -695,10 +731,22 @@ materialize_pixiewood_jni_libs() {
 }
 
 run_pixiewood_gradle_assemble() {
+  local assemble_release=false
+
+  if [ "$PIXIEWOOD_ASSEMBLE_RELEASE" = "1" ]; then
+    assemble_release=true
+  fi
+
   (
     cd "$ROOT_DIR/.pixiewood/android"
     export ANDROID_HOME="$ANDROID_SDK_ROOT"
+    if [ "$assemble_release" = true ]; then
+      patch_pixiewood_gradle_release_signing
+    fi
     ./gradlew --no-daemon assembleDebug
+    if [ "$assemble_release" = true ]; then
+      ./gradlew --no-daemon assembleRelease
+    fi
   )
 }
 
@@ -880,6 +928,9 @@ run_pixiewood_build() {
 
   if [ "$PIXIEWOOD_STRIP_DEBUG" = "1" ]; then
     echo "Built debug APK with native debug symbols stripped (PIXIEWOOD_STRIP_DEBUG=1)."
+  fi
+  if [ "$PIXIEWOOD_ASSEMBLE_RELEASE" = "1" ]; then
+    echo "Built debug and release Gradle APKs (PIXIEWOOD_ASSEMBLE_RELEASE=1)."
   fi
 
   echo "Generated Android artifacts under $ROOT_DIR/.pixiewood/android/app/build/outputs"

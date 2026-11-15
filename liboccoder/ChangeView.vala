@@ -143,8 +143,25 @@ namespace OLLMcoder
 					break;
 				}
 				var inc = parts.get(i);
-				inc.update_sum();
-				next.parts.add(inc);
+				var part = inc;
+				if (inc.accepted != 0) {
+					var text = "";
+					if (inc.new_line_end >= inc.new_line_start &&
+						inc.new_line_start >= 1 &&
+						inc.new_line_end <= lines.length) {
+						text = string.joinv("\n", lines[inc.new_line_start - 1:inc.new_line_end]);
+					}
+					part = new OLLMfiles.FileDiffPart() {
+						new_line_start = inc.new_line_start,
+						new_line_end = inc.new_line_end,
+						old_line_start = inc.old_line_start,
+						old_line_end = inc.old_line_end,
+						hunk_add = text,
+						unchanged = true
+					};
+				}
+				part.update_sum();
+				next.parts.add(part);
 				if (inc.new_line_end >= inc.new_line_start) {
 					new_at = inc.new_line_end + 1;
 				}
@@ -254,7 +271,7 @@ namespace OLLMcoder
 					var cur = this.parts.get(i);
 					var inc = next.parts.get(j);
 					var rel = cur.compare(inc);
-					if (rel == 2 || rel == 3) {
+					if ((rel == 2 || rel == 3) && cur.unchanged == inc.unchanged) {
 						at += cur.new_line_end < cur.new_line_start ? 0 : cur.new_line_end - cur.new_line_start + 1;
 						if (!cur.unchanged) {
 							at += cur.old_line_end < cur.old_line_start ? 0 : cur.old_line_end - cur.old_line_start + 1;
@@ -263,23 +280,25 @@ namespace OLLMcoder
 						j++;
 						continue;
 					}
-					if (rel == 1) {
+					if (rel == 1 || ((rel == 2 || rel == 3) && cur.unchanged != inc.unchanged)) {
 						put = true;
 						take = true;
 					}
 					if (rel == 0) {
 						var later_next = j + 1;
 						while (later_next < next.parts.size) {
-							var ahead = cur.compare(next.parts.get(later_next));
-							if (ahead == 2 || ahead == 3) {
+							var cand = next.parts.get(later_next);
+							var ahead = cur.compare(cand);
+							if ((ahead == 2 || ahead == 3) && cur.unchanged == cand.unchanged) {
 								break;
 							}
 							later_next++;
 						}
 						var later_cur = i + 1;
 						while (later_cur < this.parts.size) {
-							var ahead = inc.compare(this.parts.get(later_cur));
-							if (ahead == 2 || ahead == 3) {
+							var cand = this.parts.get(later_cur);
+							var ahead = inc.compare(cand);
+							if ((ahead == 2 || ahead == 3) && inc.unchanged == cand.unchanged) {
 								break;
 							}
 							later_cur++;

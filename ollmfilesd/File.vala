@@ -312,7 +312,10 @@ namespace OLLMfilesd
 		) {
 			var file = this.manager.get_file_from_active_project(path);
 			var status = FileUpdateStatus.NO_CHANGE;
-			if (file.mtime_on_disk() > last_known_mtime) {
+			if (file == null && GLib.FileUtils.test(path, GLib.FileTest.EXISTS)) {
+				status = FileUpdateStatus.CHANGED;
+			}
+			if (file != null && file.mtime_on_disk() > last_known_mtime) {
 				status = FileUpdateStatus.CHANGED;
 			}
 			request.reply(new OLLMrpc.Response() {

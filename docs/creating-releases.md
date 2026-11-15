@@ -38,7 +38,7 @@ CI then:
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
 3. AppImage builds (sqgipkg) are currently disabled in the `Release` workflow (manual runs still work via **Release - AppImage**).
 4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**, plus one MSYS2 package per library: **`mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst`**.
-5. Builds the **Android** APK (`ollmchat-android-v*-debug.apk`). An Android failure fails the Release workflow. Publish does not run, so neither GitHub Release is created.
+5. Builds **Android** APKs on the version tag: `ollmchat-v*.apk` (Gradle release) and `ollmchat-v*-debug.apk` (Gradle debug), from one native compile. An Android failure fails the Release workflow. Publish does not run, so neither GitHub Release is created.
 6. On a tag push, publishes **two** GitHub Releases only after Android, Debian, RPM, and Windows have all succeeded. Debian and RPM files go on `${tag}-packages` first (same commit, not marked Latest), then Windows Setup.exe, the library pacman packages, and the APK on the version tag so that tag appears above packages on the Releases page. Publish also refuses to create those releases when the APK artifact is missing.
 
 AppImage packaging is configured in [`sqgipkg.json`](../sqgipkg.json) (Linux only). Debian packaging lives under [`debian/`](../debian/). The RPM spec is [`packaging/rpm/ollmchat.spec`](../packaging/rpm/ollmchat.spec).
@@ -113,7 +113,8 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only |
    | `OLLMchat-<version>-Setup.exe` | Windows installer (MSYS2 / WebView2); remote backends only |
    | `mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst` | Windows UCRT64 library (DLL, import library, header, VAPI; GIR when the build emits one). One file per library: `libocsqlite`, `libocrpc`, `libocmarkdown`, `libollamaweb`, `libochf`, `libocmarkdowngtk`, `libocfiles`, `libollmchat`, `libocwebkit`, `libocvector2`, `libocbwrap`, `libocmcp`, `liboctools`, `liboccoder`, `libollmchatgtk`. `libocvector2` also contains `libfaiss.dll`. |
-   | `ollmchat-android-v*-debug.apk` | Android client (arm64; sideload) |
+   | `ollmchat-v*.apk` | Android client (arm64; Gradle release; sideload) |
+   | `ollmchat-v*-debug.apk` | Same build, Gradle debug (optional; may drop later) |
    | `<name>-arm-v31-<version>.pixie` | Android library (one file per library the APK build installed). `release.pins` on `main` points at these files. The Valadoc Pages workflow publishes it at `https://roojs.github.io/OLLMchat/release.pins`. The pin file is not attached to the release. |
 
    **Packages tag** (`v1.3.0-packages`):

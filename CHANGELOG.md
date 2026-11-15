@@ -21,6 +21,7 @@ Work since **1.4.11** (2026-11-12).
 
 - The Windows build installs the prebuilt `faiss` MSYS2 package (`1.16.0`) and ships `libocvector2` and `ollmfilesd` again
 - Release CI skips the AppImage build for now (manual **Release - AppImage** remains available)
+- Version tags attach `ollmchat-vX.Y.Z.apk` and `ollmchat-vX.Y.Z-debug.apk` (one native build, Gradle release plus debug)
 
 ### Fixed
 
