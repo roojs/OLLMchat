@@ -99,6 +99,22 @@ namespace OLLMcoder
 			public OLLMfiles.File? current_file { get; private set; default = null; }
 
 			/**
+			 * Pending review rows from the last refresh, keyed by path.
+			 *
+			 * Same rows as {@link OLLMfiles.ReviewFiles.file_map}. A
+			 * row that leaves was just reviewed. A row that arrives
+			 * while {@link follow_new_change} is set is a new chat write.
+			 */
+			private Gee.HashMap<string, OLLMfiles.FileWithHistory> pending_files {
+				get; set; default = new Gee.HashMap<string, OLLMfiles.FileWithHistory>();
+			}
+
+			/**
+			 * The next refresh came from a change notification.
+			 */
+			private bool follow_new_change = false;
+
+			/**
 			 * Emitted when opening a file starts.
 			 *
 			 * {@link CoderView} shows the loading overlay here. The
@@ -157,6 +173,7 @@ namespace OLLMcoder
 						|| notif.message != this.manager.active_project.path) {
 						return;
 					}
+					this.follow_new_change = true;
 					this.manager.review_files.refresh.begin();
 					if (this.current_file == null) {
 						return;
@@ -190,37 +207,78 @@ namespace OLLMcoder
 				this.manager.review_files.refreshed.connect(() => {
 					var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
 					rows.add_all(this.manager.review_files.file_map.values);
-					this.review_bar.sync_pending(rows, this.current_file);
-					if (this.review_bar.queue.size < 1) {
-						if (this.current_file != null) {
-							this.close_file();
+					var previous = this.pending_files;
+					var now = new Gee.HashMap<string, OLLMfiles.FileWithHistory>();
+					var arrived_path = "";
+					var arrived_id = (int64) 0;
+					foreach (var row in rows) {
+						now.set(row.path, row);
+						if (!this.follow_new_change || previous.has_key(row.path)) {
+							continue;
 						}
+						if (arrived_path != "" && row.approve_id <= arrived_id) {
+							continue;
+						}
+						arrived_path = row.path;
+						arrived_id = row.approve_id;
+					}
+					this.follow_new_change = false;
+					this.pending_files = now;
+					this.review_bar.sync_pending(rows, this.current_file);
+					if (arrived_path != "" &&
+						(this.current_file == null || this.current_file.path != arrived_path)) {
+						this.open_pending_path(arrived_path);
 						return;
 					}
-					if (this.current_file != null
-						&& this.manager.review_files.file_map.has_key(this.current_file.path)) {
+					if (this.current_file != null && now.has_key(this.current_file.path)) {
 						this.show_pending_diff.begin(this.current_file);
 						return;
 					}
-					var first = this.review_bar.queue.get(0).path;
-					var cached = this.manager.file_cache.get(first) as OLLMfiles.File;
-					if (cached != null) {
-						this.open_file.begin(cached);
-						return;
-					}
-					if (this.manager.active_project == null) {
-						return;
-					}
-					this.manager.active_project.fetch_file.begin(first, (obj, res) => {
-						var file = this.manager.active_project.fetch_file.end(res);
-						if (file == null) {
+					if (this.current_file != null && previous.has_key(this.current_file.path)) {
+						if (this.review_bar.queue.size < 1) {
+							this.close_file();
 							return;
 						}
-						if (this.current_file != null
-							&& this.manager.review_files.file_map.has_key(this.current_file.path)) {
+						this.open_pending_path(this.review_bar.queue.get(0).path);
+						return;
+					}
+					if (this.review_bar.queue.size < 1) {
+						return;
+					}
+					if (this.current_file == null ||
+						this.current_file.path != this.review_bar.queue.get(this.review_bar.file_index).path) {
+						return;
+					}
+					var row = this.review_bar.queue.get(this.review_bar.file_index);
+					var editor = this.current_file;
+					this.manager.rpc.call.begin(new OLLMrpc.Request() {
+						method = "FileHistory.parts",
+						args = OLLMrpc.args("x", row.approve_id)
+					}, (obj, res) => {
+						OLLMrpc.Response response;
+						try {
+							response = this.manager.rpc.call.end(res);
+						} catch (GLib.Error e) {
+							GLib.warning("Failed to load diff parts for %s: %s", row.path, e.message);
 							return;
 						}
-						this.open_file.begin(file);
+						if (this.current_file != editor) {
+							return;
+						}
+						if (response.error != null) {
+							GLib.warning("Failed to load diff parts for %s: %s",
+								row.path, response.error.message);
+							return;
+						}
+						if (response.retval.type() == GLib.Type.INVALID) {
+							this.review_bar.update_diff(
+								new Gee.ArrayList<OLLMfiles.FileDiffPart>(),
+								this.review_bar.file_index);
+							return;
+						}
+						this.review_bar.update_diff(
+							(Gee.ArrayList<OLLMfiles.FileDiffPart>) response.retval.get_object(),
+							this.review_bar.file_index);
 					});
 				});
 			
@@ -841,6 +899,9 @@ namespace OLLMcoder
 				this.change_view.apply(proposal);
 				(this.source_view.buffer as GtkSource.Buffer).set_modified(false);
 				this.scrolled_window.visible = true;
+				if (!this.manager.review_files.file_map.has_key(file.path)) {
+					return;
+				}
 				this.review_bar.update_diff(parts, this.review_bar.file_index);
 				if (!this.deleted_banner.visible) {
 					return;
@@ -851,11 +912,47 @@ namespace OLLMcoder
 			}
 		
 			/**
-			 * Navigate to a specific line in the current file.
-			 * 
-			 * @param line_number The line number to navigate to (0-based)
+			 * Open a pending path from the cache, or fetch it.
+			 *
+			 * A fetch that finishes after the user has opened a
+			 * pending file leaves that file alone.
+			 *
+			 * @param path absolute path from the review queue
 			 */
-			public void navigate_to_line(int line_number)
+			private void open_pending_path(string path)
+			{
+				var cached = this.manager.file_cache.get(path) as OLLMfiles.File;
+				if (cached != null) {
+					this.open_file.begin(cached);
+					return;
+				}
+				if (this.manager.active_project == null) {
+					return;
+				}
+				this.manager.active_project.fetch_file.begin(path, (obj, res) => {
+					var file = this.manager.active_project.fetch_file.end(res);
+					if (file == null) {
+						return;
+					}
+					if (this.current_file != null &&
+						this.manager.review_files.file_map.has_key(this.current_file.path)) {
+						return;
+					}
+					this.open_file.begin(file);
+				});
+			}
+
+			/**
+			 * Navigate to a line in the current file.
+			 *
+			 * When a whole-file diff is showing, {@code line_number}
+			 * is a disk line and removed lines shift the buffer.
+			 * Review jumps pass a buffer line and center it.
+			 *
+			 * @param line_number 0-based line to show
+			 * @param align_middle put that line in the middle of the view
+			 */
+			public void navigate_to_line(int line_number, bool align_middle = false)
 			{
 				var buffer = this.source_view.buffer;
 				var display_line = line_number;
@@ -876,7 +973,7 @@ namespace OLLMcoder
 					return;
 				}
 				buffer.place_cursor(iter);
-				this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.5);
+				this.source_view.scroll_to_iter(iter, 0.0, align_middle, 0.0, 0.5);
 			}
 		
 			/**

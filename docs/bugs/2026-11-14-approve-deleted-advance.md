@@ -34,4 +34,4 @@
 
 - 🔷 ⏳ Accept a deleted pending file with more pending rows behind it → next file opens.
 - 🔷 ⏳ Accept the last pending file → editor closes, header shows **Select file**.
-- ℹ️ 2026-11-16 — `refreshed` also opens `queue.get(0)` whenever the open file is not pending, and closes any open file when the queue is empty. That replaces a file the user just opened. The narrower rule is in [`2026-11-16-diff-preview-open-and-map.md`](2026-11-16-diff-preview-open-and-map.md). The two checks above stay: advance or close only for the file that was just reviewed.
+- ℹ️ 2026-11-16 — `refreshed` used to open `queue.get(0)` whenever the open file was not pending, and closed any open file when the queue was empty. That stole a file the user had just opened. Closed in [`done/2026-11-16-FIXED-diff-preview-open-and-map.md`](done/2026-11-16-FIXED-diff-preview-open-and-map.md). The two checks above stay: advance or close only for the file that was just reviewed.

@@ -345,7 +345,10 @@ namespace OLLMcoder
 					md_button.icon_name = "document-print-symbolic";
 					md_button.tooltip_text = "Change to markdown";
 					this.doc.visible = false;
+					this.doc.vexpand = false;
+					this.editor.vexpand = true;
 					this.editor.visible = true;
+					this.editor.get_first_child().visible = true;
 					loading_spinner.spinning = false;
 					loading_row.visible = false;
 					editor_column.opacity = 1;
@@ -362,7 +365,10 @@ namespace OLLMcoder
 				showing_doc = true;
 				md_button.icon_name = "format-justify-left-symbolic";
 				md_button.tooltip_text = "Change to source view";
-				this.editor.visible = false;
+				this.doc.vexpand = true;
+				this.editor.vexpand = false;
+				this.editor.visible = true;
+				this.editor.get_first_child().visible = false;
 				this.doc.visible = true;
 				loading_spinner.spinning = true;
 				loading_row.visible = true;
@@ -395,7 +401,10 @@ namespace OLLMcoder
 				showing_doc = false;
 				md_button.visible = false;
 				this.doc.visible = false;
+				this.doc.vexpand = false;
+				this.editor.vexpand = true;
 				this.editor.visible = true;
+				this.editor.get_first_child().visible = true;
 				loading_spinner.spinning = false;
 				loading_row.visible = false;
 				editor_column.opacity = 1;
@@ -422,7 +431,10 @@ namespace OLLMcoder
 					md_button.icon_name = "document-print-symbolic";
 					md_button.tooltip_text = "Change to markdown";
 					this.doc.visible = false;
+					this.doc.vexpand = false;
+					this.editor.vexpand = true;
 					this.editor.visible = true;
+					this.editor.get_first_child().visible = true;
 					loading_spinner.spinning = false;
 					loading_row.visible = false;
 					editor_column.opacity = 1;
@@ -433,7 +445,10 @@ namespace OLLMcoder
 				showing_doc = true;
 				md_button.icon_name = "format-justify-left-symbolic";
 				md_button.tooltip_text = "Change to source view";
-				this.editor.visible = false;
+				this.doc.vexpand = true;
+				this.editor.vexpand = false;
+				this.editor.visible = true;
+				this.editor.get_first_child().visible = false;
 				this.doc.visible = true;
 				GLib.Timeout.add(16, () => {
 					if (epoch != open_epoch) {

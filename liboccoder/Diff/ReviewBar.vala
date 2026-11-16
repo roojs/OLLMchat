@@ -161,7 +161,6 @@ namespace OLLMcoder.Diff
 		private int map_height = 28;
 		private int map_width = 0;
 		private double map_gap_width = 0.0;
-		private int hunk_line_sum = 0;
 		private bool map_scroll_mode = false;
 		private double map_scroll_x = 0.0;
 		private double map_content_width = 0.0;
@@ -420,8 +419,14 @@ namespace OLLMcoder.Diff
 				if (this.hunks.size < 1) {
 					return;
 				}
+				if (this.source_view.current_file == null ||
+					this.file_index >= this.queue.size ||
+					this.source_view.current_file.path != this.queue.get(this.file_index).path) {
+					this.file_index_changed(this.file_index);
+					return;
+				}
 				this.active = this.active < 1 ? this.hunks.size - 1 : this.active - 1;
-				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+				this.source_view.navigate_to_line(this.buffer_line(this.active), true);
 				switch (this.hunks.get(this.active).decision) {
 					case HunkDecision.PENDING:
 						this.accept_btn.visible = true;
@@ -464,8 +469,14 @@ namespace OLLMcoder.Diff
 				if (this.hunks.size < 1) {
 					return;
 				}
+				if (this.source_view.current_file == null ||
+					this.file_index >= this.queue.size ||
+					this.source_view.current_file.path != this.queue.get(this.file_index).path) {
+					this.file_index_changed(this.file_index);
+					return;
+				}
 				this.active = (this.active + 1) % this.hunks.size;
-				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+				this.source_view.navigate_to_line(this.buffer_line(this.active), true);
 				switch (this.hunks.get(this.active).decision) {
 					case HunkDecision.PENDING:
 						this.accept_btn.visible = true;
@@ -528,6 +539,19 @@ namespace OLLMcoder.Diff
 				this.map_area.queue_draw();
 			});
 			this.map_area.add_controller(map_drag);
+			var map_motion = new Gtk.EventControllerMotion();
+			map_motion.motion.connect((x, y) => {
+				var i = this.hunks.index_at(this.map_scroll_mode ? x + this.map_scroll_x : x);
+				if (i < 0) {
+					this.map_area.tooltip_text = "";
+					return;
+				}
+				var hunk = this.hunks.get(i);
+				this.map_area.tooltip_text = hunk.line_start == hunk.line_end
+					? "Line %d".printf(hunk.line_start)
+					: "Lines %d–%d".printf(hunk.line_start, hunk.line_end);
+			});
+			this.map_area.add_controller(map_motion);
 			this.pending_label = new Gtk.Label("") {
 				hexpand = true,
 				xalign = 0.5f,
@@ -554,7 +578,7 @@ namespace OLLMcoder.Diff
 				this.active = this.hunks.pending_after(-1);
 				this.active = this.active < 0 && this.hunks.size > 0 ? 0 : this.active;
 				if (this.active >= 0) {
-					this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+					this.source_view.navigate_to_line(this.buffer_line(this.active), true);
 				}
 				var pending = this.active >= 0
 					&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
@@ -1008,9 +1032,9 @@ namespace OLLMcoder.Diff
 			OLLMfiles.Diff.Differ differ,
 			int file_index = -1)
 		{
+			this.parts.clear();
 			this.file_index = file_index >= 0 ? file_index : this.file_index;
 			this.hunks.clear();
-			this.hunk_line_sum = 0;
 			differ.diff();
 			var bi = 0;
 			var bulk_decision = HunkDecision.PENDING;
@@ -1025,7 +1049,6 @@ namespace OLLMcoder.Diff
 					band.decision = bulk_decision;
 				}
 				this.hunks.add(band);
-				this.hunk_line_sum += band.line_count;
 				bi++;
 			}
 			this.file_nav.visible = this.live_queue ? this.file_count > 0 : this.file_count > 1;
@@ -1053,7 +1076,7 @@ namespace OLLMcoder.Diff
 			this.active = this.hunks.pending_after(-1);
 			this.active = this.active < 0 && this.hunks.size > 0 ? 0 : this.active;
 			if (this.active >= 0) {
-				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+				this.source_view.navigate_to_line(this.buffer_line(this.active), true);
 			}
 			var pending = this.active >= 0
 				&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
@@ -1082,12 +1105,17 @@ namespace OLLMcoder.Diff
 			if (parts.size < 1) {
 				this.parts = parts;
 				this.hunks.clear();
-				this.hunk_line_sum = 0;
 				this.visible = this.file_count > 0;
 				this.file_nav.visible = this.file_count > 0;
 				this.accept_btn.visible = this.file_count > 0;
 				this.reject_btn.visible = this.file_count > 0;
 				this.unapprove_btn.visible = false;
+				if (this.source_view.current_file == null ||
+					this.file_index >= this.queue.size ||
+					this.source_view.current_file.path != this.queue.get(this.file_index).path) {
+					this.accept_btn.visible = false;
+					this.reject_btn.visible = false;
+				}
 				GLib.debug("review bar visible=%s files=%d parts=0 hunks=0",
 					this.visible.to_string(), this.file_count);
 				return;
@@ -1098,7 +1126,6 @@ namespace OLLMcoder.Diff
 			this.parts = parts;
 			this.file_index = file_index >= 0 ? file_index : this.file_index;
 			this.hunks.clear();
-			this.hunk_line_sum = 0;
 			var bi = 0;
 			var bulk_decision = HunkDecision.PENDING;
 			if (this.file_index < this.file_bulk.length) {
@@ -1137,7 +1164,6 @@ namespace OLLMcoder.Diff
 					band.decision = bulk_decision;
 				}
 				this.hunks.add(band);
-				this.hunk_line_sum += band.line_count;
 				bi++;
 			}
 			this.file_nav.visible = this.live_queue ? this.file_count > 0 : this.file_count > 1;
@@ -1166,13 +1192,16 @@ namespace OLLMcoder.Diff
 				this.active = this.hunks.pending_after(-1);
 				this.active = this.active < 0 && this.hunks.size > 0 ? 0 : this.active;
 			}
-			if (this.active >= 0) {
-				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+			var editor_is_bar = this.source_view.current_file != null &&
+				this.file_index < this.queue.size &&
+				this.source_view.current_file.path == this.queue.get(this.file_index).path;
+			if (editor_is_bar && (!same_file || keep != this.active) && this.active >= 0) {
+				this.source_view.navigate_to_line(this.buffer_line(this.active), true);
 			}
 			var pending = this.active >= 0
 				&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
-			this.accept_btn.visible = pending;
-			this.reject_btn.visible = pending;
+			this.accept_btn.visible = pending && editor_is_bar;
+			this.reject_btn.visible = pending && editor_is_bar;
 			this.visible = this.file_count > 0 || this.hunks.size > 0;
 			GLib.debug("review bar visible=%s files=%d parts=%d hunks=%d",
 				this.visible.to_string(), this.file_count, this.parts.size, this.hunks.size);
@@ -1183,6 +1212,39 @@ namespace OLLMcoder.Diff
 			GLib.Idle.add_once(() => {
 				this.on_width();
 			});
+		}
+
+		/**
+		 * Editor line for hunk {@code index}.
+		 *
+		 * Pending hunks insert removed lines before added lines, so
+		 * earlier pending removals shift this hunk down. Decided hunks
+		 * are plain new-file lines. The Differ path has no parts, so
+		 * this returns that band's file line instead.
+		 *
+		 * @param index hunk position in {@link hunks}
+		 * @return 0-based line for {@link SourceView.navigate_to_line}
+		 */
+		private int buffer_line(int index)
+		{
+			if (index >= this.parts.size) {
+				return this.hunks.get(index).scroll_line;
+			}
+			var extra = 0;
+			for (var n = 0; n < index; n++) {
+				if (this.parts.get(n).accepted != 0) {
+					continue;
+				}
+				if (this.parts.get(n).old_line_end < this.parts.get(n).old_line_start) {
+					continue;
+				}
+				extra += this.parts.get(n).old_line_end - this.parts.get(n).old_line_start + 1;
+			}
+			var top = this.parts.get(index).new_line_start - 1 + extra;
+			if (top < 0) {
+				return 0;
+			}
+			return top;
 		}
 
 		private void on_width()
@@ -1198,47 +1260,42 @@ namespace OLLMcoder.Diff
 				return;
 			}
 			this.map_width = w;
-			var sq = (double) this.map_height;
-			var half_sq = sq * 0.5;
-			var weight_sum = int.max(1, this.hunk_line_sum);
+			var unit = (double) this.map_height;
+			var cap = unit * 2.0;
+			var capped = 0.0;
+			foreach (var hunk in this.hunks) {
+				var band = (double) int.max(1, hunk.line_count) * unit;
+				hunk.map_width = band > cap ? cap : band;
+				capped += hunk.map_width;
+			}
 			var gap_count = this.hunks.size > 1 ? this.hunks.size - 1 : 0;
 			var pad_slots = gap_count + 2;
-			var band_total_sq = (double) weight_sum * sq;
 			var width = (double) w;
-			var gap = sq;
-			if (band_total_sq + (double) pad_slots * sq > width) {
-				gap = half_sq;
+			var gap = unit;
+			if (capped + (double) pad_slots * unit > width) {
+				gap = unit * 0.5;
 			}
-			var fits_square = band_total_sq + (double) pad_slots * gap <= width;
-			var needs_scroll = !fits_square
-				&& (width - (double) pad_slots * half_sq) / (double) weight_sum < half_sq;
+			var needs_scroll = capped + (double) pad_slots * gap > width;
 			this.map_scroll_mode = needs_scroll;
-			this.map_gap_width = needs_scroll ? half_sq : gap;
+			this.map_gap_width = gap;
 			this.map_scroll_left.visible = needs_scroll;
 			this.map_scroll_right.visible = needs_scroll;
 			if (!needs_scroll) {
 				this.map_scroll_x = 0.0;
 			}
-			var layout_gap = this.map_gap_width;
-			var avail = needs_scroll
-				? 0.0
-				: double.max(width - (double) pad_slots * layout_gap, half_sq);
-			var pos = layout_gap;
+			var pos = gap;
 			foreach (var hunk in this.hunks) {
-				pos += hunk.band_index > 0 ? layout_gap : 0.0;
+				if (hunk.band_index > 0) {
+					pos += gap;
+				}
 				hunk.map_start = pos;
-				hunk.map_width = needs_scroll
-					? (double) hunk.line_count * half_sq
-					: (fits_square
-						? (double) hunk.line_count * sq
-						: avail * (double) hunk.line_count / (double) weight_sum);
 				pos += hunk.map_width;
 			}
 			if (!needs_scroll) {
 				this.map_area.queue_draw();
 				return;
 			}
-			this.map_content_width = pos + half_sq;
+			this.map_content_width = pos + gap;
 			var max_scroll = this.map_content_width - width;
 			if (max_scroll < 0) {
 				max_scroll = 0;
@@ -1367,8 +1424,13 @@ namespace OLLMcoder.Diff
 		private void next()
 		{
 			this.active = this.hunks.pending_after(this.active);
+			if (this.source_view.current_file == null ||
+				this.file_index >= this.queue.size ||
+				this.source_view.current_file.path != this.queue.get(this.file_index).path) {
+				return;
+			}
 			if (this.active >= 0) {
-				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+				this.source_view.navigate_to_line(this.buffer_line(this.active), true);
 			}
 			var pending = this.active >= 0;
 			this.accept_btn.visible = pending;
@@ -1415,7 +1477,14 @@ namespace OLLMcoder.Diff
 				return;
 			}
 			this.active = i;
-			this.source_view.navigate_to_line(this.hunks.get(i).scroll_line);
+			if (this.source_view.current_file == null ||
+				this.file_index >= this.queue.size ||
+				this.source_view.current_file.path != this.queue.get(this.file_index).path) {
+				this.file_index_changed(this.file_index);
+				this.map_area.queue_draw();
+				return;
+			}
+			this.source_view.navigate_to_line(this.buffer_line(i), true);
 			switch (this.hunks.get(i).decision) {
 				case HunkDecision.PENDING:
 					this.accept_btn.visible = true;
@@ -1681,38 +1750,50 @@ namespace OLLMcoder.Diff
 			this.queue = rows;
 			this.file_count = this.queue.size;
 			this.file_bulk = new HunkDecision[int.max(1, this.file_count)];
-			this.visible = this.file_count > 0;
+			this.visible = this.file_count > 0 || current_file != null;
 			GLib.debug("review queue files=%d visible=%s",
 				this.file_count, this.visible.to_string());
-			this.file_nav.visible = this.file_count > 0;
-			this.file_prev.visible = this.file_count > 1;
-			this.file_next.visible = this.file_count > 1;
+			this.file_nav.visible = this.file_count > 0 || current_file != null;
+			this.file_prev.visible = this.file_count > 1 && on_list;
+			this.file_next.visible = this.file_count > 1 && on_list;
+			this.file_nav.hexpand = !on_list;
+			this.file_nav_btn.hexpand = !on_list;
+			this.map_host.visible = on_list;
+			this.bulk_btn.visible = on_list;
 			if (this.file_count < 1) {
+				this.file_nav_btn.label = "no changes need reviewing";
+				this.accept_btn.visible = false;
+				this.reject_btn.visible = false;
+				this.pending_label.visible = false;
+				this.map_area.visible = false;
 				return;
 			}
 			if (on_list) {
 				this.file_nav_btn.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
+				this.accept_btn.visible = true;
+				this.reject_btn.visible = true;
+				this.pending_label.visible = false;
+				this.map_area.visible = true;
 			}
 			if (!on_list) {
-				this.file_nav_btn.label = "%d files".printf(this.file_count);
 				this.file_index = 0;
+				this.file_nav_btn.label = "changes need reviewing";
+				this.accept_btn.visible = false;
+				this.reject_btn.visible = false;
+				this.pending_label.visible = false;
+				this.map_area.visible = false;
+				this.map_scroll_left.visible = false;
+				this.map_scroll_right.visible = false;
 			}
-			this.accept_btn.visible = true;
-			this.reject_btn.visible = true;
-			this.pending_label.visible = !on_list;
 			if (this.file_count > 1) {
 				this.file_prev.tooltip_text = this.queue.get(
 					(this.file_index - 1 + this.file_count) % this.file_count).path_basename;
 				this.file_next.tooltip_text = this.queue.get(
 					(this.file_index + 1) % this.file_count).path_basename;
 			}
-			this.map_area.visible = on_list;
-			this.map_scroll_left.visible = on_list;
-			this.map_scroll_right.visible = on_list;
-			if (!on_list) {
-				this.pending_label.label = "%d changes pending review".printf(
-					this.file_count);
+			if (on_list) {
+				this.map_area.visible = true;
 			}
 			this.file_list = new Gtk.ListBox() {
 				selection_mode = Gtk.SelectionMode.SINGLE,
@@ -1760,7 +1841,15 @@ namespace OLLMcoder.Diff
 			}
 			this.file_list.row_activated.connect((line) => {
 				var pick = line.get_index();
-				if (this.file_index == pick) {
+				if (pick < 0 || pick >= this.queue.size) {
+					this.file_menu_popover.popdown();
+					return;
+				}
+				var open_path = "";
+				if (this.source_view.current_file != null) {
+					open_path = this.source_view.current_file.path;
+				}
+				if (open_path == this.queue.get(pick).path) {
 					this.file_menu_popover.popdown();
 					return;
 				}

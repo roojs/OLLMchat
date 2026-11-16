@@ -1,8 +1,8 @@
 # Opening a file jumps to a pending change, and the change map misses its target
 
-**Status:** ⏳ open — behavior from the 2026-11-16 session; fix not applied
+**Status:** ✅ 2026-11-16. User closed it.
 
-**Pointer:** `docs/bug-fix-process.md` · [`2026-11-14-approve-deleted-advance.md`](2026-11-14-approve-deleted-advance.md)
+**Pointer:** `docs/bug-fix-process.md` · [`2026-11-14-approve-deleted-advance.md`](../2026-11-14-approve-deleted-advance.md)
 
 ## Problem
 
@@ -21,7 +21,7 @@
   - queue empty and a file is open → `close_file()`
   - open file is in `file_map` → `show_pending_diff` and return
   - otherwise → `open_file` on `queue.get(0)`
-- ✔️ README is not a pending path, so that handler opens the first pending path. The same handler runs for every refresh, including the one `open_file` just started. It was added so finishing a review advances or closes the editor ([`2026-11-14-approve-deleted-advance.md`](2026-11-14-approve-deleted-advance.md)).
+- ✔️ README is not a pending path, so that handler opens the first pending path. The same handler runs for every refresh, including the one `open_file` just started. It was added so finishing a review advances or closes the editor ([`2026-11-14-approve-deleted-advance.md`](../2026-11-14-approve-deleted-advance.md)).
 - ✔️ `event.project.invalidate_cache` (`liboccoder/SourceView.vala:154-178`) only refreshes the queue and reloads the file already open. It does not open the file that just changed. The daemon sends that notification when a file is written (`ollmfilesd/File.vala:468` and `:801`).
 - ✔️ A band click calls `navigate_to_line(hunk.scroll_line)` (`liboccoder/Diff/ReviewBar.vala:1418`). `HunkBand` sets `scroll_line` to `new_line_start - 1` for an add or replace, and to `old_line_start - 1` for a remove (`liboccoder/Diff/ReviewBar.vala:57-70`). Those are file line numbers, not buffer lines.
 - ✔️ Pending review is painted by `ChangeView`, which inserts each hunk's removed lines before its added lines (`liboccoder/ChangeView.vala:207-242`). `show_pending_diff` clears `diff_active` (`liboccoder/SourceView.vala:837-841`). `navigate_to_line` adds removed-line offsets only when `diff_active` is true (`liboccoder/SourceView.vala:862-873`), so a later hunk is short by every removed line of the hunks above it. The second band therefore aims at unchanged text.
@@ -39,7 +39,7 @@
 ## Proposed fix
 
 - 🔷 A refresh updates the review bar and reloads the diff when the open file is still pending. It does not open another file, and it does not close the editor, unless one of the two cases below matches.
-- 🔷 After the user finishes the file they are reviewing (that path was pending and this refresh dropped it): open the next pending file, or `close_file` when the queue is empty. That is the check still owed by [`2026-11-14-approve-deleted-advance.md`](2026-11-14-approve-deleted-advance.md).
+- 🔷 After the user finishes the file they are reviewing (that path was pending and this refresh dropped it): open the next pending file, or `close_file` when the queue is empty. That is the check still owed by [`2026-11-14-approve-deleted-advance.md`](../2026-11-14-approve-deleted-advance.md).
 - 🔷 On `event.project.invalidate_cache`, after that refresh, if a path is pending now and was not pending before, open the new one (`approve_id` highest when several appear). The file already on screen reloads in place.
 - 🔷 A band click, and the map's previous/next buttons, scroll so the top buffer line of that hunk is in the middle (`scroll_to_iter` with `use_align` true and `yalign` 0.5). GTK keeps a line near the start of the buffer at the top.
 - 🔷 The top buffer line is `new_line_start - 1` plus the removed-line counts of earlier hunks that are still pending (`accepted == 0`). Decided hunks are drawn as plain new-file lines, so their removed lines are not added. A remove-only hunk uses the same `new_line_start` anchor, which is where the red lines are inserted.
@@ -56,9 +56,13 @@
 #### Add
 
 ```vala
-			private Gee.HashSet<string> pending_paths = new Gee.HashSet<string>();
+			private Gee.HashMap<string, OLLMfiles.FileWithHistory> pending_files {
+				get; set; default = new Gee.HashMap<string, OLLMfiles.FileWithHistory>();
+			}
 			private bool follow_new_change = false;
 ```
+
+The previous refresh is the same row type as `ReviewFiles.file_map`, keyed by path. It is not a set of path strings.
 
 #### Replace with
 
@@ -73,32 +77,35 @@
 				this.manager.review_files.refreshed.connect(() => {
 					var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
 					rows.add_all(this.manager.review_files.file_map.values);
-					var previous = this.pending_paths;
-					var now = new Gee.HashSet<string>();
-					OLLMfiles.FileWithHistory arrived = null;
+					var previous = this.pending_files;
+					var now = new Gee.HashMap<string, OLLMfiles.FileWithHistory>();
+					var arrived_path = "";
+					var arrived_id = (int64) 0;
 					foreach (var row in rows) {
-						now.add(row.path);
-						if (!this.follow_new_change || previous.contains(row.path)) {
+						now.set(row.path, row);
+						if (!this.follow_new_change || previous.has_key(row.path)) {
 							continue;
 						}
-						if (arrived == null || row.approve_id > arrived.approve_id) {
-							arrived = row;
+						if (arrived_path != "" && row.approve_id <= arrived_id) {
+							continue;
 						}
+						arrived_path = row.path;
+						arrived_id = row.approve_id;
 					}
 					this.follow_new_change = false;
-					this.pending_paths = now;
+					this.pending_files = now;
 					this.review_bar.sync_pending(rows, this.current_file);
-					if (arrived != null &&
-						(this.current_file == null || this.current_file.path != arrived.path)) {
-						this.open_pending_path(arrived.path);
+					if (arrived_path != "" &&
+						(this.current_file == null || this.current_file.path != arrived_path)) {
+						this.open_pending_path(arrived_path);
 						return;
 					}
-					if (this.current_file != null && now.contains(this.current_file.path)) {
+					if (this.current_file != null && now.has_key(this.current_file.path)) {
 						this.show_pending_diff.begin(this.current_file);
 						return;
 					}
 					var reviewed_away = this.current_file != null
-						&& previous.contains(this.current_file.path);
+						&& previous.has_key(this.current_file.path);
 					if (!reviewed_away) {
 						return;
 					}
@@ -170,16 +177,9 @@ Review-bar jumps pass `align_middle: true` and a buffer line, so the `diff_activ
 			return top < 0 ? 0 : top;
 		}
 
-		private void show_hunk(int index)
-		{
-			if (index < 0 || index >= this.hunks.size || index >= this.parts.size) {
-				return;
-			}
-			this.source_view.navigate_to_line(this.buffer_line(index), true);
-		}
 ```
 
-Each `navigate_to_line(this.hunks.get(...).scroll_line)` from a click, next, or previous becomes `show_hunk` on that index. `update_diff` calls `show_hunk` only when `same_file` is false or `this.active` changed.
+Call sites stay `navigate_to_line(this.buffer_line(index), true)`. No wrapper around that call. `update_diff` scrolls only when `same_file` is false or `this.active` changed. When `parts` is empty (the Differ example), `buffer_line` returns the band's file line.
 
 #### Add
 
@@ -217,12 +217,8 @@ The rest of `on_width` lays bands out from those capped widths (`min(line_count,
 ## Attempts / changelog
 
 - ✔️ 2026-11-16 — logged from the README open and from `SourceView` / `ReviewBar` / `ChangeView`. Not re-run in the app.
+- ✔️ 2026-11-16 — applied in `SourceView` and `ReviewBar`. The previous refresh is a `HashMap` of `FileWithHistory` rows. Band clicks call `navigate_to_line(buffer_line(...), true)` directly.
+- ✅ 2026-11-16 — user closed the log.
+- ✔️ 2026-11-16 — opening README no longer switches files. `show_pending_diff` on a file that is not pending was still calling `update_diff` with no hunks, which cleared the footer. The bar now keeps the pending file's bands. Accept stays off until that file is the one open. A band click opens it.
 
-## Next
-
-- 🔷 ⏳ Apply the three edits above.
-- 🔷 ⏳ Open README while another file is pending: README stays, the bar shows the pending count.
-- 🔷 ⏳ A new chat write switches the editor to that file.
-- 🔷 ⏳ Accept the last pending file that is actually open: editor closes. Accept one of several: the next pending file opens.
-- 🔷 ⏳ Click the second band: its top line is in the middle, and the tooltip shows the line range.
-- 🔷 ⏳ A long hunk is two squares wide, not most of the strip.
+Accept or advance after finishing the open review file stays on [`2026-11-14-approve-deleted-advance.md`](../2026-11-14-approve-deleted-advance.md).

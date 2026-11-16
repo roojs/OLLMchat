@@ -522,6 +522,58 @@ foreach part : ['1', '2', '3', '4', '5']
   )
 endforeach
 
+# SourceView review flow: real widgets, stub file server
+review_flow_rpath = ':'.join([
+  meson.current_build_dir() / '..' / 'libocrpc',
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocfiles',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollamaweb',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'liboccoder',
+])
+test_review_flow = executable('test-review-flow',
+  'review-flow-test.vala',
+  dependencies: [
+    dependency('gtk4'),
+    dependency('libadwaita-1'),
+    dependency('gtksourceview-5'),
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+    ocrpc_vapi_dep,
+    ollmchat_vapi_dep,
+    ocfiles_vapi_dep,
+    occoder_vapi_dep,
+    rpc_test_app_dep,
+  ],
+  link_with: [ollmchat_base_lib],
+  include_directories: [
+    include_directories('../libollmchat'),
+    include_directories('../libocfiles'),
+    include_directories('../liboccoder'),
+  ],
+  build_rpath: review_flow_rpath,
+  vala_args: rpc_test_vala_args + [
+    '--pkg=gtk4',
+    '--pkg=libadwaita-1',
+    '--pkg=gtksourceview-5',
+    '--pkg=ocfiles',
+    '--pkg=occoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+  ],
+)
+test('test-review-flow',
+  test_review_flow,
+  suite: 'coder',
+  timeout: 30,
+)
+
 # Response.Chat.check_back_token — oc-test-loop; assert twelve equidistant repeats trigger detection
 oc_test_loop_exe = get_variable('oc_test_loop', disabler())
 oc_test_loop_bin = meson.current_build_dir() / '..' / 'examples' / 'oc-test-loop'
