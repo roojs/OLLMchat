@@ -693,12 +693,18 @@ namespace OLLMrpc
 			GLib.Error? error
 		)
 		{
-			for (var i = 0; i < this.pending.size; i++) {
-				if (this.pending.get(i).request.id != id) {
+			/* set_value runs the waiter before this returns. That waiter
+			 * can replace_rpc and drop the last external ref (a file-server
+			 * reboot queued while hello is still completing). Keep one ref
+			 * so send_head is not started on a finalized client, and skip
+			 * it when that waiter already disconnected. */
+			Client hold = this;
+			for (var i = 0; i < hold.pending.size; i++) {
+				if (hold.pending.get(i).request.id != id) {
 					continue;
 				}
-				var entry = this.pending.get(i);
-				this.pending.remove_at(i);
+				var entry = hold.pending.get(i);
+				hold.pending.remove_at(i);
 				if (error != null) {
 					GLib.critical("RPC failed %s id=%d: %s",
 						entry.request.method, id, error.message);
@@ -711,10 +717,10 @@ namespace OLLMrpc
 					entry.done_response = response;
 					entry.promise.set_value(response);
 				}
-				if (this.sync_loop != null) {
-					this.sync_loop.quit();
-				} else if (this.poll_depth == 0) {
-					this.send_head.begin();
+				if (hold.sync_loop != null) {
+					hold.sync_loop.quit();
+				} else if (hold.poll_depth == 0 && hold.connected) {
+					hold.send_head.begin();
 				}
 				return;
 			}
@@ -748,7 +754,7 @@ namespace OLLMrpc
 				this.disconnect();
 				return true;
 			}
-			if (this.bin.in_stream.get_available() > 0) {
+			if (this.bin != null && this.bin.in_stream.get_available() > 0) {
 				return this.poll_drain_readable(source);
 			}
 			return true;
