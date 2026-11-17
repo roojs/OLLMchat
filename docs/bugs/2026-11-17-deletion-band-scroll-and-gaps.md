@@ -1,6 +1,6 @@
 # Deletion bands scroll past the buffer, and white rows sit in the red span
 
-**Status:** ⏳ source-mark wash is in the rebuilt example; blank rows not yet looked at on screen
+**Status:** ⏳ glyph highlight removed; blank rows still use the same pale line wash, not yet looked at on screen
 
 **Pointer:** `docs/bug-fix-process.md` · [`done/2026-11-16-FIXED-diff-preview-open-and-map.md`](done/2026-11-16-FIXED-diff-preview-open-and-map.md)
 
