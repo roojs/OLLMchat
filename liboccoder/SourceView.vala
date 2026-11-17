@@ -994,7 +994,7 @@ namespace OLLMcoder
 			/**
 			 * Navigate to a line in the current file.
 			 *
-			 * When a whole-file diff is showing, {@code line_number}
+			 * When a whole-file diff is showing, ''line_number''
 			 * is a disk line and removed lines shift the buffer.
 			 * Review jumps pass a buffer line and center it.
 			 * A line past the buffer scrolls to the end.

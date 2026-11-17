@@ -1217,7 +1217,7 @@ namespace OLLMcoder.Diff
 		}
 
 		/**
-		 * Editor line for hunk {@code index}.
+		 * Editor line for hunk ''index''.
 		 *
 		 * Pending hunks insert removed lines before added lines, so
 		 * earlier pending removals shift this hunk down. Decided hunks

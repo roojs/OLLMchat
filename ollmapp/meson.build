@@ -169,7 +169,6 @@ if host_machine.system() == 'android'
     'android/AgentDropdown.vala',
     'BusyDialog.vala',
     'android/Application.vala',
-    'android/Spinner.vala',
     'android/OllmchatWindow.vala',
     'android/MainDialog.vala',
     'android/TouchDebug.vala',
@@ -230,6 +229,7 @@ if host_machine.system() == 'android'
     vala_args: [
       '--pkg=gtk4',
       '--pkg=libadwaita-1',
+      '--pkg=adw-spinner',
       '--pkg=gtksourceview-5',
       '--pkg=sqlite3',
       '--pkg=ocsqlite',
@@ -250,6 +250,7 @@ if host_machine.system() == 'android'
       '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
       '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
       '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+      '--vapidir', meson.current_source_dir() / 'android',
     ] + webkitgtk_android_vala_args,
     android_exe_type: 'application',
     install: true,
