@@ -252,6 +252,18 @@ namespace OLLMrpc
 					n_slots += 2;
 					continue;
 				}
+				if (rest.has_prefix("ai")) {
+					offset += 2;
+					n_wire += 1;
+					n_slots += 2;
+					continue;
+				}
+				if (rest.has_prefix("ax")) {
+					offset += 2;
+					n_wire += 1;
+					n_slots += 2;
+					continue;
+				}
 				if (rest.has_prefix("V")) {
 					offset += 1;
 					n_wire += 1;
@@ -317,6 +329,58 @@ namespace OLLMrpc
 					slots[2 + si + 1].set_int32(((string[]) pin[pin.length - 1]).length);
 					atypes[2 + si + 1] = Libffi.SINT32;
 					offset += 1;
+					si += 2;
+					ai += 1;
+					continue;
+				}
+				if (rest.has_prefix("ai")) {
+					var ai_val = this.request.args.get(ai);
+					int[] nums = {};
+					if (ai_val.type() == typeof(int[])) {
+						nums = (int[]) ai_val.get_boxed();
+					}
+					if (ai_val.type() == typeof(GLib.Variant)) {
+						var variant = ai_val.dup_variant();
+						nums = new int[variant.n_children()];
+						for (var n = (size_t) 0; n < variant.n_children(); n++) {
+							nums[n] = variant.get_child_value(n).get_int32();
+						}
+					}
+					var pin_i = pin.length;
+					pin.resize(pin_i + 1);
+					pin[pin_i] = GLib.Value(typeof(int[]));
+					pin[pin_i].set_boxed(nums);
+					slots[2 + si].set_pointer(pin[pin_i].get_boxed());
+					atypes[2 + si] = Libffi.POINTER;
+					slots[2 + si + 1].set_int32(nums.length);
+					atypes[2 + si + 1] = Libffi.SINT32;
+					offset += 2;
+					si += 2;
+					ai += 1;
+					continue;
+				}
+				if (rest.has_prefix("ax")) {
+					var ax_val = this.request.args.get(ai);
+					int64[] wides = {};
+					if (ax_val.type() == typeof(int64[])) {
+						wides = (int64[]) ax_val.get_boxed();
+					}
+					if (ax_val.type() == typeof(GLib.Variant)) {
+						var variant = ax_val.dup_variant();
+						wides = new int64[variant.n_children()];
+						for (var n = (size_t) 0; n < variant.n_children(); n++) {
+							wides[n] = variant.get_child_value(n).get_int64();
+						}
+					}
+					var pin_i = pin.length;
+					pin.resize(pin_i + 1);
+					pin[pin_i] = GLib.Value(typeof(int64[]));
+					pin[pin_i].set_boxed(wides);
+					slots[2 + si].set_pointer(pin[pin_i].get_boxed());
+					atypes[2 + si] = Libffi.POINTER;
+					slots[2 + si + 1].set_int32(wides.length);
+					atypes[2 + si + 1] = Libffi.SINT32;
+					offset += 2;
 					si += 2;
 					ai += 1;
 					continue;

@@ -110,6 +110,18 @@ namespace OLLMrpcTests
 			this.check(command_line, got_names[0] == "a", "args strv [0]");
 			var strv_s = OLLMrpc.args("S", names);
 			this.check(command_line, strv_s.size == 1, "args S size");
+			int[] ids = { 3, 9 };
+			var packed_ai = OLLMrpc.args("ai", ids);
+			this.check(command_line, packed_ai.size == 1, "args ai size");
+			var got_ids = (int[]) packed_ai.get(0).get_boxed();
+			this.check(command_line, got_ids.length == 2, "args ai length");
+			this.check(command_line, got_ids[0] == 3, "args ai [0]");
+			int64[] history_ids = { (int64) 3, (int64) 9 };
+			var wides = OLLMrpc.args("ax", history_ids);
+			this.check(command_line, wides.size == 1, "args ax size");
+			var got_wides = (int64[]) wides.get(0).get_boxed();
+			this.check(command_line, got_wides.length == 2, "args ax length");
+			this.check(command_line, got_wides[0] == (int64) 3, "args ax [0]");
 			RpcDummy.Hello.rpc_register();
 			RpcDummy.Probe.rpc_register();
 			OLLMrpc.Request.register(

@@ -1,6 +1,6 @@
 # Deletion bands scroll past the buffer, and white rows sit in the red span
 
-**Status:** ⏳ open
+**Status:** ⏳ differ round-trip confirmed; white rows are the line wash — fix not applied
 
 **Pointer:** `docs/bug-fix-process.md` · [`done/2026-11-16-FIXED-diff-preview-open-and-map.md`](done/2026-11-16-FIXED-diff-preview-open-and-map.md)
 
@@ -36,11 +36,25 @@ band 5  scroll_in 1452  cursor 1465  tag none  (last line)
 - ✔️ Two untagged rows sit between those remove runs: buffer line 1391 `}` and buffer line 1454 `}`. Those are the equal lines the differ kept (old 1389 and old 1452). 16 other blank rows inside the removals are tagged `diff-remove`. 18 untagged blanks are outside the runs (blank lines that exist in the file).
 - ℹ️ `diff -U0` on the same pair is four hunks, and the deletion is one: `@@ -1242,220 +1241,0 @@`. That is a different grouping. It is not by itself a defect in the verified differ.
 - ℹ️ The app's pending paint is `ChangeView`, not `show_diff`. Both read the same patch line numbers. `ChangeView` inserts removed lines and leaves those equal lines as ordinary rows between the red blocks.
+- ✔️ 2026-11-17 later run, built `libocfiles.so` (2026-11-13, still the old `REMOVE` new-range). Pair is `2caeca8d` of `examples/oc-test-source-diff.vala` against the file in the tree. Same three replaces (805, 932, 934). `lines1=1454`, `lines2=1243`. One removal, not three:
+
+```
+REPLACE  old 805-805    new 805-805
+REPLACE  old 932-932    new 932-932
+REPLACE  old 934-934    new 934-934
+REMOVE   old 1242-1452  new 1242-1241
+```
+
+- ✔️ `PatchApplier` on those patches reproduces the new file byte for byte. The new anchor `1242-1241` is inside the new file. `diff -U0` is the same deletion: `@@ -1243,211 +1242,0 @@` (its start is one line later than `split("\n")`).
+- ✔️ The removal is the appended `namespace OLLMapp.SettingsDialog` block. It contains 16 empty lines (old 1243, 1258, 1263, 1268, 1276, 1279, 1285, 1307, 1317, 1344, 1381, 1426, 1430, 1444, 1447, 1450). The `show_diff` walk tags all 16 `diff-remove`. 18 blanks sit outside the run. Old 1389 is `var colon = this.found.last_index_of(":");`, not a kept `}`.
+- ℹ️ The backup named in the first measurement is not on disk, so that exact three-removal split was not re-run. This pair has the same replace sites and the same 16 / 18 blank counts, and the built differ does not split it.
+- ✔️ `examples/oc-test-source-diff.vala` `apply_highlight` copies the swatch `color` onto `paragraph_background` only. `.oc-diff-remove` is `rgb(252, 239, 239)`. The tag's `background_rgba` stays `rgb(242, 191, 191)`, which paints glyphs. An empty line has no glyphs, so it stays the near-white paragraph wash. The active tag is applied from the line start to `forward_to_line_end()`. On an empty line that range is empty, so `diff-remove-active` never covers it.
 
 ## Root cause
 
-- ✔️ A pure deletion's new-file anchor is stored with the old file's coordinates. After earlier edits have shifted the new file, the last deletion bands point past the buffer, so the click does not move or lands on the last line.
-- ✔️ The white rows between the three red blocks are those two equal lines, not missing tag paint. Blank rows inside a removal are tagged. They are empty lines from the deleted text.
+- ✔️ The differ reports this deletion correctly. One `REMOVE`, and applying the patches yields the new file. Nothing in the Myers path needs to change for the white rows.
+- ✔️ The white rows inside the red span are the 16 empty lines of that removal. They are tagged. The test app's line wash paints text and empty lines with different colors, and the active wash skips the empty lines.
+- ℹ️ A later removal whose new anchor is still an old-file line number would still scroll past the buffer. This pair does not do that: the new anchor is `1242-1241`. The three-removal scroll numbers in the first measurement were not reproduced.
 
 ## Ruled out
 
@@ -49,37 +63,50 @@ band 5  scroll_in 1452  cursor 1465  tag none  (last line)
 
 ## Proposed fix
 
-- 💩 One line-number correction in `edits_to_patches`, and nothing else in `Differ`. A `REMOVE` patch's new range uses the new-file cursor, as the add and replace arms already do.
+- 🚫 Do not change `Differ` for this. The removal it reports is the deleted text, and the applier round-trips.
+- 💩 In `examples/oc-test-source-diff.vala` `apply_highlight`, the line wash and the glyph wash are the same swatch color, and the active tag covers the newline the way `show_diff` already tags a line. An empty removed row then takes the same color as the rest of that hunk.
 
 #### Replace with
 
 ```vala
-				if (delete_count > 0) {
-					this.patches.add(new Patch(
-						PatchOperation.REMOVE,
-						line_offset1 + delete_start_pos + 1,
-						line_offset1 + delete_start_pos + delete_count,
-						line_offset2 + insert_start_pos + 1,
-						line_offset2 + insert_start_pos,
-						this.lines1,
-						this.lines2
-					));
-					continue;
+			add_tag.paragraph_background_rgba = this.add_swatch.get_color();
+			add_tag.background_rgba = this.add_swatch.get_color();
+			remove_tag.paragraph_background_rgba = this.remove_swatch.get_color();
+			remove_tag.background_rgba = this.remove_swatch.get_color();
+```
+
+#### Replace with
+
+```vala
+			active_add.paragraph_background_rgba = this.add_active_swatch.get_color();
+			active_add.background_rgba = this.add_active_swatch.get_color();
+			active_remove.paragraph_background_rgba = this.remove_active_swatch.get_color();
+			active_remove.background_rgba = this.remove_active_swatch.get_color();
+```
+
+#### Replace with
+
+```vala
+				to = from;
+				if (!to.ends_line()) {
+					to.forward_to_line_end();
+				}
+				if (!to.is_end()) {
+					to.forward_char();
 				}
 ```
 
-- 💩 On that pair the last two removals then report `new 1241-1240` and `new 1242-1241`, which exist. The scroll target for each band is that anchor plus earlier removed rows, which is buffer lines 1242, 1392, and 1455 (the three remove-run starts above).
-- 🔷 The two `}` rows between the blocks stay. They are what this differ returns. Collapsing them is a differ design change and waits on an explicit test.
+- ℹ️ `ChangeView` already sets paragraph and glyph background to the same pink and tags through the following line. That path is not the white-row cause on this pair.
 
 ## Attempts / changelog
 
 - ✔️ 2026-11-17 — measured with `build/examples/oc-test-source-diff` on the backup and `HEAD` of `examples/oc-test-source-diff.vala`. Dump helper removed from that file.
 - ✔️ 2026-11-17 — text match in `edits_to_patches` added, then removed.
 - ✔️ 2026-11-17 — `discard_confusing_lines` added to `myers_diff`, then removed. `myers_diff` is the verified body again.
-- 💩 The `REMOVE` new-range edit above may already be in the working tree from before this log. It is not user-approved. Revert it if the proposal is rejected.
+- ✔️ 2026-11-17 — ran the built `Differ` (library dated 2026-11-13) on `2caeca8d` against the tree file. Four patches, applier matches, 16 tagged blanks inside the one removal.
+- ℹ️ Commit `976b4aca` already points a `REMOVE` new range at `line_offset2`. This pair's anchor is the same either way, because the earlier hunks are one-line replaces.
 
 ## Next
 
-- 🔷 ⏳ User decides whether the `REMOVE` new-range correction is accepted.
-- 🔷 ⏳ After that, re-run the same pair through `oc-test-source-diff` and confirm the three deletion clicks land on buffer lines 1242, 1392, and 1455.
-- 🚫 ⏳ Do not change the differ algorithm while that check is open.
+- 🔷 ⏳ Apply the `apply_highlight` wash so an empty removed row uses the same color as the rest of the hunk. Do not change `Differ`.
+- ℹ️ The backup `~/.cache/ollmchat/edited/2026-10-28-43023-oc-test-source-diff.vala` is gone, so the earlier three-removal split cannot be re-run until that file is back.

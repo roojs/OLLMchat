@@ -190,6 +190,16 @@ namespace OLLMrpc
 				as_val.set_boxed((*cursor).arg<string[]>());
 				return as_val;
 
+			case "ai":
+				var ai_val = GLib.Value(typeof(int[]));
+				ai_val.set_boxed((*cursor).arg<int[]>());
+				return ai_val;
+
+			case "ax":
+				var ax_val = GLib.Value(typeof(int64[]));
+				ax_val.set_boxed((*cursor).arg<int64[]>());
+				return ax_val;
+
 			case "ay":
 				var ay_val = GLib.Value(typeof(GLib.Bytes));
 				ay_val.set_boxed((*cursor).arg<GLib.Bytes>());
@@ -286,7 +296,9 @@ namespace OLLMrpc
 	 * ''d'' double,
 	 * ''o'' {@link GLib.Object}, ''g'' signature, ''h'' unix fd,
 	 * ''as'' ''string[]'', ''S'' same value plus Vala array length
-	 * at FFI call, ''ay'' {@link GLib.Bytes},
+	 * at FFI call,
+	 * ''ai'' ''int[]'', ''ax'' ''int64[]'', each plus array length
+	 * at the FFI call, ''ay'' {@link GLib.Bytes},
 	 * ''v'' {@link GLib.Variant},
 	 * ''V'' {@link GLib.Value} (Helper / generator; not D-Bus).
 	 *
