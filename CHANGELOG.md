@@ -11,7 +11,34 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.12] - Unreleased
+## [1.4.13] - Unreleased
+
+Work since **1.4.12** (2026-11-13).
+
+### Changed
+
+#### Packaging
+
+- Version tags attach `ollmchat-vX.Y.Z.apk` and `ollmchat-vX.Y.Z-debug.apk` (one native build, Gradle release plus debug)
+
+#### libocrpc
+
+- `args` packs an `int[]` as `ai` and an `int64[]` as `ax`, and dispatch passes each array as a pointer plus its length
+
+### Fixed
+
+#### Chat
+
+- Accepting a hunk clears the red and green highlighting so those lines look like normal source
+- Accepting a deleted file with no hunks approves it, then the editor opens the next pending file or closes
+- Rejecting a newly added file deletes it instead of leaving an empty file
+
+#### ollmfilesd
+
+- Finishing the newest history row keeps older pending rows in the review queue, and the decision is written to disk
+- Checking a deleted file, or asking for diff parts when there are none, no longer initializes an invalid value
+
+## [1.4.12] - 2026-11-13
 
 Work since **1.4.11** (2026-11-12).
 
@@ -21,7 +48,6 @@ Work since **1.4.11** (2026-11-12).
 
 - The Windows build installs the prebuilt `faiss` MSYS2 package (`1.16.0`) and ships `libocvector2` and `ollmfilesd` again
 - Release CI skips the AppImage build for now (manual **Release - AppImage** remains available)
-- Version tags attach `ollmchat-vX.Y.Z.apk` and `ollmchat-vX.Y.Z-debug.apk` (one native build, Gradle release plus debug)
 
 ### Fixed
 

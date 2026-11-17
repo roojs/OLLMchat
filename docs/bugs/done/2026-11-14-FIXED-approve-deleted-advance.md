@@ -1,6 +1,6 @@
 # After Accept on deleted file, advance or close editor
 
-**Status:** ⏳ open
+**Status:** ✅ fixed — zero-hunk Accept calls `decide_file`, and an empty queue closes the editor. Review bar layout stays open.
 
 ## Problem
 

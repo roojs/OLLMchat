@@ -109,4 +109,15 @@ REMOVE   old 1242-1452  new 1242-1241
 ## Next
 
 - 🔷 ⏳ Apply the `apply_highlight` wash so an empty removed row uses the same color as the rest of the hunk. Do not change `Differ`.
-- ℹ️ The backup `~/.cache/ollmchat/edited/2026-10-28-43023-oc-test-source-diff.vala` is gone, so the earlier three-removal split cannot be re-run until that file is back.
+- ✔️ 2026-11-17 — reordered sample. `2caeca8d` had `\t\t}` and `\t}` on the class close, immediately before the appended namespace, so the differ kept them with the new file and deleted the namespace as one run. Those two lines are moved into the namespace (`tests/source-diff/deletion-bands-baseline.vala`). The new side is `tests/source-diff/deletion-bands-current.vala` (the tree file). Built differ, old `REMOVE` anchors:
+
+```
+REPLACE  old 805-805    new 805-805
+REPLACE  old 932-932    new 932-932
+REPLACE  old 934-934    new 934-934
+REMOVE   old 1240-1340  new 1240-1239
+REMOVE   old 1342-1442  new 1342-1341
+REMOVE   old 1444-1452  new 1444-1443
+```
+
+`PatchApplier` matches. The kept lines are old 1341 `\t\t}` and old 1443 `\t}`. The later new anchors are past the 1243-line new file. 16 blank lines sit inside the removals. `diff -U0` also splits this pair (three deletion hunks); the original backup's single GNU hunk is not reproduced. Open with `build/examples/oc-test-source-diff tests/source-diff/deletion-bands-baseline.vala tests/source-diff/deletion-bands-current.vala`. The `show_diff` walk sets `new_i` from those past-the-end anchors, so the second brace and the shared closing lines are not copied (`leftover_new` about -200).

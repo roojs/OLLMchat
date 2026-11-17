@@ -1,6 +1,6 @@
 # Rejecting an added file truncates it to 0 bytes instead of deleting it
 
-**Status:** ✔️ applied — await verification
+**Status:** ✅ fixed — rejecting an `added` file unlinks it in `FileDiffPart.commit` and `FileHistory.revert`.
 
 **Pointer:** `docs/bug-fix-process.md`
 

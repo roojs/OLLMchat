@@ -1,6 +1,6 @@
 # SourceView keeps red and green diff highlighting after accepting a hunk
 
-**Status:** ✔️ applied — await verification
+**Status:** ✅ fixed — highlighting lands in `ChangeView.proposal` / `apply_parts`. Review bar and deletion-band scroll stay open.
 
 **Pointer:** `docs/bug-fix-process.md` · `docs/plans/done/CODER-4.2.3.5.6-DONE-source-view-diff-approval-calls.md`
 

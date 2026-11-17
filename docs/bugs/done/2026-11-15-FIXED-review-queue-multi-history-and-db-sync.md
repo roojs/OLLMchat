@@ -1,6 +1,6 @@
 # Stacked history rows stuck in review queue, DB updates unpersisted, and deleted-file RPC criticals
 
-**Status:** ✔️ applied — await verification
+**Status:** ✅ fixed — older pending rows stay queued, `backupDB` runs after the decision, and empty part replies omit `retval`.
 
 **Pointer:** `docs/bug-fix-process.md` · `docs/bugs/2026-11-14-approve-deleted-advance.md`
 
