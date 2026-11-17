@@ -4,7 +4,9 @@ name: Release
 # Releases: vX.Y.Z (AppImage / Windows / Android) and vX.Y.Z-packages
 # (.deb / .rpm). Packages is created first so the Releases page (newest
 # created_at first) shows the version tag, then packages, then older
-# versions. The packages tag must not rebuild (job if + tags exclude).
+# versions. Publish pushes the packages git tag itself. This workflow
+# ignores v*-packages, so that push does not start another build.
+# gh will not publish a release whose git tag does not already exist.
 # To test one distro, run Release - Debian / Fedora / etc.
 
 run-name: Release - ${{ github.ref_name }}
@@ -149,6 +151,11 @@ jobs:
           chmod +x scripts/release/changelog.sh scripts/release/render-release-notes.sh
           ./scripts/release/render-release-notes.sh "$GITHUB_REF_NAME" release-notes.md
           pkg_tag="${GITHUB_REF_NAME}-packages"
+          # A release whose git tag is missing stays an untagged draft.
+          # Push the tag at this commit before creating the release.
+          if ! git ls-remote --exit-code --tags origin "refs/tags/${pkg_tag}" >/dev/null; then
+            git push origin "${GITHUB_SHA}:refs/tags/${pkg_tag}"
+          fi
           {
             echo "Debian (\`.deb\`) and RPM (\`.rpm\`) builds for ${GITHUB_REF_NAME}."
             echo
@@ -171,7 +178,8 @@ jobs:
             gh release edit "$pkg_tag" \
               --repo "$GITHUB_REPOSITORY" \
               --notes-file packages-notes.md \
-              --latest=false
+              --latest=false \
+              --draft=false
           }
           gh release create "$GITHUB_REF_NAME" "${main_files[@]}" \
             --repo "$GITHUB_REPOSITORY" \
