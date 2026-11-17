@@ -18,9 +18,9 @@ tmp="$(mktemp)"
 {
   echo "**Debian, Fedora, and openSUSE:** install from the [roojs package repositories](https://roojs.github.io/repos/) (\`apt\` / \`dnf\` / \`zypper\`). Repository setup is on that page. Install commands are in the [README](https://github.com/${repo}/blob/main/README.md#releases)."
   echo
-  echo "\`.deb\` / \`.rpm\` files for this version are on [${TAG}-packages](https://github.com/${repo}/releases/tag/${TAG}-packages)."
+  echo "\`.deb\`, \`.rpm\`, Android \`.pixie\`, and Windows library packages for this version are on [${TAG}-packages](https://github.com/${repo}/releases/tag/${TAG}-packages)."
   echo
-  echo "This GitHub Release is Windows and Android."
+  echo "This GitHub Release is the Windows installer and the Android APKs."
   echo
   echo "---"
   echo

@@ -53,6 +53,17 @@ jobs:
           restore-keys: |
             sqgipkg-meson-v3-stable-
 
+      # sqgipkg extracts ~600 debs under this directory and skips any package
+      # already recorded there. It used to live in the container home, which
+      # is thrown away, so every run unpacked GTK, WebKit, and OpenBLAS again.
+      - name: Restore sqgipkg Linux sysroot cache
+        id: sqgipkg-sysroot
+        uses: actions/cache/restore@v6
+        with:
+          path: OLLMchat/.ci-cache/sqgipkg
+          key: sqgipkg-linux-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}-ubuntu-25.04
+          restore-keys: ${{ inputs.refresh_cache && 'sqgipkg-linux-v1-nocache-' || 'sqgipkg-linux-v1-stable-' }}
+
       - name: Install host build dependencies
         working-directory: OLLMchat
         run: |
@@ -108,7 +119,23 @@ jobs:
 
       - name: Build Linux x86_64 AppImage
         working-directory: OLLMchat
-        run: sqgipkg --target appimage --appimage-arch x86_64 --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
+        run: |
+          refresh=""
+          if [ "${{ inputs.refresh_cache }}" = "true" ]; then
+            refresh=--refresh-linux-packages
+          fi
+          sqgipkg --target appimage --appimage-arch x86_64 \
+            --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi" \
+            --linux-deb-sysroot-cache "$GITHUB_WORKSPACE/OLLMchat/.ci-cache/sqgipkg/linux-sysroots" \
+            $refresh
+
+      - name: Save sqgipkg Linux sysroot cache
+        if: success() && steps.sqgipkg-sysroot.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with:
+          path: OLLMchat/.ci-cache/sqgipkg
+          key: ${{ steps.sqgipkg-sysroot.outputs.cache-primary-key }}
 
       - name: Collect artifacts
         working-directory: OLLMchat

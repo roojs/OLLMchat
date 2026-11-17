@@ -1,12 +1,14 @@
 name: Release
 
 # Full package set. Tag pushes (scripts/release.sh) publish two GitHub
-# Releases: vX.Y.Z (AppImage / Windows / Android) and vX.Y.Z-packages
-# (.deb / .rpm). Packages is created first so the Releases page (newest
-# created_at first) shows the version tag, then packages, then older
-# versions. Publish pushes the packages git tag itself. This workflow
-# ignores v*-packages, so that push does not start another build.
-# gh will not publish a release whose git tag does not already exist.
+# Releases. vX.Y.Z carries the Windows installer and the Android APKs.
+# GitHub adds the source zip and tarball. vX.Y.Z-packages carries
+# everything else: .deb, .rpm, .pixie, Windows library archives, AppImage.
+# Packages is created first so the Releases page (newest created_at
+# first) shows the version tag, then packages, then older versions.
+# Publish pushes the packages git tag itself. This workflow ignores
+# v*-packages, so that push does not start another build. gh will not
+# publish a release whose git tag does not already exist.
 # To test one distro, run Release - Debian / Fedora / etc.
 
 run-name: Release - ${{ github.ref_name }}
@@ -115,8 +117,8 @@ jobs:
           for f in artifacts/*; do
             [ -f "$f" ] || continue
             case "$f" in
-              *.deb|*.rpm) mv "$f" artifacts/packages/ ;;
-              *.AppImage|*.exe|*.apk|*.pixie|*.pkg.tar.zst|*.pkg.tar.zst.sig) mv "$f" artifacts/main/ ;;
+              *.exe|*.apk) mv "$f" artifacts/main/ ;;
+              *.deb|*.rpm|*.AppImage|*.pixie|*.pkg.tar.zst|*.pkg.tar.zst.sig) mv "$f" artifacts/packages/ ;;
               # Pin lists are published on GitHub Pages. They are not release assets.
               # The path is artifacts/release.pins; a bare release.pins pattern does not match.
               *.pins)
@@ -136,7 +138,7 @@ jobs:
           packages_files=(artifacts/packages/*)
           ls -lh artifacts/main artifacts/packages
           ((${#main_files[@]})) || {
-            echo "no AppImage / Windows / Android assets" >&2
+            echo "no Windows installer or Android APK" >&2
             exit 1
           }
           apk_files=(artifacts/main/*.apk)
@@ -145,7 +147,7 @@ jobs:
             exit 1
           }
           ((${#packages_files[@]})) || {
-            echo "no Debian / RPM assets" >&2
+            echo "no package assets" >&2
             exit 1
           }
           chmod +x scripts/release/changelog.sh scripts/release/render-release-notes.sh
@@ -156,16 +158,30 @@ jobs:
           if ! git ls-remote --exit-code --tags origin "refs/tags/${pkg_tag}" >/dev/null; then
             git push origin "${GITHUB_SHA}:refs/tags/${pkg_tag}"
           fi
+          # Deleting a tag (scripts/release.sh --retry) turns that release
+          # into an untagged draft and leaves it there. Drop those before
+          # creating the release again.
+          drop_drafts() {
+            local tag="$1"
+            local id
+            while IFS= read -r id; do
+              [ -n "$id" ] || continue
+              echo "deleting draft release ${id} (${tag})"
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${id}"
+            done < <(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" \
+              --jq ".[] | select(.draft == true and .tag_name == \"${tag}\") | .id")
+          }
           {
-            echo "Debian (\`.deb\`) and RPM (\`.rpm\`) builds for ${GITHUB_REF_NAME}."
+            echo "Distro packages, Android \`.pixie\` files, and Windows library archives for ${GITHUB_REF_NAME}."
             echo
             echo "Prefer the [roojs package repositories](https://roojs.github.io/repos/) (\`apt\` / \`dnf\` / \`zypper\`). This GitHub Release is the matching file set."
             echo
-            echo "The Windows installer, the Windows library pacman packages, and Android: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+            echo "The Windows installer and the Android APKs: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
           } > packages-notes.md
           # Create packages first. GitHub lists Releases by created_at
           # (newest first), so the version tag published next sits above
           # this one: vX.Y.Z, then vX.Y.Z-packages, then older versions.
+          drop_drafts "$pkg_tag"
           gh release create "$pkg_tag" "${packages_files[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
@@ -181,6 +197,7 @@ jobs:
               --latest=false \
               --draft=false
           }
+          drop_drafts "$GITHUB_REF_NAME"
           gh release create "$GITHUB_REF_NAME" "${main_files[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
@@ -190,9 +207,10 @@ jobs:
               --repo "$GITHUB_REPOSITORY" --clobber
             gh release edit "$GITHUB_REF_NAME" \
               --repo "$GITHUB_REPOSITORY" \
-              --notes-file release-notes.md
+              --notes-file release-notes.md \
+              --draft=false
           }
-          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --latest
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --latest --draft=false
 
       - name: Finalize changelog on main
         env:

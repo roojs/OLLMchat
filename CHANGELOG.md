@@ -20,6 +20,7 @@ Work since **1.4.12** (2026-11-13).
 #### Packaging
 
 - Version tags attach `ollmchat-vX.Y.Z.apk` and `ollmchat-vX.Y.Z-debug.apk` (one native build, Gradle release plus debug)
+- **Release - AppImage** caches the sqgipkg Debian sysroot so a second manual run does not unpack GTK, WebKit, and OpenBLAS again. The main Release workflow still skips AppImage
 
 #### libocrpc
 
