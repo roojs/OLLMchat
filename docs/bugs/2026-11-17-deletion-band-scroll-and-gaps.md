@@ -1,6 +1,6 @@
 # Deletion bands scroll past the buffer, and white rows sit in the red span
 
-**Status:** ⏳ differ round-trip confirmed; white rows are the line wash — fix not applied
+**Status:** ⏳ source-mark wash is in the rebuilt example; blank rows not yet looked at on screen
 
 **Pointer:** `docs/bug-fix-process.md` · [`done/2026-11-16-FIXED-diff-preview-open-and-map.md`](done/2026-11-16-FIXED-diff-preview-open-and-map.md)
 
@@ -48,12 +48,14 @@ REMOVE   old 1242-1452  new 1242-1241
 - ✔️ `PatchApplier` on those patches reproduces the new file byte for byte. The new anchor `1242-1241` is inside the new file. `diff -U0` is the same deletion: `@@ -1243,211 +1242,0 @@` (its start is one line later than `split("\n")`).
 - ✔️ The removal is the appended `namespace OLLMapp.SettingsDialog` block. It contains 16 empty lines (old 1243, 1258, 1263, 1268, 1276, 1279, 1285, 1307, 1317, 1344, 1381, 1426, 1430, 1444, 1447, 1450). The `show_diff` walk tags all 16 `diff-remove`. 18 blanks sit outside the run. Old 1389 is `var colon = this.found.last_index_of(":");`, not a kept `}`.
 - ℹ️ The backup named in the first measurement is not on disk, so that exact three-removal split was not re-run. This pair has the same replace sites and the same 16 / 18 blank counts, and the built differ does not split it.
-- ✔️ `examples/oc-test-source-diff.vala` `apply_highlight` copies the swatch `color` onto `paragraph_background` only. `.oc-diff-remove` is `rgb(252, 239, 239)`. The tag's `background_rgba` stays `rgb(242, 191, 191)`, which paints glyphs. An empty line has no glyphs, so it stays the near-white paragraph wash. The active tag is applied from the line start to `forward_to_line_end()`. On an empty line that range is empty, so `diff-remove-active` never covers it.
+- ✔️ Screenshot of the deletion (`FileConnectionAdd`): text rows sample to `(248, 232, 232)`, which is `.oc-diff-remove` `rgb(252, 239, 239)` after 8-bit quantization (`252//8*8`, `239//8*8`). Blank rows in the same block sample to `(248, 248, 248)`, the editor background. They are not the pale wash and not the tag's `rgb(242, 191, 191)`.
+- ✔️ GtkSourceView 5.16 `gtk_source_view_paint_line_background` documents that a text tag cannot paint an empty line (a tag cannot cover an empty range). The full-line paint, including an empty line, is `GtkSourceMark` plus `GtkSourceMarkAttributes` background, drawn across the visible width. `show_line_marks` is already on.
 
 ## Root cause
 
 - ✔️ The differ reports this deletion correctly. One `REMOVE`, and applying the patches yields the new file. Nothing in the Myers path needs to change for the white rows.
-- ✔️ The white rows inside the red span are the 16 empty lines of that removal. They are tagged. The test app's line wash paints text and empty lines with different colors, and the active wash skips the empty lines.
+- ✔️ The white rows inside the red span are empty lines of that removal. They are tagged. GtkSourceView does not paint a text tag on an empty line, so those rows stay the editor background while the lines that have text show the wash.
+- 🚫 The pale-versus-glyph theory. The measured blank is the editor background, not `rgb(252, 239, 239)` and not `rgb(242, 191, 191)`. Copying the swatch onto `background_rgba` and extending the active tag through the newline does not paint an empty line.
 - ℹ️ A later removal whose new anchor is still an old-file line number would still scroll past the buffer. This pair does not do that: the new anchor is `1242-1241`. The three-removal scroll numbers in the first measurement were not reproduced.
 
 ## Ruled out
@@ -64,39 +66,63 @@ REMOVE   old 1242-1452  new 1242-1241
 ## Proposed fix
 
 - 🚫 Do not change `Differ` for this. The removal it reports is the deleted text, and the applier round-trips.
-- 💩 In `examples/oc-test-source-diff.vala` `apply_highlight`, the line wash and the glyph wash are the same swatch color, and the active tag covers the newline the way `show_diff` already tags a line. An empty removed row then takes the same color as the rest of that hunk.
+- 🔷 A source mark on each changed line, with a mark-attribute background of the same color as that line's wash. GtkSourceView paints that across the whole line, including a blank one. The active hunk uses a second category at a higher priority so its blanks follow the stronger wash. No filler characters (the space drawer would draw them).
 
-#### Replace with
+#### Add
 
-```vala
-			add_tag.paragraph_background_rgba = this.add_swatch.get_color();
-			add_tag.background_rgba = this.add_swatch.get_color();
-			remove_tag.paragraph_background_rgba = this.remove_swatch.get_color();
-			remove_tag.background_rgba = this.remove_swatch.get_color();
-```
-
-#### Replace with
+`liboccoder/SourceView.vala`, after the diff tags are created:
 
 ```vala
-			active_add.paragraph_background_rgba = this.add_active_swatch.get_color();
-			active_add.background_rgba = this.add_active_swatch.get_color();
-			active_remove.paragraph_background_rgba = this.remove_active_swatch.get_color();
-			active_remove.background_rgba = this.remove_active_swatch.get_color();
+				var add_line = new GtkSource.MarkAttributes();
+				add_line.set_background(Gdk.RGBA() {
+					red = 0.75f,
+					green = 0.95f,
+					blue = 0.75f,
+					alpha = 1.0f
+				});
+				this.source_view.set_mark_attributes("diff-add", add_line, 1);
+				var remove_line = new GtkSource.MarkAttributes();
+				remove_line.set_background(Gdk.RGBA() {
+					red = 0.95f,
+					green = 0.75f,
+					blue = 0.75f,
+					alpha = 1.0f
+				});
+				this.source_view.set_mark_attributes("diff-remove", remove_line, 1);
+				var add_active_line = new GtkSource.MarkAttributes();
+				add_active_line.set_background(Gdk.RGBA() {
+					red = 0.75f,
+					green = 0.95f,
+					blue = 0.75f,
+					alpha = 1.0f
+				});
+				this.source_view.set_mark_attributes("diff-add-active", add_active_line, 2);
+				var remove_active_line = new GtkSource.MarkAttributes();
+				remove_active_line.set_background(Gdk.RGBA() {
+					red = 0.95f,
+					green = 0.75f,
+					blue = 0.75f,
+					alpha = 1.0f
+				});
+				this.source_view.set_mark_attributes("diff-remove-active", remove_active_line, 2);
 ```
 
-#### Replace with
+#### Add
+
+`liboccoder/SourceView.vala` `show_diff`, after `apply_tag` on a changed line:
 
 ```vala
-				to = from;
-				if (!to.ends_line()) {
-					to.forward_to_line_end();
-				}
-				if (!to.is_end()) {
-					to.forward_char();
-				}
+					this.diff_buffer.create_source_mark(null,
+						kinds.get(i) == 1 ? "diff-add" : "diff-remove", iter);
 ```
 
-- ℹ️ `ChangeView` already sets paragraph and glyph background to the same pink and tags through the following line. That path is not the white-row cause on this pair.
+#### Add
+
+`liboccoder/ChangeView.vala`, after each `apply_tag` on a remove or add span (both `apply` and `apply_parts`): one `create_source_mark` per line of that span, category `diff-remove` or `diff-add`.
+
+#### Add
+
+`examples/oc-test-source-diff.vala` `apply_highlight`, after the swatch colors are copied onto the tags: the same colors onto the four mark attributes, drop any `diff-add-active` / `diff-remove-active` marks, and on the active hunk add a mark in the matching `-active` category for each line that already has a `diff-add` or `diff-remove` mark.
 
 ## Attempts / changelog
 
@@ -105,10 +131,11 @@ REMOVE   old 1242-1452  new 1242-1241
 - ✔️ 2026-11-17 — `discard_confusing_lines` added to `myers_diff`, then removed. `myers_diff` is the verified body again.
 - ✔️ 2026-11-17 — ran the built `Differ` (library dated 2026-11-13) on `2caeca8d` against the tree file. Four patches, applier matches, 16 tagged blanks inside the one removal.
 - ℹ️ Commit `976b4aca` already points a `REMOVE` new range at `line_offset2`. This pair's anchor is the same either way, because the earlier hunks are one-line replaces.
+- ✔️ 2026-11-17 — source marks added on each changed line in `show_diff` and `ChangeView`, with mark-attribute colors matching the wash. `apply_highlight` copies the swatch onto those attributes and puts a higher-priority `-active` mark on the current hunk, including its blank lines. `examples/oc-test-source-diff` rebuilt.
 
 ## Next
 
-- 🔷 ⏳ Apply the `apply_highlight` wash so an empty removed row uses the same color as the rest of the hunk. Do not change `Differ`.
+- 🔷 ⏳ Restart the diff window and look at a blank row inside a red or green block. It should be the same wash as the other rows in that block. Do not change `Differ`.
 - ✔️ 2026-11-17 — reordered sample. `2caeca8d` had `\t\t}` and `\t}` on the class close, immediately before the appended namespace, so the differ kept them with the new file and deleted the namespace as one run. Those two lines are moved into the namespace (`tests/source-diff/deletion-bands-baseline.vala`). The new side is `tests/source-diff/deletion-bands-current.vala` (the tree file). Built differ, old `REMOVE` anchors:
 
 ```

@@ -243,6 +243,14 @@ namespace OLLMcoder
 						this.buffer.get_end_iter(out tag_end);
 					}
 					this.buffer.apply_tag(remove_tag, tag_start, tag_end);
+					// Text tags skip empty lines. Source marks paint them.
+					for (var line = at; line < at + old_n; line++) {
+						Gtk.TextIter mark_at;
+						if (!this.buffer.get_iter_at_line(out mark_at, line)) {
+							continue;
+						}
+						this.buffer.create_source_mark(null, "diff-remove", mark_at);
+					}
 					at += old_n;
 				}
 				if (new_n > 0) {
@@ -253,6 +261,13 @@ namespace OLLMcoder
 						this.buffer.get_end_iter(out tag_end);
 					}
 					this.buffer.apply_tag(add_tag, tag_start, tag_end);
+					for (var line = at; line < at + new_n; line++) {
+						Gtk.TextIter mark_at;
+						if (!this.buffer.get_iter_at_line(out mark_at, line)) {
+							continue;
+						}
+						this.buffer.create_source_mark(null, "diff-add", mark_at);
+					}
 					at += new_n;
 				}
 			}
@@ -383,6 +398,13 @@ namespace OLLMcoder
 						this.buffer.get_end_iter(out tag_end);
 					}
 					this.buffer.apply_tag(remove_tag, tag_start, tag_end);
+					for (var line = at; line < at + old_n; line++) {
+						Gtk.TextIter mark_at;
+						if (!this.buffer.get_iter_at_line(out mark_at, line)) {
+							continue;
+						}
+						this.buffer.create_source_mark(null, "diff-remove", mark_at);
+					}
 				}
 				if (!inc.unchanged && new_n > 0) {
 					Gtk.TextIter tag_start;
@@ -392,6 +414,13 @@ namespace OLLMcoder
 						this.buffer.get_end_iter(out tag_end);
 					}
 					this.buffer.apply_tag(add_tag, tag_start, tag_end);
+					for (var line = at + old_n; line < at + old_n + new_n; line++) {
+						Gtk.TextIter mark_at;
+						if (!this.buffer.get_iter_at_line(out mark_at, line)) {
+							continue;
+						}
+						this.buffer.create_source_mark(null, "diff-add", mark_at);
+					}
 				}
 				at += span;
 				j++;

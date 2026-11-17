@@ -169,6 +169,7 @@ if host_machine.system() == 'android'
     'android/AgentDropdown.vala',
     'BusyDialog.vala',
     'android/Application.vala',
+    'android/Spinner.vala',
     'android/OllmchatWindow.vala',
     'android/MainDialog.vala',
     'android/TouchDebug.vala',

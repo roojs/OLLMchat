@@ -363,6 +363,38 @@ namespace OLLMcoder
 					},
 					editable = false
 				});
+				var add_line = new GtkSource.MarkAttributes();
+				add_line.set_background(Gdk.RGBA() {
+					red = 0.75f,
+					green = 0.95f,
+					blue = 0.75f,
+					alpha = 1.0f
+				});
+				this.source_view.set_mark_attributes("diff-add", add_line, 1);
+				var remove_line = new GtkSource.MarkAttributes();
+				remove_line.set_background(Gdk.RGBA() {
+					red = 0.95f,
+					green = 0.75f,
+					blue = 0.75f,
+					alpha = 1.0f
+				});
+				this.source_view.set_mark_attributes("diff-remove", remove_line, 1);
+				var add_active_line = new GtkSource.MarkAttributes();
+				add_active_line.set_background(Gdk.RGBA() {
+					red = 0.75f,
+					green = 0.95f,
+					blue = 0.75f,
+					alpha = 1.0f
+				});
+				this.source_view.set_mark_attributes("diff-add-active", add_active_line, 2);
+				var remove_active_line = new GtkSource.MarkAttributes();
+				remove_active_line.set_background(Gdk.RGBA() {
+					red = 0.95f,
+					green = 0.75f,
+					blue = 0.75f,
+					alpha = 1.0f
+				});
+				this.source_view.set_mark_attributes("diff-remove-active", remove_active_line, 2);
 				this.baseline_gutter.xalign = 1.0f;
 				this.baseline_gutter.xpad = 4;
 				this.baseline_gutter.query_data.connect((lines, line) => {
@@ -837,6 +869,9 @@ namespace OLLMcoder
 						line_end.forward_char();
 					}
 					this.diff_buffer.apply_tag(kinds.get(i) == 1 ? add_tag : remove_tag, iter, line_end);
+					// Text tags skip empty lines. Source marks paint them.
+					this.diff_buffer.create_source_mark(null,
+						kinds.get(i) == 1 ? "diff-add" : "diff-remove", iter);
 				}
 				this.pre_diff_buffer = this.source_view.buffer as GtkSource.Buffer;
 				this.source_view.set_buffer(this.diff_buffer);

@@ -1151,7 +1151,8 @@ namespace OLLMapp
 		 * Inactive lines use ``.oc-diff-add`` and ``.oc-diff-remove``. The hunk at
 		 * {@link highlight_line} uses the ``-active`` rules. A value below 0, other
 		 * than -1, means the first changed hunk. -1 clears that wash and hides
-		 * Accept and Reject.
+		 * Accept and Reject. Source-mark backgrounds use the same
+		 * colors, and that is what paints a blank line in the hunk.
 		 */
 		private void apply_highlight()
 		{
@@ -1162,6 +1163,12 @@ namespace OLLMapp
 			}
 			add_tag.paragraph_background_rgba = this.add_swatch.get_color();
 			remove_tag.paragraph_background_rgba = this.remove_swatch.get_color();
+			var add_wash = new GtkSource.MarkAttributes();
+			add_wash.set_background(this.add_swatch.get_color());
+			this.source_view.source_view.set_mark_attributes("diff-add", add_wash, 1);
+			var remove_wash = new GtkSource.MarkAttributes();
+			remove_wash.set_background(this.remove_swatch.get_color());
+			this.source_view.source_view.set_mark_attributes("diff-remove", remove_wash, 1);
 			var active_add = this.source_view.current_buffer.tag_table.lookup("diff-add-active");
 			if (active_add == null) {
 				active_add = new Gtk.TextTag("diff-add-active");
@@ -1174,10 +1181,18 @@ namespace OLLMapp
 			}
 			active_add.paragraph_background_rgba = this.add_active_swatch.get_color();
 			active_remove.paragraph_background_rgba = this.remove_active_swatch.get_color();
+			var add_active_wash = new GtkSource.MarkAttributes();
+			add_active_wash.set_background(this.add_active_swatch.get_color());
+			this.source_view.source_view.set_mark_attributes("diff-add-active", add_active_wash, 2);
+			var remove_active_wash = new GtkSource.MarkAttributes();
+			remove_active_wash.set_background(this.remove_active_swatch.get_color());
+			this.source_view.source_view.set_mark_attributes("diff-remove-active", remove_active_wash, 2);
 			Gtk.TextIter bounds_start, bounds_end;
 			this.source_view.current_buffer.get_bounds(out bounds_start, out bounds_end);
 			this.source_view.current_buffer.remove_tag(active_add, bounds_start, bounds_end);
 			this.source_view.current_buffer.remove_tag(active_remove, bounds_start, bounds_end);
+			this.source_view.current_buffer.remove_source_marks(bounds_start, bounds_end, "diff-add-active");
+			this.source_view.current_buffer.remove_source_marks(bounds_start, bounds_end, "diff-remove-active");
 			if (this.highlight_line == -1) {
 				this.review_bar.review_overlay.visible = false;
 				return;
@@ -1229,6 +1244,14 @@ namespace OLLMapp
 				}
 				if (from.has_tag(remove_tag)) {
 					this.source_view.current_buffer.apply_tag(active_remove, from, to);
+				}
+				foreach (var mark in this.source_view.current_buffer.get_source_marks_at_line(i, null)) {
+					if (mark.category == "diff-add") {
+						this.source_view.current_buffer.create_source_mark(null, "diff-add-active", from);
+					}
+					if (mark.category == "diff-remove") {
+						this.source_view.current_buffer.create_source_mark(null, "diff-remove-active", from);
+					}
 				}
 			}
 			this.review_bar.review_overlay.visible = true;
