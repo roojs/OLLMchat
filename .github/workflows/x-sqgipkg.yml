@@ -44,12 +44,15 @@ jobs:
           restore-keys: |
             sqgipkg-deps-v2-stable-
 
+      # Do not hash OLLMchat/** . The sysroot cache lives under OLLMchat/.ci-cache
+      # and is full of symlinks. hashFiles walks that on the post step and
+      # fails the job after a successful AppImage.
       - name: Restore sqgipkg Meson build cache
         uses: actions/cache@v6
         with:
           path: |
             OLLMchat/build-linux-x86_64
-          key: sqgipkg-meson-v3-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/**/*.vala', 'OLLMchat/**/meson.build', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
+          key: sqgipkg-meson-v3-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/lib*/**/*.vala', 'OLLMchat/lib*/**/meson.build', 'OLLMchat/ollmapp/**/*.vala', 'OLLMchat/ollmapp/**/meson.build', 'OLLMchat/ollmfilesd/**/*.vala', 'OLLMchat/ollmfilesd/**/meson.build', 'OLLMchat/examples/**/*.vala', 'OLLMchat/examples/**/meson.build', 'OLLMchat/tests/**/*.vala', 'OLLMchat/tests/**/meson.build', 'OLLMchat/android/**/*.vala', 'OLLMchat/android/**/meson.build', 'OLLMchat/vapi/**', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
           restore-keys: |
             sqgipkg-meson-v3-stable-
 
