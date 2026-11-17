@@ -64,7 +64,7 @@ namespace OLLMcoder.Diff
 
 				case OLLMfiles.Diff.PatchOperation.REMOVE:
 					lc = patch.old_line_end - patch.old_line_start + 1;
-					sl = patch.old_line_start - 1;
+					sl = patch.new_line_start - 1;
 					ls = patch.old_line_start;
 					le = patch.old_line_end;
 					break;
@@ -298,8 +298,9 @@ namespace OLLMcoder.Diff
 			}
 
 			this.file_list = new Gtk.ListBox() {
-				selection_mode = Gtk.SelectionMode.SINGLE,
+				selection_mode = Gtk.SelectionMode.NONE,
 				activate_on_single_click = true,
+				css_classes = { "oc-review-file-list" },
 			};
 			for (var fi = 0; fi < this.file_labels.length; fi++) {
 				this.file_list.append(new Gtk.Label(this.file_labels[fi]) {
@@ -336,6 +337,7 @@ namespace OLLMcoder.Diff
 			this.file_menu_popover = new Gtk.Popover() {
 				autohide = false,
 				child = this.file_list,
+				css_classes = { "oc-review-file-popover" },
 			};
 			this.file_menu_popover.set_parent(this.file_nav_btn);
 			this.file_nav_btn.clicked.connect(() => {
@@ -1762,6 +1764,7 @@ namespace OLLMcoder.Diff
 			this.bulk_btn.visible = on_list;
 			if (this.file_count < 1) {
 				this.file_nav_btn.label = "no changes need reviewing";
+				this.file_nav_btn.remove_css_class("oc-review-cta");
 				this.accept_btn.visible = false;
 				this.reject_btn.visible = false;
 				this.pending_label.visible = false;
@@ -1771,6 +1774,7 @@ namespace OLLMcoder.Diff
 			if (on_list) {
 				this.file_nav_btn.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
+				this.file_nav_btn.remove_css_class("oc-review-cta");
 				this.accept_btn.visible = true;
 				this.reject_btn.visible = true;
 				this.pending_label.visible = false;
@@ -1779,6 +1783,7 @@ namespace OLLMcoder.Diff
 			if (!on_list) {
 				this.file_index = 0;
 				this.file_nav_btn.label = "changes need reviewing";
+				this.file_nav_btn.add_css_class("oc-review-cta");
 				this.accept_btn.visible = false;
 				this.reject_btn.visible = false;
 				this.pending_label.visible = false;
@@ -1796,8 +1801,9 @@ namespace OLLMcoder.Diff
 				this.map_area.visible = true;
 			}
 			this.file_list = new Gtk.ListBox() {
-				selection_mode = Gtk.SelectionMode.SINGLE,
+				selection_mode = Gtk.SelectionMode.NONE,
 				activate_on_single_click = true,
+				css_classes = { "oc-review-file-list" },
 			};
 			var project = this.source_view.manager.active_project;
 			for (var fi = 0; fi < this.queue.size; fi++) {
@@ -1828,16 +1834,16 @@ namespace OLLMcoder.Diff
 					default:
 						break;
 				}
-				row_box.append(new Gtk.Label(row.path_basename) {
+				var name = new Gtk.Label(row.path_basename) {
 					xalign = 0.0f,
 					hexpand = true,
 					tooltip_text = rel,
-				});
+				};
+				if (on_list && fi == this.file_index) {
+					name.add_css_class("oc-review-file-current");
+				}
+				row_box.append(name);
 				this.file_list.append(row_box);
-			}
-			if (on_list) {
-				this.file_list.select_row(
-					this.file_list.get_row_at_index(this.file_index));
 			}
 			this.file_list.row_activated.connect((line) => {
 				var pick = line.get_index();
@@ -1856,6 +1862,7 @@ namespace OLLMcoder.Diff
 				this.file_index = pick;
 				this.file_nav_btn.label = "File %d of %d".printf(
 					pick + 1, this.file_count);
+				this.file_nav_btn.remove_css_class("oc-review-cta");
 				if (this.queue.size > 1) {
 					this.file_prev.tooltip_text = this.queue.get(
 						(this.file_index - 1 + this.file_count) % this.file_count).path_basename;

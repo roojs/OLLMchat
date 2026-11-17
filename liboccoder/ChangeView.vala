@@ -78,6 +78,13 @@ namespace OLLMcoder
 				return;
 			}
 			this.buffer.tag_table.add(new Gtk.TextTag("diff-add") {
+				background_rgba = Gdk.RGBA() {
+					red = 0.75f,
+					green = 0.95f,
+					blue = 0.75f,
+					alpha = 1.0f
+				},
+				background_full_height = true,
 				paragraph_background_rgba = Gdk.RGBA() {
 					red = 0.75f,
 					green = 0.95f,
@@ -86,6 +93,13 @@ namespace OLLMcoder
 				}
 			});
 			this.buffer.tag_table.add(new Gtk.TextTag("diff-remove") {
+				background_rgba = Gdk.RGBA() {
+					red = 0.95f,
+					green = 0.75f,
+					blue = 0.75f,
+					alpha = 1.0f
+				},
+				background_full_height = true,
 				paragraph_background_rgba = Gdk.RGBA() {
 					red = 0.95f,
 					green = 0.75f,

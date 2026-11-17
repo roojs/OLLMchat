@@ -284,6 +284,58 @@ separator.horizontal.oc-table-body-sep {
   color: @error_color;
 }
 
+/* Review call-to-action. Pinned orange, not suggested-action
+   (that follows the desktop accent). Quiet labels do not use it. */
+button.oc-review-cta {
+  background-color: #e66100;
+  color: white;
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+}
+
+button.oc-review-cta:hover {
+  background-color: #c64600;
+  color: white;
+}
+
+button.oc-review-cta:active {
+  background-color: #a33b00;
+  color: white;
+}
+
+popover.oc-review-file-popover contents {
+  padding: 6px;
+  min-width: 240px;
+}
+
+.oc-review-file-list {
+  background: transparent;
+}
+
+.oc-review-file-list row {
+  padding: 8px 12px;
+  min-height: 34px;
+  border-radius: 6px;
+}
+
+.oc-review-file-list row:selected,
+.oc-review-file-list row:selected:focus {
+  background: transparent;
+}
+
+.oc-review-file-list row:hover {
+  background-color: alpha(@window_fg_color, 0.08);
+}
+
+.oc-review-file-list label {
+  font-weight: normal;
+}
+
+.oc-review-file-list label.oc-review-file-current {
+  font-weight: bold;
+}
+
 label.error {
   color: @error_color;
 }

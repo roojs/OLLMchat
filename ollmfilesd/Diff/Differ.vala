@@ -850,8 +850,8 @@ namespace OLLMfiles.Diff
 						PatchOperation.REMOVE,
 						line_offset1 + delete_start_pos + 1,
 						line_offset1 + delete_start_pos + delete_count,
-						line_offset1 + delete_start_pos + 1,
-						line_offset1 + delete_start_pos,
+						line_offset2 + insert_start_pos + 1,
+						line_offset2 + insert_start_pos,
 						this.lines1,
 						this.lines2
 					));

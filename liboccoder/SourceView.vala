@@ -333,6 +333,13 @@ namespace OLLMcoder
 				});
 				this.scrolled_window.add_controller(font_wheel);
 				this.diff_tag_table.add(new Gtk.TextTag("diff-add") {
+					background_rgba = Gdk.RGBA() {
+						red = 0.75f,
+						green = 0.95f,
+						blue = 0.75f,
+						alpha = 1.0f
+					},
+					background_full_height = true,
 					paragraph_background_rgba = Gdk.RGBA() {
 						red = 0.75f,
 						green = 0.95f,
@@ -341,6 +348,13 @@ namespace OLLMcoder
 					}
 				});
 				this.diff_tag_table.add(new Gtk.TextTag("diff-remove") {
+					background_rgba = Gdk.RGBA() {
+						red = 0.95f,
+						green = 0.75f,
+						blue = 0.75f,
+						alpha = 1.0f
+					},
+					background_full_height = true,
 					paragraph_background_rgba = Gdk.RGBA() {
 						red = 0.95f,
 						green = 0.75f,
@@ -948,6 +962,7 @@ namespace OLLMcoder
 			 * When a whole-file diff is showing, {@code line_number}
 			 * is a disk line and removed lines shift the buffer.
 			 * Review jumps pass a buffer line and center it.
+			 * A line past the buffer scrolls to the end.
 			 *
 			 * @param line_number 0-based line to show
 			 * @param align_middle put that line in the middle of the view
@@ -961,7 +976,7 @@ namespace OLLMcoder
 					var disk = line_number + 1;
 					// walk diff's should be ok as long as there are not too many
 					for (var i = 0; i < this.diff_remove_at.size; i++) {
-						if (this.diff_remove_at.get(i) > disk) {
+						if (this.diff_remove_at.get(i) >= disk) {
 							break;
 						}
 						extras += this.diff_remove_n.get(i);
@@ -970,7 +985,7 @@ namespace OLLMcoder
 				}
 				Gtk.TextIter iter;
 				if (!buffer.get_iter_at_line(out iter, display_line)) {
-					return;
+					buffer.get_end_iter(out iter);
 				}
 				buffer.place_cursor(iter);
 				this.source_view.scroll_to_iter(iter, 0.0, align_middle, 0.0, 0.5);
