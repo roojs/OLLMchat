@@ -171,19 +171,6 @@ namespace OLLMrpc.Bin
 				return;
 			}
 
-			if (val.type() == typeof(int[])) {
-				int[] nums = (int[]) val;
-				StreamValue.write_numeric_array(ctx, GLib.Type.INT,
-					nums.length, nums, sizeof(int));
-				return;
-			}
-			if (val.type() == typeof(int64[])) {
-				int64[] wides = (int64[]) val;
-				StreamValue.write_numeric_array(ctx, GLib.Type.INT64,
-					wides.length, wides, sizeof(int64));
-				return;
-			}
-
 			if (val.type() == typeof(GLib.Variant)) {
 				var variant = val.dup_variant();
 				if (variant.is_of_type(new GLib.VariantType("ai"))) {

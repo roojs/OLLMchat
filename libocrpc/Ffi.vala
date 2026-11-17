@@ -30,8 +30,10 @@ namespace OLLMrpc
 	 * Compiled on every platform (not ''gi_src'').
 	 *
 	 * {@link pack} writes one {@link Libffi.Arg} from a D-Bus letter
-	 * and a {@link GLib.Value}. ''S'' is one wire ''string[]'' and two
-	 * C args (pointer + Vala hidden length). {@link Gi} will extend
+	 * and a {@link GLib.Value}. ''S'', ''ai'', and ''ax'' are one
+	 * wire value and two C args (pointer + length). For ''ai'' and
+	 * ''ax'', {@link args} takes the length as the next vararg.
+	 * {@link Gi} will extend
 	 * {@link Ffi} and use {@link pack} for typelib scalars in a later cut.
 	 *
 	 * == Example ==
@@ -334,25 +336,24 @@ namespace OLLMrpc
 					continue;
 				}
 				if (rest.has_prefix("ai")) {
-					var ai_val = this.request.args.get(ai);
-					int[] nums = {};
-					if (ai_val.type() == typeof(int[])) {
-						nums = (int[]) ai_val.get_boxed();
+					if (this.request.args.get(ai).type() != typeof(GLib.Variant)) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return true;
 					}
-					if (ai_val.type() == typeof(GLib.Variant)) {
-						var variant = ai_val.dup_variant();
-						nums = new int[variant.n_children()];
-						for (var n = (size_t) 0; n < variant.n_children(); n++) {
-							nums[n] = variant.get_child_value(n).get_int32();
-						}
+					var ai_held = this.request.args.get(ai).dup_variant();
+					if (ai_held == null || !ai_held.is_of_type(new GLib.VariantType("ai"))) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return true;
 					}
 					var pin_i = pin.length;
 					pin.resize(pin_i + 1);
-					pin[pin_i] = GLib.Value(typeof(int[]));
-					pin[pin_i].set_boxed(nums);
-					slots[2 + si].set_pointer(pin[pin_i].get_boxed());
+					pin[pin_i] = GLib.Value(typeof(GLib.Variant));
+					pin[pin_i].set_variant(ai_held);
+					slots[2 + si].set_pointer(ai_held.get_data());
 					atypes[2 + si] = Libffi.POINTER;
-					slots[2 + si + 1].set_int32(nums.length);
+					slots[2 + si + 1].set_int32((int) ai_held.n_children());
 					atypes[2 + si + 1] = Libffi.SINT32;
 					offset += 2;
 					si += 2;
@@ -360,25 +361,24 @@ namespace OLLMrpc
 					continue;
 				}
 				if (rest.has_prefix("ax")) {
-					var ax_val = this.request.args.get(ai);
-					int64[] wides = {};
-					if (ax_val.type() == typeof(int64[])) {
-						wides = (int64[]) ax_val.get_boxed();
+					if (this.request.args.get(ai).type() != typeof(GLib.Variant)) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return true;
 					}
-					if (ax_val.type() == typeof(GLib.Variant)) {
-						var variant = ax_val.dup_variant();
-						wides = new int64[variant.n_children()];
-						for (var n = (size_t) 0; n < variant.n_children(); n++) {
-							wides[n] = variant.get_child_value(n).get_int64();
-						}
+					var ax_held = this.request.args.get(ai).dup_variant();
+					if (ax_held == null || !ax_held.is_of_type(new GLib.VariantType("ax"))) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return true;
 					}
 					var pin_i = pin.length;
 					pin.resize(pin_i + 1);
-					pin[pin_i] = GLib.Value(typeof(int64[]));
-					pin[pin_i].set_boxed(wides);
-					slots[2 + si].set_pointer(pin[pin_i].get_boxed());
+					pin[pin_i] = GLib.Value(typeof(GLib.Variant));
+					pin[pin_i].set_variant(ax_held);
+					slots[2 + si].set_pointer(ax_held.get_data());
 					atypes[2 + si] = Libffi.POINTER;
-					slots[2 + si + 1].set_int32(wides.length);
+					slots[2 + si + 1].set_int32((int) ax_held.n_children());
 					atypes[2 + si + 1] = Libffi.SINT32;
 					offset += 2;
 					si += 2;

@@ -1,6 +1,6 @@
 # RPC args: pack `int[]` as `ai` and `int64[]` as `ax`
 
-**Status:** ⏳ opened — `ai` and `ax` are not `args` letters yet
+**Status:** ⏳ opened — `ai` and `ax` shipped in `6d8fbcff` and crash. `int[]` has no GLib type, and `args` never receives the length.
 
 **Pointer:** `docs/bug-fix-process.md`, [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md), [`libocrpc/namespace.vala`](../../libocrpc/namespace.vala), [`libocrpc/android/namespace.vala`](../../libocrpc/android/namespace.vala), [`libocrpc/Ffi.vala`](../../libocrpc/Ffi.vala), [`libocrpc/Bin/StreamValue.vala`](../../libocrpc/Bin/StreamValue.vala), [`tests/rpc/values-test.vala`](../../tests/rpc/values-test.vala)
 
@@ -215,4 +215,23 @@ if (rest.has_prefix("ax")) {
 
 ## Next
 
-- ⏳ 🔷 Implement the `libocrpc` adds above and extend `tests/rpc/values-test.vala` with `args("ai", ids)` and `args("ax", history_ids)`.
+- 🚫 The adds above are already in `6d8fbcff`. They are the crash. Do not apply them again.
+
+## Shipped code crashes
+
+- ✔️ `typeof(int[])` is `G_TYPE_INVALID` (`0`). Vala warns: arrays have no `GLib.Type`, except `string[]`. `/tmp/argus-ai-probe` printed `int[] type 0`.
+- ✔️ `to_value` for `ai` compiles to `g_value_init(..., G_TYPE_INVALID)`, `va_arg(l, gint*)`, `g_value_set_boxed`. The caller is `oll_mrpc_args("ai", pointer, NULL)`. The length variable is not an argument. Assigning `l.arg<int[]>()` to an `int[]` does not compile: `invalid array_length for given dimension`.
+- ✔️ Casting that boxed value back to `int[]` sets the length to `-1`. `_vala_array_dup2` then returns `NULL`. `tests/rpc/values-test.vala` checks `got_ids.length == 2`.
+- ✔️ `build/tests/test-rpc-values` prints `type id '0' is invalid`, then `cannot initialize GValue with type '(null)'`, then fails `args strv length` and returns before the `ai` checks.
+- ✔️ Dispatch pins the same way. `Ffi.vala` does `GLib.Value(typeof(int[]))`, `set_boxed`, `get_boxed`. `get_boxed` fails, so the Vala method is called with a null data pointer. `g_value_set_boxed` and `g_value_get_boxed` are the criticals in the journal.
+- ✔️ Argus `Task.submit` (`oaib`) died there. `argusrm-server` SEGV in `argus_server_sqt_task_submit` at the `foreach` over `agent_ids` (`server/SQT/Task.vala`). The controller toast is `Could not queue task: Client: disconnected`.
+- ℹ️ `string[]` is fine. It is `G_TYPE_STRV`, and the writer uses `g_strv_length`.
+- ℹ️ `Gi2.vala` already carries a numeric array as a `GLib.Variant` of type `ai` and keeps the bytes in a `GLib.Bytes` slab (`boxed_keep`) for the call. That path does not use `typeof(int[])`.
+- 💩 A fix has to store something that has a GType and a length. A variant of type `ai`, pinned the way `Gi2.vala` pins it, matches the wire body `StreamValue` already writes. `args("ai", ids)` cannot do that by itself: the length never arrives. A typed parameter is the only place Vala passes the length. This note does not change `libocrpc`.
+
+## A bad argument must not kill the process
+
+- 🔷 The process that died was the server. `argusrm-server` SEGV twice in `task_submit`. The controller stayed up. It logged the same `type id 0` / `g_value_set_boxed` critical while packing, then `Connection refused` after the server was gone, and toasted `Client: disconnected`.
+- 🔷 The controller's `ai` value was already invalid, because `to_value` uses the same `G_TYPE_INVALID` init. That is bad output from the library, not a hostile client.
+- 🔷 The server still must not crash on it. `Ffi.vala` calls the method after `get_boxed` has failed and the pointer slot is null. `typeof(int[])` is `0`, so an unset value also matches the `int[]` branch. A bad `ai` or `ax` has to be an RPC error reply. It must not be a SEGV in the method.
+- ✔️ `ai` and `ax` each take the array pointer and then the length. The value stored is one `GLib.Variant` (`ai` or `ax`). Dispatch replies `INVALID_PARAMS` and returns when that value is missing or the wrong type, before `cif.call`.

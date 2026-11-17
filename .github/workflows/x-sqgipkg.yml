@@ -19,10 +19,17 @@ env:
 
 jobs:
   appimage:
-    name: AppImage
+    name: AppImage ${{ matrix.arch }}
     runs-on: ubuntu-24.04
+    # Two runners. A shared job would add the two builds together; the release
+    # clock is whichever one is still running. Cache keys include the arch so
+    # the two saves do not reserve the same key.
     # Ubuntu 24.04 has no roojs suite. x86_64 sysroot needs plucky plus
-    # libwebkitgtk-6.0-webdriver-dev. aarch64 AppImage is off for now.
+    # libwebkitgtk-6.0-webdriver-dev. aarch64 has no arm64 webdriver package.
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
     container:
       image: ubuntu:25.04
     steps:
@@ -40,9 +47,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: OLLMchat/.sqgipkg
-          key: sqgipkg-deps-v2-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}
+          key: sqgipkg-deps-${{ matrix.arch }}-v2-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}
           restore-keys: |
-            sqgipkg-deps-v2-stable-
+            ${{ inputs.refresh_cache && 'sqgipkg-deps-nocache-' || format('sqgipkg-deps-{0}-v2-stable-', matrix.arch) }}
 
       # Do not hash OLLMchat/** . The sysroot cache lives under OLLMchat/.ci-cache
       # and is full of symlinks. hashFiles walks that on the post step and
@@ -50,22 +57,22 @@ jobs:
       - name: Restore sqgipkg Meson build cache
         uses: actions/cache@v6
         with:
-          path: |
-            OLLMchat/build-linux-x86_64
-          key: sqgipkg-meson-v3-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/lib*/**/*.vala', 'OLLMchat/lib*/**/meson.build', 'OLLMchat/ollmapp/**/*.vala', 'OLLMchat/ollmapp/**/meson.build', 'OLLMchat/ollmfilesd/**/*.vala', 'OLLMchat/ollmfilesd/**/meson.build', 'OLLMchat/examples/**/*.vala', 'OLLMchat/examples/**/meson.build', 'OLLMchat/tests/**/*.vala', 'OLLMchat/tests/**/meson.build', 'OLLMchat/android/**/*.vala', 'OLLMchat/android/**/meson.build', 'OLLMchat/vapi/**', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
+          path: OLLMchat/build-linux-${{ matrix.arch }}
+          key: sqgipkg-meson-${{ matrix.arch }}-v3-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/lib*/**/*.vala', 'OLLMchat/lib*/**/meson.build', 'OLLMchat/ollmapp/**/*.vala', 'OLLMchat/ollmapp/**/meson.build', 'OLLMchat/ollmfilesd/**/*.vala', 'OLLMchat/ollmfilesd/**/meson.build', 'OLLMchat/examples/**/*.vala', 'OLLMchat/examples/**/meson.build', 'OLLMchat/tests/**/*.vala', 'OLLMchat/tests/**/meson.build', 'OLLMchat/android/**/*.vala', 'OLLMchat/android/**/meson.build', 'OLLMchat/vapi/**', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
           restore-keys: |
-            sqgipkg-meson-v3-stable-
+            ${{ inputs.refresh_cache && 'sqgipkg-meson-nocache-' || format('sqgipkg-meson-{0}-v3-stable-', matrix.arch) }}
 
-      # sqgipkg extracts ~600 debs under this directory and skips any package
-      # already recorded there. It used to live in the container home, which
-      # is thrown away, so every run unpacked GTK, WebKit, and OpenBLAS again.
+      # One sysroot cache per arch. The x86_64 job also accepts the v1 cache
+      # from the single-arch run. aarch64 must not restore that: it is amd64.
       - name: Restore sqgipkg Linux sysroot cache
         id: sqgipkg-sysroot
         uses: actions/cache/restore@v6
         with:
           path: OLLMchat/.ci-cache/sqgipkg
-          key: sqgipkg-linux-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}-ubuntu-25.04
-          restore-keys: ${{ inputs.refresh_cache && 'sqgipkg-linux-v1-nocache-' || 'sqgipkg-linux-v1-stable-' }}
+          key: sqgipkg-linux-${{ matrix.arch }}-v2-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}-ubuntu-25.04
+          restore-keys: |
+            ${{ inputs.refresh_cache && 'sqgipkg-linux-nocache-' || format('sqgipkg-linux-{0}-v2-stable-', matrix.arch) }}
+            ${{ inputs.refresh_cache && 'sqgipkg-linux-nocache-' || (matrix.arch == 'x86_64' && 'sqgipkg-linux-v1-stable-' || 'sqgipkg-linux-nocache-') }}
 
       - name: Install host build dependencies
         working-directory: OLLMchat
@@ -101,17 +108,21 @@ jobs:
           ref: ${{ steps.sqgi.outputs.rev }}
 
       - name: Restore sqgi build cache
-        uses: actions/cache@v6
+        id: sqgi-build
+        uses: actions/cache/restore@v6
         with:
           path: sqgi/build
           key: sqgi-build-v1-${{ hashFiles('OLLMchat/scripts/release/sqgi.revision') }}
-          restore-keys: |
-            sqgi-build-v1-
+          restore-keys: sqgi-build-v1-
 
       - name: Install AppImage build dependencies
         run: |
+          extra=""
+          if [ "${{ matrix.arch }}" = "aarch64" ]; then
+            extra="gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static binfmt-support"
+          fi
           sudo apt-get install -y --no-install-recommends \
-            squashfs-tools
+            squashfs-tools $extra
 
       - name: Build and install sqgi
         run: |
@@ -120,14 +131,22 @@ jobs:
           sudo cmake --install sqgi/build --prefix /usr/local
           sudo ldconfig
 
-      - name: Build Linux x86_64 AppImage
+      - name: Save sqgi build cache
+        if: success() && steps.sqgi-build.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with:
+          path: sqgi/build
+          key: ${{ steps.sqgi-build.outputs.cache-primary-key }}
+
+      - name: Build Linux ${{ matrix.arch }} AppImage
         working-directory: OLLMchat
         run: |
           refresh=""
           if [ "${{ inputs.refresh_cache }}" = "true" ]; then
             refresh=--refresh-linux-packages
           fi
-          sqgipkg --target appimage --appimage-arch x86_64 \
+          sqgipkg --target appimage --appimage-arch "${{ matrix.arch }}" \
             --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi" \
             --linux-deb-sysroot-cache "$GITHUB_WORKSPACE/OLLMchat/.ci-cache/sqgipkg/linux-sysroots" \
             $refresh
@@ -144,11 +163,12 @@ jobs:
         working-directory: OLLMchat
         run: |
           mkdir -p artifacts
-          cp dist-linux-x86_64/OLLMchat.AppImage artifacts/OLLMchat-remote-only-x86_64.AppImage
+          cp "dist-linux-${{ matrix.arch }}/OLLMchat.AppImage" \
+            "artifacts/OLLMchat-remote-only-${{ matrix.arch }}.AppImage"
           ls -lh artifacts
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ollmchat-appimage
+          name: ollmchat-appimage-${{ matrix.arch }}
           path: OLLMchat/artifacts/*

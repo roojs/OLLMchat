@@ -36,10 +36,10 @@ CI then:
    - **Resolute packages** is Ubuntu 26.04 (girepository 2.0). Plain revision (`1.4.6-1`). Artifact `ollmchat-debian`.
    - **Trixie packages** is Debian 13 (`debian:trixie`, girepository 1.0). Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`). A Trixie failure does not drop the Ubuntu artifacts.
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
-3. AppImage builds (sqgipkg) are currently disabled in the `Release` workflow. **Release - AppImage** is the separate test: it does not publish. The job caches the Debian sysroot (GTK, WebKit, OpenBLAS), the Faiss checkout, and the Meson build. The first run after a miss still unpacks that sysroot; the next run reuses it. Leave **Rebuild sqgipkg and Meson caches from scratch** off so the run writes and reads the shared cache.
+3. Builds **AppImages** (sqgipkg) for x86_64 and aarch64 at the same time. Each arch has its own Debian sysroot, Faiss, and Meson cache. **Release - AppImage** runs the same jobs without publishing. Leave **Rebuild sqgipkg and Meson caches from scratch** off unless the caches should be ignored.
 4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**, plus one MSYS2 package per library: **`mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst`**.
 5. Builds **Android** APKs on the version tag: `ollmchat-v*.apk` (Gradle release) and `ollmchat-v*-debug.apk` (Gradle debug), from one native compile. An Android failure fails the Release workflow. Publish does not run, so neither GitHub Release is created.
-6. On a tag push, publishes **two** GitHub Releases only after Android, Debian, RPM, and Windows have all succeeded. Publish first pushes the git tag `${tag}-packages` at the same commit (this workflow ignores `v*-packages`, so that push does not rebuild). Without that git tag, GitHub leaves the release as an untagged draft. `.deb`, `.rpm`, `.pixie`, Windows library archives, and the AppImage go on `${tag}-packages` (not marked Latest). The Windows installer and the APKs go on the version tag, so that tag appears above packages on the Releases page. Publish deletes a leftover draft for either tag before creating it, and refuses to publish when the APK artifact is missing.
+6. On a tag push, publishes **two** GitHub Releases only after Android, Debian, RPM, Windows, and AppImage have all succeeded. An AppImage failure skips Publish. Publish first pushes the git tag `${tag}-packages` at the same commit (this workflow ignores `v*-packages`, so that push does not rebuild). Without that git tag, GitHub leaves the release as an untagged draft. `.deb`, `.rpm`, `.pixie`, Windows library archives, and the AppImage go on `${tag}-packages` (not marked Latest). The Windows installer and the APKs go on the version tag, so that tag appears above packages on the Releases page. Publish deletes a leftover draft for either tag before creating it, and refuses to publish when the APK or either AppImage is missing.
 
 AppImage packaging is configured in [`sqgipkg.json`](../sqgipkg.json) (Linux only). Debian packaging lives under [`debian/`](../debian/). The RPM spec is [`packaging/rpm/ollmchat.spec`](../packaging/rpm/ollmchat.spec).
 
@@ -51,7 +51,7 @@ Fedora 44 is the RPM base. openSUSE uses the same spec; CI does **not** share on
 |--------|---------------|----------|-------|
 | APT / `.deb` | amd64 | **split `ollmchat`**: yes · **ollmchat-remote-only**: no | Users: `apt-get update && apt-get install ollmchat` (or `libocrpc-dev`) after adding [the repo](https://roojs.github.io/repos/) |
 | RPM | x86_64 | same split + remote-only | Fedora 44 and openSUSE Tumbleweed; FAISS on Fedora comes from the roojs repo (nicked from Tumbleweed) |
-| AppImage | x86_64 | No | Self-contained; remote backends only. aarch64 is not built. |
+| AppImage | x86_64 and aarch64 | No | Self-contained; remote backends only. Both files go on `${tag}-packages`. |
 | Windows `.exe` | x86_64 | No | Native MSYS2 NSIS: **`OLLMchat-<version>-Setup.exe`** on the version tag. The UCRT64 library archives are on `${tag}-packages`. |
 | Android `.apk` | arm64-v8a | No | Android client; sideload from GitHub Releases |
 
@@ -124,7 +124,8 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    | `ollmchat_*.deb`, `liboc*_*.deb`, `liboll*_*.deb`, `ollmchat-remote-only_*.deb` without a suite `+` label | Ubuntu 26.04 resolute |
    | `libocrpc-*.rpm`, `liboc*-*.rpm`, `liboll*-*.rpm`, `ollmchat-*.fc44.*.rpm` | Fedora 44 (split libs + app; plus `ollmchat-remote-only`) |
    | same names without `.fc` | openSUSE Tumbleweed |
-   | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only. Not built by the tag workflow right now. |
+   | `OLLMchat-remote-only-x86_64.AppImage` | Linux x86_64; remote backends only |
+   | `OLLMchat-remote-only-aarch64.AppImage` | Linux aarch64; remote backends only |
    | `mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst` | Windows UCRT64 library (DLL, import library, header, VAPI; GIR when the build emits one). One file per library: `libocsqlite`, `libocrpc`, `libocmarkdown`, `libollamaweb`, `libochf`, `libocmarkdowngtk`, `libocfiles`, `libollmchat`, `libocwebkit`, `libocvector2`, `libocbwrap`, `libocmcp`, `liboctools`, `liboccoder`, `libollmchatgtk`. `libocvector2` also contains `libfaiss.dll`. |
    | `<name>-arm-v31-<version>.pixie` | Android library (one file per library the APK build installed). `release.pins` on `main` points at these files. The Valadoc Pages workflow publishes it at `https://roojs.github.io/OLLMchat/release.pins`. The pin file is not attached to the release. |
 

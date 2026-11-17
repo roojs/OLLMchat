@@ -191,13 +191,29 @@ namespace OLLMrpc
 				return as_val;
 
 			case "ai":
-				var ai_val = GLib.Value(typeof(int[]));
-				ai_val.set_boxed((*cursor).arg<int[]>());
+				var ai_ptr = (*cursor).arg<int*>();
+				var ai_n = (*cursor).arg<int>();
+				var ai_nums = new int[ai_n];
+				if (ai_n > 0) {
+					GLib.Memory.copy(ai_nums, ai_ptr, ai_n * sizeof(int));
+				}
+				var ai_var = GLib.Variant.new_fixed_array(
+					new GLib.VariantType("i"), ai_nums, sizeof(int));
+				var ai_val = GLib.Value(typeof(GLib.Variant));
+				ai_val.take_variant(ai_var);
 				return ai_val;
 
 			case "ax":
-				var ax_val = GLib.Value(typeof(int64[]));
-				ax_val.set_boxed((*cursor).arg<int64[]>());
+				var ax_ptr = (*cursor).arg<int64*>();
+				var ax_n = (*cursor).arg<int>();
+				var ax_nums = new int64[ax_n];
+				if (ax_n > 0) {
+					GLib.Memory.copy(ax_nums, ax_ptr, ax_n * sizeof(int64));
+				}
+				var ax_var = GLib.Variant.new_fixed_array(
+					new GLib.VariantType("x"), ax_nums, sizeof(int64));
+				var ax_val = GLib.Value(typeof(GLib.Variant));
+				ax_val.take_variant(ax_var);
 				return ax_val;
 
 			case "ay":
@@ -297,8 +313,9 @@ namespace OLLMrpc
 	 * ''o'' {@link GLib.Object}, ''g'' signature, ''h'' unix fd,
 	 * ''as'' ''string[]'', ''S'' same value plus Vala array length
 	 * at FFI call,
-	 * ''ai'' ''int[]'', ''ax'' ''int64[]'', each plus array length
-	 * at the FFI call, ''ay'' {@link GLib.Bytes},
+	 * ''ai'' int array then its length, ''ax'' int64 array then
+	 * its length. Caller passes both. FFI passes both on.
+	 * ''ay'' {@link GLib.Bytes},
 	 * ''v'' {@link GLib.Variant},
 	 * ''V'' {@link GLib.Value} (Helper / generator; not D-Bus).
 	 *

@@ -11,7 +11,18 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.13] - Unreleased
+## [1.4.14] - Unreleased
+
+Work since **1.4.13** (2026-11-17).
+
+### Fixed
+
+#### libocrpc
+
+- `args` takes an `ai` array and its length, and an `ax` array and its length. A varargs call does not pass the length on its own
+- A bad `ai` or `ax` value is an invalid-params error. Dispatch does not call the method
+
+## [1.4.13] - 2026-11-17
 
 Work since **1.4.12** (2026-11-13).
 
@@ -20,7 +31,7 @@ Work since **1.4.12** (2026-11-13).
 #### Packaging
 
 - Version tags attach `ollmchat-vX.Y.Z.apk` and `ollmchat-vX.Y.Z-debug.apk` (one native build, Gradle release plus debug)
-- **Release - AppImage** caches the sqgipkg Debian sysroot so a second manual run does not unpack GTK, WebKit, and OpenBLAS again. The main Release workflow still skips AppImage
+- Tag Release builds the x86_64 and aarch64 AppImages together and attaches both to the packages release. Publish waits for them
 
 #### libocrpc
 
