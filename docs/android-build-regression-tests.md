@@ -38,6 +38,7 @@ GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 | **R17** | [32547800217](https://github.com/roojs/OLLMchat/actions/runs/32547800217) | `Package gtksourceview-5 not found` compiling `libocmarkdowngtk`; local valac has the vapi from desktop `-dev` | `regression/test-r17-android-host-vapi-packages.sh` |
 | **R18** | [32552806663](https://github.com/roojs/OLLMchat/actions/runs/32552806663) | `network_session` does not exist on `WebKitGtkAndroid.WebView` until wrap pin `v0.1.3` | `regression/test-r18-webkit-get-network-session.sh` |
 | **R19** | [32568270350](https://github.com/roojs/OLLMchat/actions/runs/32568270350) | `Package gee-0.8 not found` generating `ocmarkdowngtk.vapi`; laptop has host `libgee-0.8-dev` | `regression/test-r19-android-custom-vapi-gee-vapidir.sh` |
+| **R20** | (local) | Chat APK configured to compile GTK/GLib from source, or a local GLib scheduler hack is present | `regression/test-r20-pixie-source-hack.sh` |
 
 When a **new** CI failure appears:
 

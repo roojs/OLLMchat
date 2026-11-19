@@ -194,6 +194,24 @@ if host_machine.system() == 'android'
     'android/tools/Bash/Request.vala',
   ] + android_poc_settings_sources
 
+  # adw-spinner.vapi fills Spinner when the libadwaita VAPI lacks it.
+  # A VAPI that already has Spinner must not get the shim as well.
+  fs = import('fs')
+  adw_spinner_arg = ['--pkg=adw-spinner']
+  vala_vapidir = run_command(
+    'pkg-config', '--variable=vapidir', 'libvala-0.56',
+    check: false
+  ).stdout().strip()
+  adw_vapi_paths = ['/usr/share/vala/vapi/libadwaita-1.vapi']
+  if vala_vapidir != ''
+    adw_vapi_paths += vala_vapidir / 'libadwaita-1.vapi'
+  endif
+  foreach adw_vapi : adw_vapi_paths
+    if fs.exists(adw_vapi) and fs.read(adw_vapi).contains('class Spinner ')
+      adw_spinner_arg = []
+    endif
+  endforeach
+
   android_poc = executable('ollmchat-android-poc',
     dependencies: [
       android_poc_deps,
@@ -229,7 +247,7 @@ if host_machine.system() == 'android'
     vala_args: [
       '--pkg=gtk4',
       '--pkg=libadwaita-1',
-      '--pkg=adw-spinner',
+    ] + adw_spinner_arg + [
       '--pkg=gtksourceview-5',
       '--pkg=sqlite3',
       '--pkg=ocsqlite',

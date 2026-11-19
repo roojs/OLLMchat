@@ -44,15 +44,16 @@ The repository includes a Pixiewood-based Android packaging path. GitHub Actions
 sets `PIXIEWOOD_USE_PIXIE=1`. That downloads the published `.pixie` libraries
 from `https://roojs.github.io/pixiewood-pkgs/release.pins` and `snapshot.pins`,
 with `gtk` replaced by `android/pixie-gtk.pins`. `webkitgtk-android` is
-`android/pixie-webkit.pins` (0.1.7). A local build
-compiles the stack from source unless the same variable is set:
+`android/pixie-webkit.pins` (0.1.7). The chat APK script stops if that variable is unset, or if the Meson
+directory was configured to compile the GTK stack from source:
 
 ```bash
 PIXIEWOOD_USE_PIXIE=1 scripts/android/build-chat-poc-apk.sh
 ```
 
-That downloads the packages once into `.pixiewood/pixie` and reuses them.
-`PIXIEWOOD_REFRESH_SUBPROJECTS=1` downloads them again.
+Each run reads the published pin list. `.pixiewood/pixie` is replaced when
+that list differs from the last download. `PIXIEWOOD_REFRESH_SUBPROJECTS=1`
+downloads again even when the list matches.
 
 `release.pins` in the repository root is the pin list for the Android libraries
 this project publishes. A version tag uploads one `.pixie` per library that the

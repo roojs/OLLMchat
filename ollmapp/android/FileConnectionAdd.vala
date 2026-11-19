@@ -210,10 +210,15 @@ namespace OLLMapp.SettingsDialog
 				var code = phone.try_connection(
 					host, (uint16) port, pin, force_register,
 					ollmapp_android_phone_label());
-				if (code == (int) OLLMrpc.RpcErrorCode.CERT_NOT_REGISTERED
-					&& !force_register) {
-					force_register = true;
-					continue;
+				if (!force_register) {
+					switch (code) {
+						case (int) OLLMrpc.RpcErrorCode.CERT_NOT_REGISTERED:
+						case (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR:
+							force_register = true;
+							continue;
+						default:
+							break;
+					}
 				}
 				if (code != 0) {
 					var label = "The desktop rejected the request.";

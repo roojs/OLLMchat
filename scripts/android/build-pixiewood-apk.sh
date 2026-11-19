@@ -352,14 +352,8 @@ init_pixiewood_env() {
   ensure_android_meson
   mapfile -t PIXIEWOOD_CONFIGURE_OPTIONS < <(pixiewood_configure_options)
 
-  # Meson --reconfigure keeps the first setup's cross binaries and options.
-  # A from-source build has no pkg-config and still records -Dandroid_poc,
-  # so the pixie cross file never applies. Start that directory clean.
-  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ] &&
-     [ -d "$PIXIEWOOD_BUILD_DIR" ] &&
-     ! grep -q 'pkg-config-wrapper' "$PIXIEWOOD_BUILD_DIR/meson-logs/meson-log.txt" 2>/dev/null; then
-    echo "Removing the previous Android build so Meson loads the pixie cross file."
-    rm -rf "$PIXIEWOOD_BUILD_DIR"
+  if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
+    PIXIEWOOD_CHECK_WRAPS=1 "$ROOT_DIR/scripts/android/refuse-pixie-source-hack.sh"
   fi
 }
 

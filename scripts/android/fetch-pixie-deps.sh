@@ -15,6 +15,7 @@ SNAPSHOT_URL="${PIXIE_SNAPSHOT_PINS_URL:-https://roojs.github.io/pixiewood-pkgs/
 OVERRIDE="$ROOT_DIR/android/pixie-gtk.pins"
 WEBKIT_PINS="$ROOT_DIR/android/pixie-webkit.pins"
 WEBKIT_STAMP="$DEST/share/pixiewood/webkitgtk-android.pin"
+PINS_STAMP="$DEST/share/pixiewood/pixie.pins"
 WEBKIT_PC="$DEST/lib/arm64-v8a/pkgconfig/webkitgtk-android-1.pc"
 WEBKIT_VAPI="$DEST/share/vala/vapi/webkitgtk-android-1.vapi"
 WEBKIT_JAVA="$DEST/share/pixiewood/webkitgtk-android-java/org/roojs/webkitgtk/android/WebViewHost.java"
@@ -37,18 +38,6 @@ fi
 
 if [ -d "$DEST" ] && [ ! -f "$DEST/share/pixiewood/pixie.cross" ]; then
   rm -rf "$DEST"
-fi
-
-if [ -f "$DEST/share/pixiewood/pixie.cross" ] &&
-   [ -f "$DEST/share/pixiewood/gtk-android-java/org/gtk/android/ImContext.java" ] &&
-   [ -f "$WEBKIT_PC" ] &&
-   [ -f "$WEBKIT_VAPI" ] &&
-   [ -f "$WEBKIT_JAVA" ] &&
-   [ -f "$WEBKIT_STAMP" ] &&
-   [ "$(cat "$WEBKIT_STAMP")" = "$webkit_inputs" ] &&
-   [ "${PIXIEWOOD_REFRESH_SUBPROJECTS:-}" != 1 ]; then
-  printf '%s\n' "$DEST"
-  exit 0
 fi
 
 if [ ! -f "$OVERRIDE" ]; then
@@ -86,6 +75,21 @@ if ! jq -e '[.packages[] | select(.name == "webkitgtk-android")] | length > 0' "
   echo "webkitgtk-android is missing from $WEBKIT_PINS" >&2
   exit 1
 fi
+# Reuse the sysroot only when the published pin list is the one already
+# unpacked. A new glib (or any other package) in release.pins must replace it.
+if [ -f "$DEST/share/pixiewood/pixie.cross" ] &&
+   [ -f "$DEST/share/pixiewood/gtk-android-java/org/gtk/android/ImContext.java" ] &&
+   [ -f "$WEBKIT_PC" ] &&
+   [ -f "$WEBKIT_VAPI" ] &&
+   [ -f "$WEBKIT_JAVA" ] &&
+   [ -f "$WEBKIT_STAMP" ] &&
+   [ "$(cat "$WEBKIT_STAMP")" = "$webkit_inputs" ] &&
+   [ -f "$PINS_STAMP" ] &&
+   cmp -s "$PINS_STAMP" "$work/merged.pins" &&
+   [ "${PIXIEWOOD_REFRESH_SUBPROJECTS:-}" != 1 ]; then
+  printf '%s\n' "$DEST"
+  exit 0
+fi
 # pixie-pkg fetch refuses a destination that already has files. An older
 # sysroot has GTK and not webkitgtk-android, so replace the whole tree
 # only after the pin list is known to include that package.
@@ -122,4 +126,5 @@ if [ "$installed_track" != "$webkit_track" ]; then
   exit 1
 fi
 printf '%s\n' "$webkit_inputs" > "$WEBKIT_STAMP"
+cp "$work/merged.pins" "$PINS_STAMP"
 printf '%s\n' "$DEST"
