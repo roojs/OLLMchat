@@ -1,6 +1,6 @@
 # Agent Pi startup does not open the project filesystem
 
-**Status:** ⏳ fix applied (2026-11-19). Startup opens the OLLMchat file tree with Agent Pi selected. Awaiting a look on the desktop.
+**Status:** ✅ closed 2026-11-19. Desktop startup calls `startup_activate_session`. Agent Pi opens the saved project tree.
 
 ## Problem
 
@@ -14,7 +14,7 @@
 ## Evidence
 
 - 🔷 Reported on 2026-10-27.
-- ℹ️ The failure has not yet been reproduced with debug logging.
+- ℹ️ Reproduced 2026-11-19. See Attempts.
 - ℹ️ Per-window project restoration is documented in
   `docs/plans/done/2.10.4.7-DONE-active-project-file-outside-db.md`.
 - ℹ️ Per-client project registration and monitoring are tracked separately in
@@ -93,5 +93,4 @@
 
 ## Next
 
-- 🔷 ⏳ Confirm on the desktop that this start is the one you wanted. The
-  window is up now. Debug lines from the run are already removed.
+- ✅ Closed. No open work on this bug.

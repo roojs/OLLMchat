@@ -9,7 +9,7 @@
 - 🔷 The file browser opens and starts file nav.
 - 🔷 Expected: the folder tree lists the folders under that project.
 - 🔷 Actual: file nav shows the project folder and no children.
-- ℹ️ This is not `docs/bugs/2026-10-27-agent-pi-startup-does-not-open-project.md`.
+- ℹ️ This is not `docs/bugs/done/2026-10-27-FIXED-agent-pi-startup-does-not-open-project.md`.
   That report is the filesystem not opening. This run opens it.
 
 ## Evidence
