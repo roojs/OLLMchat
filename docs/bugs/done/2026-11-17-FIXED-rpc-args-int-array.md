@@ -1,6 +1,6 @@
 # RPC args: pack `int[]` as `ai` and `int64[]` as `ax`
 
-**Status:** ⏳ opened — `ai` and `ax` shipped in `6d8fbcff` and crash. `int[]` has no GLib type, and `args` never receives the length.
+**Status:** ✅ closed 2026-11-19. `ef4ca4cf` passes the array length into `args`. A bad `ai` or `ax` replies `INVALID_PARAMS` instead of killing the server.
 
 **Pointer:** `docs/bug-fix-process.md`, [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md), [`libocrpc/namespace.vala`](../../libocrpc/namespace.vala), [`libocrpc/android/namespace.vala`](../../libocrpc/android/namespace.vala), [`libocrpc/Ffi.vala`](../../libocrpc/Ffi.vala), [`libocrpc/Bin/StreamValue.vala`](../../libocrpc/Bin/StreamValue.vala), [`tests/rpc/values-test.vala`](../../tests/rpc/values-test.vala)
 
@@ -235,3 +235,4 @@ if (rest.has_prefix("ax")) {
 - 🔷 The controller's `ai` value was already invalid, because `to_value` uses the same `G_TYPE_INVALID` init. That is bad output from the library, not a hostile client.
 - 🔷 The server still must not crash on it. `Ffi.vala` calls the method after `get_boxed` has failed and the pointer slot is null. `typeof(int[])` is `0`, so an unset value also matches the `int[]` branch. A bad `ai` or `ax` has to be an RPC error reply. It must not be a SEGV in the method.
 - ✔️ `ai` and `ax` each take the array pointer and then the length. The value stored is one `GLib.Variant` (`ai` or `ax`). Dispatch replies `INVALID_PARAMS` and returns when that value is missing or the wrong type, before `cif.call`.
+- ✅ 2026-11-19: closed. `ef4ca4cf` is the length-passing fix. No further library change.

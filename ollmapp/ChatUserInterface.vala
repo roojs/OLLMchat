@@ -63,7 +63,7 @@ namespace OLLMapp
 			});
 		}
 
-		public void connect_agent_factory_signals ()
+		public void startup_connect_signals ()
 		{
 			this.history_manager.agent_activated.connect((factory) => {
 				factory.activate.begin(this, (obj, res) => {
@@ -103,7 +103,7 @@ namespace OLLMapp
 			});
 		}
 
-		public async void activate_session_and_sync_ui ()
+		public async void startup_activate_session ()
 		{
 			var active_factory = this.history_manager.get_active_agent();
 			active_factory.activate.begin(this, (obj, res) => {

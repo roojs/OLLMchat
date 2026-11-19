@@ -1,6 +1,6 @@
 # Agent Pi startup does not open the project filesystem
 
-**Status:** ⏳ still a problem (2026-11-03). Reproduction and root cause pending.
+**Status:** ⏳ fix applied (2026-11-19). Startup opens the OLLMchat file tree with Agent Pi selected. Awaiting a look on the desktop.
 
 ## Problem
 
@@ -24,33 +24,74 @@
 
 ## Root cause
 
-- 🔷 ⏳ Unknown.
-- 💩 ⏳ Check whether the window config contains a saved project path at
-  startup.
-- 💩 ⏳ Check whether project restoration runs after the file daemon becomes
-  available.
-- 💩 ⏳ Check whether selecting Agent Pi mounts `CoderView` without applying
-  the window's project context.
+- ✔️ The saved window already has the project. `config.2.json` is
+  `agent=agent-pi`, `project=/home/alan/gitlive/OLLMchat`,
+  `file=examples/oc-test-source-diff.vala`.
+- ✔️ 2026-11-19 08:32:21, `./build/ollmapp/ollmchat --debug`. Files daemon
+  hello succeeded (`SOCKET`). The dropdown listed Agent Pi. The next line
+  was `client ready agent=agent-pi project=/home/alan/gitlive/OLLMchat
+  file=.../oc-test-source-diff.vala`. There was no `agent_activated`,
+  `session_activated`, `session_restored`, `agent activate`, `db_projects`,
+  or `file sheet shown`.
+- ✔️ `Window.initialize_client` writes `win_cfg.agent` onto the empty
+  session, then `Dropdown.select_only` shows that row with the selection
+  handler blocked. `Factory.activate` runs only from `agent_activated`,
+  `session_activated`, and `session_restored`. None of those fire.
+  `activate` is what builds `CoderView`, calls `restore_active_state`, and
+  opens the file sheet. The right pane stays hidden because it starts
+  hidden and `Agent.Manager` shows it from those same signals.
+- ✔️ Android reaches the same widgets through
+  `startup_activate_session` at the end of its `initialize_client`.
+  Desktop never calls it.
 
 ## Proposed fix
 
-- 🔷 ⏳ No fix proposal until the startup sequence is reproduced and the
-  missing step is identified.
+- 🔷 After the desktop agent signals are connected, run the same startup
+  call Android uses. That emits `session_activated` and `session_restored`,
+  which open the coder view and restore the window project.
 - 🚫 Do not add a fallback project, force a global active project, or hide the
   missing restoration state.
+- 🚫 Do not call `activate_agent` with the name already stored on the
+  session. `EmptySession.activate_agent` returns without a signal when the
+  name is unchanged.
+
+#### Add — `ollmapp/Window.vala` `initialize_client`, immediately after `startup_connect_signals()`
+
+```vala
+			yield this.startup_activate_session();
+```
 
 ## Attempts / changelog
 
 - ℹ️ 2026-10-27: standalone bug created from the coder-view tail-end review.
-- ℹ️ No product code or debug instrumentation changed.
+- ℹ️ 2026-11-19: `~/.config/ollmchat/config.2.json` window row is
+  `agent=agent-pi`, `project=/home/alan/gitlive/OLLMchat`,
+  `file=examples/oc-test-source-diff.vala`. Files daemon pid 2084018 was
+  already up. Desktop `ollmchat` was not running.
+- ✔️ 2026-11-17 09:07 in `~/.cache/ollmchat/ollmchat.debug.log`: dropdown
+  lists Agent Pi with filesd state `SOCKET`. About one second later
+  `ProjectManager.db_projects` runs, then `restoring window config project
+  path=/home/alan/gitlive/OLLMchat`, then `Folder.fetch_files` and
+  `Folder.fetch_children`. Review queue is 1 file. `tests/README.md` is
+  read at 09:07:57. The saved vala file is read at 09:08:12.
+- ℹ️ 2026-11-19: temporary debug added, then removed. The desktop binary
+  links `/lib/x86_64-linux-gnu/liboccoder.so`, so the coder-library lines
+  never appeared. The app lines did.
+- ✔️ 2026-11-19 08:34:25 after `yield activate_session_and_sync_ui()`:
+  `ProjectManager.db_projects`, then `session_activated` and
+  `session_restored` for `agent-pi`, then `restoring window config project
+  path=/home/alan/gitlive/OLLMchat`, then `Folder.fetch_files` and
+  `Folder.fetch_children`. That fetch pair is the file sheet loading the
+  project tree.
+- ℹ️ 2026-11-19: `activate_session_and_sync_ui` is
+  `startup_activate_session`. `connect_agent_factory_signals` is
+  `startup_connect_signals`. Same two startup calls.
+- ✔️ 2026-11-19 08:36:59, same sequence on the build with the debug lines
+  removed. The window title is OLLMchat, the header agent is Agent Pi, the
+  project button reads OLLMchat, and the file sheet is open on the project
+  tree (`android`, `pixiewood-wraps`, `config`, and the rest).
 
 ## Next
 
-- 🔷 ⏳ Reproduce on desktop with the file daemon available and Agent Pi as
-  the startup agent.
-- 💩 ⏳ Capture the file-daemon state, selected agent, saved window project
-  path, project-restoration call, and resulting `CoderView` state.
-- 🔷 ⏳ Compare startup with manually selecting Agent Pi or manually opening a
-  project after startup.
-- 🔷 ⏳ Document the confirmed root cause and a concrete fix before changing
-  product code.
+- 🔷 ⏳ Confirm on the desktop that this start is the one you wanted. The
+  window is up now. Debug lines from the run are already removed.

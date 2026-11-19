@@ -765,7 +765,8 @@ namespace OLLMapp
 			this.agent_manager = new Agent.Manager(this);
 
 			// Agent UI: factories receive this window as ChatDesktopInterface (§3b)
-			this.connect_agent_factory_signals();
+			this.startup_connect_signals();
+			yield this.startup_activate_session();
 
 			// Set WindowPane as main content
 			this.split_view.content = this.window_pane;

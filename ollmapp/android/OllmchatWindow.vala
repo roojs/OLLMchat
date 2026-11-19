@@ -565,7 +565,7 @@ namespace OLLMapp
 				this.chat_widget.switch_to_session.begin(session);
 			});
 
-			this.connect_agent_factory_signals();
+			this.startup_connect_signals();
 
 			if (!this.is_tablet) {
 				this.chat_widget.view_stack.add_named(this.pane_stack, "pane");
@@ -644,7 +644,7 @@ namespace OLLMapp
 				"OllmchatWindow: initialize_client agents=%u",
 				this.history_manager.agent_factories.size);
 
-			yield this.activate_session_and_sync_ui();
+			yield this.startup_activate_session();
 		}
 
 		/**
