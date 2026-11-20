@@ -125,7 +125,7 @@ namespace OLLMrpc.Transport
 		private int fd = -1;
 		private uint watch_id = 0;
 		private bool watching = false;
-		private GLib.Mutex mutex;
+		private GLib.Mutex mutex = GLib.Mutex();
 		/* Keeps the handshake alive. The bin streams borrow the
 		 * TLS input stream; they do not own the connection. */
 		private GLib.SocketConnection? socket = null;
@@ -208,7 +208,12 @@ namespace OLLMrpc.Transport
 			}
 			this.socket.socket.blocking = true;
 			this.mutex.lock();
-			this.bin.write(request);
+			try {
+				this.bin.write(request);
+			} catch (GLib.Error e) {
+				this.mutex.unlock();
+				throw e;
+			}
 			var reply_wait = GLib.get_monotonic_time() + 10 * 1000000;
 			while (true) {
 				try {

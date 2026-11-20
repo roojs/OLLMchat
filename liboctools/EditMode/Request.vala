@@ -25,13 +25,7 @@ namespace OLLMtools.EditMode
 	{
 		// Message constants
 		private const string INSTRUCTIONS_COMPLETE_FILE = """
-Since edit_mode=complete_file is enabled, code blocks should only have the language tag e.g.,
-
-```javascript
-the output goes here
-```
-
- Do not include line numbers. The entire file content will be replaced.
+edit_mode=complete_file replaces the entire file. On the opening ``` fence, do not use a colon (no line ranges or symbol paths). A plain ``` opener is fine.
 """;
 
 		private const string INSTRUCTIONS_LINE_RANGE = """
@@ -97,13 +91,15 @@ You set overwrite=true, so we will overwrite the existing file when you complete
 """;
 
 		private const string CODE_BLOCK_REQUIREMENT = """
-Now provide markdown code block with content. You MUST include a starting markdown tag and an ending one. For example:
+After write succeeds, edit mode is on for this path. In this same chat message, output the full file content, you must STOP after outputting the content.
+
+Wrap the full content in one opening and one closing ``` fence. Example:
 
 ```
 content to write
 ```
 
-Don't forget to close it.
+When this message completes, the file is written and you will get a tool reply telling you the result.
 """;
 
 		// Parameter properties

@@ -1,6 +1,6 @@
 # Android PIN submit keeps the stale desktop certificate
 
-**Status:** ⏳ OPEN — fix written, phone install still to confirm.
+**Status:** ⏳ OPEN — PIN retry path crashes without `TlsClient` mutex init (fixed in tree); phone re-test pending.
 
 **Started:** 2026-11-19
 
@@ -44,7 +44,13 @@
 
 File: `ollmapp/android/FileConnectionAdd.vala`, inside `request`, in place of the `CERT_NOT_REGISTERED` check.
 
+## Pairing crash (2026-11-20)
+
+- ✔️ Log: stale CA → `FilesdClient.vala:243: Unacceptable TLS certificate` → `g_mutex_clear` abort on GTK thread in `libocrpc` during `try_connection` retry.
+- ✔️ `TlsClient` declared `GLib.Mutex` without `= GLib.Mutex()`; destructor aborts after the first failed `complete_pairing`.
+
 ## Next
 
 - ✔️ 2026-11-19 — `FileConnectionAdd.request` now repeats with `force_register` after `INTERNAL_ERROR`. APK rebuilt and installed on SM-S9380.
-- ⏳ 🔷 Open Allow New Device on the desktop and enter that PIN once. The first handshake still rejects the October certificate. The same press then sends the PIN.
+- ✔️ 2026-11-20 — `TlsClient.mutex` initialized; unlock on `bin.write` failure.
+- ⏳ 🔷 Open Allow New Device on the desktop and enter that PIN once. The first handshake still rejects the October certificate. The same press then sends the PIN without crashing.

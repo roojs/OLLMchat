@@ -103,7 +103,7 @@ if [ ! -x "$CLONE/scripts/pixie-pkg" ]; then
   rm -rf "$CLONE"
   git clone --depth 1 https://github.com/roojs/pixie-pkg.git "$CLONE"
 else
-  git -C "$CLONE" pull --ff-only
+  git -C "$CLONE" pull --ff-only >&2
 fi
 
 mkdir -p "$(dirname "$DEST")"

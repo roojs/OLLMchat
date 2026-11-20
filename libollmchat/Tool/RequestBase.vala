@@ -201,6 +201,7 @@ namespace OLLMchat.Tool
 				
 				if (!(yield permission_provider.request(this))) {
 					GLib.debug("RequestBase.execute: Permission denied for tool '%s'", this.tool.name);
+					this.agent.unregister_tool(this.request_id);
 					return "ERROR: Permission denied: " + this.permission_question;
 				}
 				GLib.debug("RequestBase.execute: Permission granted for tool '%s'", this.tool.name);
@@ -215,6 +216,7 @@ namespace OLLMchat.Tool
 				return result;
 			} catch (Error e) {
 				GLib.debug("RequestBase.execute: Tool '%s' threw error: %s", this.tool.name, e.message);
+				this.agent.unregister_tool(this.request_id);
 				if (e.message != "") {
 					return "ERROR: " + e.message;
 				}
