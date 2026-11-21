@@ -172,12 +172,15 @@ namespace OLLMcoder
 				this.projects.list.visible = false;
 			});
 			this.projects.chosen.connect((folder) => {
-				if (this.files.project.is_project &&
-					this.files.project.path == folder.path) {
-					this.files.notify_property("project");
-					return;
+				var same = this.files.project.is_project &&
+					this.files.project.path == folder.path;
+				if (!same) {
+					this.files.project = folder;
 				}
-				this.files.project = folder;
+				if (this.files is File.Overlay) {
+					((File.Overlay) this.files).activate(
+						File.Overlay.OpenReason.PROJECT);
+				}
 			});
 			var search_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
 				margin_start = 5,

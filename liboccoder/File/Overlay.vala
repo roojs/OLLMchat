@@ -70,7 +70,7 @@ namespace OLLMcoder.File
 		 * folder tree. Project drops the recent list and fetches
 		 * the tree only when it is not loaded yet.
 		 */
-		private enum OpenReason {
+		internal enum OpenReason {
 			BUTTON,
 			PROJECT
 		}
@@ -474,12 +474,6 @@ namespace OLLMcoder.File
 			this.button.clicked.connect(() => {
 				this.activate(OpenReason.BUTTON);
 			});
-			this.notify["project"].connect(() => {
-				if (!this.project.is_project) {
-					return;
-				}
-				this.activate(OpenReason.PROJECT);
-			});
 			this.chosen.connect(() => {
 				GLib.Idle.add(() => {
 					this.get_root().set_focus(null);
@@ -498,7 +492,7 @@ namespace OLLMcoder.File
 		 *
 		 * @param reason Button click or a project change
 		 */
-		private void activate(OpenReason reason)
+		internal void activate(OpenReason reason)
 		{
 			if (reason == OpenReason.BUTTON && this.list.visible) {
 				this.list.visible = false;

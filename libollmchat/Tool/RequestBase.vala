@@ -49,11 +49,20 @@ namespace OLLMchat.Tool
 		
 		/**
 		 * Unique identifier for this request.
-		 * Used for registering/unregistering with agent for streaming monitoring.
+		 * Key in {@link Agent.Base.monitored_requests} when a stream monitor is active.
 		 * Auto-generated from static counter.
 		 */
 		private static int request_id_cnt = 0;
 		public int request_id { get; set; default = request_id_cnt++; }
+		
+		/**
+		 * When true, {@link BaseTool.execute} does not call
+		 * {@link Agent.Interface.add_stream_monitor} until this request does so
+		 * itself (edit mode: after stream state exists).
+		 */
+		public virtual bool defer_stream_monitor {
+			get { return false; }
+		}
 		
 		/**
 		 * Permission question text.
@@ -201,7 +210,7 @@ namespace OLLMchat.Tool
 				
 				if (!(yield permission_provider.request(this))) {
 					GLib.debug("RequestBase.execute: Permission denied for tool '%s'", this.tool.name);
-					this.agent.unregister_tool(this.request_id);
+					this.agent.remove_stream_monitor(this.request_id);
 					return "ERROR: Permission denied: " + this.permission_question;
 				}
 				GLib.debug("RequestBase.execute: Permission granted for tool '%s'", this.tool.name);
@@ -216,7 +225,7 @@ namespace OLLMchat.Tool
 				return result;
 			} catch (Error e) {
 				GLib.debug("RequestBase.execute: Tool '%s' threw error: %s", this.tool.name, e.message);
-				this.agent.unregister_tool(this.request_id);
+				this.agent.remove_stream_monitor(this.request_id);
 				if (e.message != "") {
 					return "ERROR: " + e.message;
 				}

@@ -84,10 +84,10 @@ namespace OLLMchat.Agent
 		public signal void message_completed(OLLMchat.Response.Chat response);
 		
 		/**
-		 * Registry of active tool requests for monitoring streaming chunks.
-		 * Keyed by request_id (auto-generated int).
+		 * Tool requests still hooked to agent stream signals and Stop lookup.
+		 * Keyed by request_id (auto-generated int). Unregister when monitoring ends.
 		 */
-		public Gee.HashMap<int, OLLMchat.Tool.RequestBase> active_tools {
+		public Gee.HashMap<int, OLLMchat.Tool.RequestBase> monitored_requests {
 			get; set; default = new Gee.HashMap<int, OLLMchat.Tool.RequestBase>();
 		}
 		
@@ -162,16 +162,15 @@ namespace OLLMchat.Agent
 		 */
 		public virtual void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
 		{
-			// Emit signal for active tool requests (they're connected via register_tool_monitoring)
+			// Emit signal for monitored requests (connected via add_stream_monitor)
 			// This allows tools like EditMode to receive streaming chunks in real-time
 			// Use existing stream_chunk signal (already defined in Agent.Base)
 			this.stream_chunk(new_text, is_thinking, response);
 			
-			// If response is done, emit message_completed signal for active tool requests
-			// This allows tools to know when the message is complete and they can process/finalize
+			// If response is done, emit message_completed for monitored requests
 			if (response.done && response.message != null) {
-				GLib.debug("Agent.handle_stream_chunk: Emitting message_completed signal (response.done=%s, message.role=%s, message.is_done=%s, active_tools.size=%zu)", 
-					response.done.to_string(), response.message.role, response.message.is_done.to_string(), this.active_tools.size);
+				GLib.debug("Agent.handle_stream_chunk: Emitting message_completed signal (response.done=%s, message.role=%s, message.is_done=%s, monitored_requests.size=%zu)", 
+					response.done.to_string(), response.message.role, response.message.is_done.to_string(), this.monitored_requests.size);
 				this.message_completed(response);
 			}
 			
@@ -452,10 +451,12 @@ namespace OLLMchat.Agent
 		 * @param request_id The unique identifier for this request (auto-generated int)
 		 * @param request The request object to register
 		 */
-		public void register_tool_monitoring(int request_id, OLLMchat.Tool.RequestBase request)
+		public void add_stream_monitor(
+			int request_id,
+			OLLMchat.Tool.RequestBase request)
 		{
 			// Store tool reference to prevent garbage collection
-			this.active_tools.set(request_id, request);
+			this.monitored_requests.set(request_id, request);
 			
 			// Connect tool to agent signals
 			request.agent = this;  // Ensure agent reference is set
@@ -463,23 +464,23 @@ namespace OLLMchat.Agent
 			this.message_completed.connect(request.on_message_completed);
 			// Note: message_failed not needed - errors propagate as exceptions
 			
-			GLib.debug("Agent.register_tool_monitoring: Registered request '%d' for monitoring", request_id);
+			GLib.debug("Added stream monitor for request '%d'", request_id);
 		}
 		
 		/**
-		 * Unregister a tool request from monitoring.
+		 * Remove one entry from {@link monitored_requests}.
 		 * 
 		 * Disconnects the request's callback methods from agent signals and removes
-		 * it from the registry.
+		 * it from the map.
 		 * 
 		 * @param request_id The unique identifier for this request (auto-generated int)
 		 */
-		public void unregister_tool(int request_id)
+		public void remove_stream_monitor(int request_id)
 		{
-			if (!this.active_tools.has_key(request_id)) {
+			if (!this.monitored_requests.has_key(request_id)) {
 				return;
 			}
-			var request = this.active_tools.get(request_id);
+			var request = this.monitored_requests.get(request_id);
 			
 			// Disconnect signals
 			this.stream_chunk.disconnect(request.on_stream_chunk);  // Use existing stream_chunk signal
@@ -487,10 +488,10 @@ namespace OLLMchat.Agent
 			// Note: message_failed not needed - errors propagate as exceptions
 			
 			// Remove from registry
-			this.active_tools.unset(request_id);
+			this.monitored_requests.unset(request_id);
 			// Note: Do not clear request.agent - the request may still need it after unregistering
 			
-			GLib.debug("Agent.unregister_tool: Unregistered request '%d'", request_id);
+			GLib.debug("Removed stream monitor for request '%d'", request_id);
 		}
 		
 	}

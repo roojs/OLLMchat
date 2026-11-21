@@ -105,10 +105,6 @@ namespace OLLMapp
 
 		public async void startup_activate_session ()
 		{
-			var active_factory = this.history_manager.get_active_agent();
-			active_factory.activate.begin(this, (obj, res) => {
-				active_factory.activate.end(res);
-			});
 			yield this.chat_widget.switch_to_session(
 				this.history_manager.session);
 			GLib.Idle.add(() => {

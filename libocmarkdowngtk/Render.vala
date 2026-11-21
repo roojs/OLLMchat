@@ -99,7 +99,7 @@ namespace MarkdownGtk
 		/**
 		 * Stop was clicked on the open shell frame.
 		 *
-		 * @param request_id key in ''active_tools'' for that frame
+		 * @param request_id key in ''monitored_requests'' for that frame
 		 */
 		public signal void stop_clicked(int request_id);
 

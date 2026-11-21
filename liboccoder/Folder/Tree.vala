@@ -366,10 +366,8 @@ namespace OLLMcoder.Folder
 				((Gtk.Image) names.get_first_child()).visible = folder.points_to_id == 0;
 				name_label.label = string.joinv("/", parts.to_array());
 				((Gtk.Image) names.get_next_sibling()).visible = tip.is_ignored;
-				tip.bind_property("css-classes", name_label,
-					"css-classes", GLib.BindingFlags.SYNC_CREATE);
-				tip.bind_property("tooltip", name_label,
-					"tooltip-text", GLib.BindingFlags.SYNC_CREATE);
+				name_label.css_classes = tip.css_classes;
+				name_label.tooltip_text = tip.tooltip;
 			});
 			tree_factory.unbind.connect((obj) => {
 				var row = (Gtk.ListItem) obj;
@@ -519,23 +517,6 @@ namespace OLLMcoder.Folder
 				}
 				this.tree_selection.selected = Gtk.INVALID_LIST_POSITION;
 				tree_view.opacity = 1;
-				/* Open every folder after the fetch. Opening during
-				 * the fetch stops at the first level.
-				 */
-				var model = (Gtk.TreeListModel) this.tree_selection.model;
-				model.autoexpand = true;
-				var index = 0;
-				while (index < model.n_items) {
-					var row = model.get_row(index);
-					index++;
-					if (row.expanded) {
-						continue;
-					}
-					row.expanded = true;
-				}
-				if (this.tree_selection.n_items > 0) {
-					tree_view.scroll_to(0, Gtk.ListScrollFlags.NONE, null);
-				}
 			});
 			this.append(status);
 			this.append(new Gtk.ScrolledWindow() {

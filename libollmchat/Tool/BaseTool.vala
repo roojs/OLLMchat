@@ -275,10 +275,10 @@ namespace OLLMchat.Tool
 			request.agent = chat_call.agent;
 			
 			// request_id is auto-generated via default value in RequestBase
-			// Register for monitoring (works for both Agent.Base and dummy agents)
-			// Interface methods have default no-op implementations
-			request.agent.register_tool_monitoring(request.request_id, request);
 			this.last_request = request;
+			if (!request.defer_stream_monitor) {
+				request.agent.add_stream_monitor(request.request_id, request);
+			}
 
 			return yield request.execute();
 		}

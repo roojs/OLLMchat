@@ -245,6 +245,9 @@ namespace OLLMcoder.File
 				if (path != this.project.path) {
 					return;
 				}
+				if (this.folder_tree.folders.loading) {
+					return;
+				}
 				this.folder_tree.folders.loaded.remove(this.project.path);
 				this.folder_tree.folders.load.begin(this.project, (obj, res) => {
 					this.folder_tree.folders.load.end(res);

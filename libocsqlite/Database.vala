@@ -85,10 +85,13 @@ namespace SQ {
 		
 		/**
 		 * Creates a new Database instance.
-		 * 
+		 *
+		 * Zero-byte backing files are removed in {@link load_from_file}
+		 * before open. Callers must not pre-delete or size-check the path.
+		 *
 		 * If the file exists and is non-empty, the database is restored from
 		 * the file into memory. Otherwise, a new in-memory database is created.
-		 * 
+		 *
 		 * @param filename The path to the database file for backup/restore
 		 * @param autosave Whether to automatically save periodically (default: false)
 		 */
@@ -121,9 +124,13 @@ namespace SQ {
 			var file = GLib.File.new_for_path(this.filename);
 			GLib.FileInfo info;
 			try {
-				info = file.query_info(GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE);
+				info = file.query_info(
+					GLib.FileAttribute.STANDARD_SIZE,
+					GLib.FileQueryInfoFlags.NONE);
 				if (info.get_size() == 0) {
-					// Delete zero-size file
+					GLib.debug(
+						"discarding zero-byte database file %s",
+						this.filename);
 					GLib.FileUtils.remove(this.filename);
 					return false;
 				}

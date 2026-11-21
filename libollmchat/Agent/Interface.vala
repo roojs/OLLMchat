@@ -76,28 +76,31 @@ namespace OLLMchat.Agent
 		public signal void notification(OLLMrpc.Notification notif);
 		
 		/**
-		 * Register a tool request for monitoring streaming chunks and message completion.
-		 * 
-		 * For agentic usage (Agent.Base): Connects request callbacks to agent signals.
-		 * For non-agentic usage: Default implementation does nothing (no-op).
-		 * 
-		 * @param request_id The unique identifier for this request (auto-generated int)
-		 * @param request The request object to register
+		 * Hook a tool {@link Tool.RequestBase} to assistant stream signals.
+		 *
+		 * Adds the request to {@link Agent.Base.monitored_requests} and connects
+		 * {@link Agent.Base.stream_chunk} and {@link Agent.Base.message_completed}.
+		 * Does not register or unregister tools in history.
+		 *
+		 * @param request_id Auto-generated id for this invocation
+		 * @param request Request that implements stream callbacks
 		 */
-		public virtual void register_tool_monitoring(int request_id, Tool.RequestBase request)
+		public virtual void add_stream_monitor(
+			int request_id,
+			Tool.RequestBase request)
 		{
 			// Default: no-op for non-agentic usage
 		}
 		
 		/**
-		 * Unregister a tool request from monitoring.
-		 * 
-		 * For agentic usage (Agent.Base): Disconnects request callbacks and removes from registry.
-		 * For non-agentic usage: Default implementation does nothing (no-op).
-		 * 
-		 * @param request_id The unique identifier for this request (auto-generated int)
+		 * Drop a stream monitor for one request id.
+		 *
+		 * Disconnects stream signals and removes the entry from
+		 * {@link Agent.Base.monitored_requests}.
+		 *
+		 * @param request_id Id passed to {@link add_stream_monitor}
 		 */
-		public virtual void unregister_tool(int request_id)
+		public virtual void remove_stream_monitor(int request_id)
 		{
 			// Default: no-op for non-agentic usage
 		}

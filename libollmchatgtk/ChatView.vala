@@ -133,7 +133,7 @@ namespace OLLMchatGtk
 				this.chat_widget.start_new_chat_with_text.begin(text);
 			});
 			this.renderer.stop_clicked.connect((request_id) => {
-				var tools = this.chat_widget.manager.session.agent.active_tools;
+				var tools = this.chat_widget.manager.session.agent.monitored_requests;
 				if (!tools.has_key(request_id)) {
 					return;
 				}

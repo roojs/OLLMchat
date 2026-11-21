@@ -408,6 +408,7 @@ namespace OLLMcoder.Folder
 			 */
 			var incoming = rows.get(0);
 			if (this.path_map.has_key(folder.path)) {
+				var old_id = (int) folder.id;
 				folder.copy_from(incoming, {
 					"manager",
 					"children",
@@ -416,6 +417,12 @@ namespace OLLMcoder.Folder
 					"points-to",
 					"buffer"
 				});
+				if (old_id != (int) folder.id
+					&& this.id_map.has_key(old_id)
+					&& this.id_map.get(old_id) == folder) {
+					this.id_map.unset(old_id);
+				}
+				this.id_map.set((int) folder.id, folder);
 			}
 			if (!this.path_map.has_key(folder.path)) {
 				incoming.manager = folder.manager;
@@ -427,33 +434,61 @@ namespace OLLMcoder.Folder
 				return GLib.strcmp(a.path, b.path);
 			});
 			var waiting = new Gee.ArrayList<OLLMfiles.Folder>();
+			var folder_mgr = folder.manager;
 			for (var i = 0; i < rows.size; i++) {
 				var row = rows.get(i);
 				if (row.path == "" || row.path == folder.path) {
 					continue;
 				}
-				if (!this.id_map.has_key((int) row.parent_id)) {
+				OLLMfiles.Folder? parent = null;
+				if (this.id_map.has_key((int) row.parent_id)) {
+					parent = this.id_map.get((int) row.parent_id);
+				}
+				if (parent == null) {
+					var parent_path = GLib.Path.get_dirname(row.path);
+					if (parent_path != row.path
+						&& this.path_map.has_key(parent_path)) {
+						parent = this.path_map.get(parent_path);
+					}
+				}
+				if (parent == null) {
 					waiting.add(row);
 					continue;
 				}
-				row.manager = folder.manager;
-				this.append(this.id_map.get((int) row.parent_id), row);
+				row.manager = folder_mgr;
+				this.append(parent, row);
 			}
 			var offset = 0;
 			var skipped = 0;
 			while (waiting.size > 0) {
+				if (epoch != this.load_epoch) {
+					this.pending--;
+					this.loading = this.pending == 0 ? false : this.loading;
+					return;
+				}
 				offset = offset >= waiting.size ? 0 : offset;
 				if (skipped >= waiting.size) {
 					break;
 				}
 				var row = waiting.get(offset);
-				if (!this.id_map.has_key((int) row.parent_id)) {
+				OLLMfiles.Folder? parent = null;
+				if (this.id_map.has_key((int) row.parent_id)) {
+					parent = this.id_map.get((int) row.parent_id);
+				}
+				if (parent == null) {
+					var parent_path = GLib.Path.get_dirname(row.path);
+					if (parent_path != row.path
+						&& this.path_map.has_key(parent_path)) {
+						parent = this.path_map.get(parent_path);
+					}
+				}
+				if (parent == null) {
 					offset++;
 					skipped++;
 					continue;
 				}
-				row.manager = folder.manager;
-				this.append(this.id_map.get((int) row.parent_id), row);
+				row.manager = folder_mgr;
+				this.append(parent, row);
 				waiting.remove_at(offset);
 				skipped = 0;
 			}

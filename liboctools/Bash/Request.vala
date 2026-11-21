@@ -308,6 +308,7 @@ This request asks for write permission to these folders: """ +
 						method = "client.run_tool.end",
 						message = this.command.strip(),
 					});
+					this.agent.remove_stream_monitor(this.request_id);
 				}
 			}
 		}
@@ -536,6 +537,7 @@ $(reap)";
 						method = "client.run_tool.end",
 						message = req.command.strip(),
 					});
+					req.agent.remove_stream_monitor(req.request_id);
 					return;
 				}
 				if (notif.args.size < 1 || notif.args.get(0) == null) {

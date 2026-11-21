@@ -723,10 +723,6 @@ namespace OLLMapp
 
 			this.new_chat_button.sensitive = true;
 
-			if (this.busy_dialog != null) {
-				this.busy_dialog.close();
-			}
-			
 			// Create history browser and add to split view sidebar
 			this.history_browser = new OLLMchatGtk.HistoryBrowser(this.history_manager);
 			this.split_view.sidebar = this.history_browser;
@@ -764,12 +760,15 @@ namespace OLLMapp
 			this.window_pane.paned.set_resize_start_child(true);
 			this.agent_manager = new Agent.Manager(this);
 
+			this.split_view.content = this.window_pane;
+
 			// Agent UI: factories receive this window as ChatDesktopInterface (§3b)
 			this.startup_connect_signals();
 			yield this.startup_activate_session();
 
-			// Set WindowPane as main content
-			this.split_view.content = this.window_pane;
+			if (this.busy_dialog != null) {
+				this.busy_dialog.close();
+			}
 
 			/* Loading UI finished — focus composer entry (not after streaming). */
 			GLib.Idle.add(this.chat_widget.chat_input.focus_idle);

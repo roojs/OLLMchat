@@ -90,16 +90,26 @@ Any other format will be ignored.
 You set overwrite=true, so we will overwrite the existing file when you complete your message.
 """;
 
-		private const string CODE_BLOCK_REQUIREMENT = """
-After write succeeds, edit mode is on for this path. In this same chat message, output the full file content, you must STOP after outputting the content.
+		private const string CODE_BLOCK_REQUIREMENT_COMPLETE_FILE = """
+Edit mode is on for this path. In this same assistant message only:
 
-Wrap the full content in one opening and one closing ``` fence. Example:
+1. Output the full file content inside one opening and one closing ``` fence.
+2. Do not call write again or any other tool for this file in this message.
+3. STOP generating when the closing fence is done — the agent will send a confirmation message that the file has been written, and you may continue then.
+
+Example:
 
 ```
 content to write
 ```
+""";
 
-When this message completes, the file is written and you will get a tool reply telling you the result.
+		private const string CODE_BLOCK_REQUIREMENT_PARTIAL = """
+Edit mode is on for this path. In this same assistant message only:
+
+1. Output one or more fenced edits per the instructions above.
+2. Do not call write again or any other tool for this file in this message.
+3. STOP generating after the last fence — the agent will send a confirmation message that your edits have been applied, and you may continue then.
 """;
 
 		// Parameter properties
@@ -130,6 +140,10 @@ When this message completes, the file is written and you will get a tool reply t
 		 */
 		public Request()
 		{
+		}
+		
+		public override bool defer_stream_monitor {
+			get { return true; }
 		}
 		
 		/**
@@ -237,7 +251,16 @@ When this message completes, the file is written and you will get a tool reply t
 				&& this.edit_mode != "line_numbers"
 				&& this.edit_mode != "complete_file") {
 				throw new GLib.IOError.INVALID_ARGUMENT(
-					"edit_mode must be one of: ast_path, line_numbers, complete_file");
+					"edit_mode must be one of: ast_path, line_numbers, complete_file (you sent: \""
+					+ this.edit_mode + "\").\n\n"
+					+ "Retry write with a valid edit_mode only:\n\n"
+					+ "- ast_path — partial edits on existing code (symbol path on the fence opener).\n"
+					+ "- line_numbers — partial edits by line range (existing file).\n"
+					+ "- complete_file — create a new file or replace the entire file.\n\n"
+					+ "For a new file, use edit_mode=complete_file with the same file_path "
+					+ "(overwrite=false unless replacing an existing file).\n\n"
+					+ "For an existing file, use ast_path or line_numbers for partial edits, "
+					+ "or complete_file with overwrite=true to replace the whole file.");
 			}
 			
 			// Get ProjectManager
@@ -292,14 +315,15 @@ When this message completes, the file is written and you will get a tool reply t
 				llm_message += "\n" + OVERWRITE_MESSAGE;
 			}
 			
-			llm_message += "\n" + CODE_BLOCK_REQUIREMENT;
+			llm_message += "\n" + (this.edit_mode == "complete_file"
+				? CODE_BLOCK_REQUIREMENT_COMPLETE_FILE
+				: CODE_BLOCK_REQUIREMENT_PARTIAL);
 			
 			// Activate this request (cleans up existing requests for same file)
 			var edit_tool = (Tool) this.tool;
 			edit_tool.activate_request(this);
 			
-			// Signal connections are now handled automatically via agent.register_tool_monitoring()
-			// which is called in Tool.execute() when the request is created.
+			this.agent.add_stream_monitor(this.request_id, this);
 			
 			return llm_message;
 		}
@@ -308,8 +332,8 @@ When this message completes, the file is written and you will get a tool reply t
 		 * Override on_stream_chunk callback to process streaming content.
 		 * 
 		 * This method is connected as a signal handler to Agent.Base.stream_chunk signal
-		 * in Agent.Base.register_tool_monitoring() when the tool is activated. It's
-		 * disconnected in Agent.Base.unregister_tool() when the tool completes.
+		 * in Agent.Base.add_stream_monitor() when the tool is activated. It's
+		 * disconnected in Agent.Base.remove_stream_monitor() when the tool completes.
 		 * 
 		 * The signal is emitted by Agent.Base.handle_stream_chunk() which is called
 		 * by Chat when streaming chunks arrive from the Ollama API.
@@ -346,7 +370,7 @@ When this message completes, the file is written and you will get a tool reply t
 				GLib.debug("Request.on_message_completed: agent is null (file=%s)", this.normalized_path);
 				return;
 			}
-			this.agent.unregister_tool(this.request_id);
+			this.agent.remove_stream_monitor(this.request_id);
 
 			GLib.debug("Request.on_message_completed: Processing done message (file=%s)", this.normalized_path);
 	
@@ -394,7 +418,7 @@ When this message completes, the file is written and you will get a tool reply t
 			}
 			
 			// Unregister from agent - we're done processing new content
-			this.agent.unregister_tool(this.request_id);
+			this.agent.remove_stream_monitor(this.request_id);
 			
 			// Get chat reference after unregistering (agent reference remains valid)
 			var chat = this.agent.chat();

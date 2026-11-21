@@ -373,6 +373,7 @@ namespace OLLMtools.RunCommand
 					method = "client.run_tool.end",
 					message = this.command.strip(),
 				});
+				this.agent.remove_stream_monitor(this.request_id);
 			}
 		}
 		

@@ -129,7 +129,7 @@ Don't forget to close the code block with the closing ``` tag. If you don't clos
 				GLib.debug("Tool.activate_request: Cleaning up existing request for file %s (request_id=%d)", 
 					req.normalized_path, req.request_id);
 				// Unregister from agent if registered
-				req.agent.unregister_tool(req.request_id);
+				req.agent.remove_stream_monitor(req.request_id);
 				this.active_requests.remove(req);
 			}
 			
