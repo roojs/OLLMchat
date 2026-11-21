@@ -137,6 +137,14 @@ namespace OLLMrpc
 		public bool pass_data_dir { get; set; default = false; }
 
 		/**
+		 * When true, ''tcp://127.0.0.1'' dials must handshake TLS (no
+		 * cleartext). When false, only that prefix stays cleartext (Windows
+		 * {@link Transport.TcpListen}). Wire {@link configure_tls} before
+		 * {@link connect} when this flag is set.
+		 */
+		public bool force_localhost_tls { get; set; default = false; }
+
+		/**
 		 * Bin POST transport to a {@link Transport.HttpServer} (the
 		 * ''ollmfilesd'' HTTPS gate).
 		 *
@@ -415,7 +423,8 @@ namespace OLLMrpc
 			var bin_in = this.socket.get_input_stream();
 			var bin_out = this.socket.get_output_stream();
 			if (this.protocol == Protocol.TCP
-				&& !this.socket_path.has_prefix("tcp://127.0.0.1")) {
+				&& !(this.socket_path.has_prefix("tcp://127.0.0.1")
+					&& !this.force_localhost_tls)) {
 				try {
 					var tls_link = GLib.TlsClientConnection.@new(this.socket, null);
 					this.configure_tls(tls_link);
