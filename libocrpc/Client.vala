@@ -137,8 +137,8 @@ namespace OLLMrpc
 		public bool pass_data_dir { get; set; default = false; }
 
 		/**
-		 * When true, ''tcp://127.0.0.1'' dials must handshake TLS (no
-		 * cleartext). When false, only that prefix stays cleartext (Windows
+		 * When true, loopback TCP dials must handshake TLS (no cleartext).
+		 * When false, only that prefix stays cleartext (Windows
 		 * {@link Transport.TcpListen}). Wire {@link configure_tls} before
 		 * {@link connect} when this flag is set.
 		 */

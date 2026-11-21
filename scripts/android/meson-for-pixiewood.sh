@@ -21,7 +21,8 @@ pixie_extra_cross() {
     printf '%s\n' "$EXTRA_CROSS"
     return
   fi
-  stripped="$(mktemp)"
+  stripped="$ROOT_DIR/.pixiewood/pixie-extra.cross.stripped"
+  mkdir -p "$ROOT_DIR/.pixiewood"
   grep -v 'glib-mkenums' "$EXTRA_CROSS" > "$stripped"
   printf '%s\n' "$stripped"
 }
