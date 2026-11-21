@@ -656,7 +656,10 @@ namespace OLLMfilesd
 		 * Build the diff items for one history row.
 		 *
 		 * Reads the backup and the project file, then runs
-		 * {@link OLLMfiles.Diff.Differ}. No stored rows: insert
+		 * {@link OLLMfiles.Diff.Differ}. When the oldest pending
+		 * row for ''path'' is ''added'' with an empty
+		 * ''backup_path'', the backup side is empty (stacked
+		 * edits on a new file). No stored rows: insert
 		 * one part per patch. Stored rows are indexed by
 		 * ''old_line_start'' and checked with
 		 * {@link FileDiffPart.compare}. ''3'' keeps the row.
@@ -680,7 +683,16 @@ namespace OLLMfilesd
 				rows
 			);
 			var backup = "";
-			if (history.backup_path != "") {
+			var oldest = new Gee.ArrayList<FileHistory>();
+			FileHistory.query(this.rpc_manager.db).select(
+				"WHERE path = '" + history.path.replace("'", "''") +
+					"' AND reviewed = 0 ORDER BY id ASC LIMIT 1",
+				oldest
+			);
+			var stack_added = oldest.size > 0
+				&& oldest.get(0).change_type == "added"
+				&& oldest.get(0).backup_path == "";
+			if (!stack_added && history.backup_path != "") {
 				backup = (string) GLib.File.new_for_path(
 					history.backup_path).load_bytes(null).get_data();
 			}

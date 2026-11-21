@@ -235,11 +235,32 @@ namespace OLLMcoder
 						return;
 					}
 					if (this.current_file != null && previous.has_key(this.current_file.path)) {
-						if (this.review_bar.queue.size < 1) {
-							this.close_file();
+						if (this.review_bar.queue.size >= 1) {
+							this.open_pending_path(this.review_bar.queue.get(0).path);
 							return;
 						}
-						this.open_pending_path(this.review_bar.queue.get(0).path);
+						var chunk_closed = this.review_bar.parts.size > 0;
+						if (chunk_closed) {
+							foreach (var part in this.review_bar.parts) {
+								if (part.accepted == 0) {
+									chunk_closed = false;
+									break;
+								}
+							}
+						}
+						if (chunk_closed) {
+							if (this.diff_active) {
+								this.clear_diff();
+							}
+							var proposal = this.change_view.proposal(
+								this.current_file, this.review_bar.parts);
+							this.change_view.apply(proposal);
+							(this.source_view.buffer as GtkSource.Buffer).set_modified(false);
+							this.review_bar.update_diff(
+								this.review_bar.parts, this.review_bar.file_index);
+							return;
+						}
+						this.show_pending_diff.begin(this.current_file);
 						return;
 					}
 					if (this.review_bar.queue.size < 1) {

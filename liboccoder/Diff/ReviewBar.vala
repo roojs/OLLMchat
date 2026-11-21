@@ -1194,9 +1194,17 @@ namespace OLLMcoder.Diff
 				this.active = this.hunks.pending_after(-1);
 				this.active = this.active < 0 && this.hunks.size > 0 ? 0 : this.active;
 			}
-			var editor_is_bar = this.source_view.current_file != null &&
-				this.file_index < this.queue.size &&
-				this.source_view.current_file.path == this.queue.get(this.file_index).path;
+			var editor_is_bar = false;
+			if (this.source_view.current_file != null) {
+				if (this.file_index < this.queue.size
+					&& this.source_view.current_file.path
+						== this.queue.get(this.file_index).path) {
+					editor_is_bar = true;
+				}
+				if (!editor_is_bar && this.parts.size > 0) {
+					editor_is_bar = true;
+				}
+			}
 			if (editor_is_bar && (!same_file || keep != this.active) && this.active >= 0) {
 				this.source_view.navigate_to_line(this.buffer_line(this.active), true);
 			}
@@ -1616,15 +1624,15 @@ namespace OLLMcoder.Diff
 					buffer.insert(ref start_iter, replacement, -1);
 				}
 			}
-			if (file != null) {
-				yield this.source_view.show_pending_diff(file);
-			}
 			var chunk_open = false;
 			foreach (var part in this.parts) {
 				if (part.accepted == 0) {
 					chunk_open = true;
 					break;
 				}
+			}
+			if (file != null && chunk_open) {
+				yield this.source_view.show_pending_diff(file);
 			}
 			if (!chunk_open) {
 				yield this.source_view.manager.review_files.refresh();
@@ -1763,6 +1771,26 @@ namespace OLLMcoder.Diff
 			this.map_host.visible = on_list;
 			this.bulk_btn.visible = on_list;
 			if (this.file_count < 1) {
+				var keep_bar = current_file != null && this.parts.size > 0;
+				if (keep_bar) {
+					foreach (var part in this.parts) {
+						if (part.accepted == 0) {
+							keep_bar = false;
+							break;
+						}
+					}
+				}
+				if (keep_bar) {
+					this.file_nav_btn.label = "Changes accepted";
+					this.file_nav_btn.remove_css_class("oc-review-cta");
+					this.file_nav.visible = true;
+					this.map_host.visible = true;
+					this.map_area.visible = true;
+					this.accept_btn.visible = false;
+					this.reject_btn.visible = false;
+					this.pending_label.visible = false;
+					return;
+				}
 				this.file_nav_btn.label = "no changes need reviewing";
 				this.file_nav_btn.remove_css_class("oc-review-cta");
 				this.accept_btn.visible = false;

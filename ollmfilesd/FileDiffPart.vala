@@ -281,6 +281,36 @@ namespace OLLMfilesd
 				"WHERE path = '" + histories.get(0).path.replace("'", "''") +
 					"' AND reviewed = 0 ORDER BY timestamp DESC", left);
 			if (left.size > 0) {
+				var oldest = new Gee.ArrayList<FileHistory>();
+				FileHistory.query(db).select(
+					"WHERE path = '" + histories.get(0).path.replace("'", "''") +
+						"' AND reviewed = 0 ORDER BY id ASC LIMIT 1",
+					oldest
+				);
+				var stack_added = oldest.size > 0
+					&& oldest.get(0).change_type == "added"
+					&& oldest.get(0).backup_path == "";
+				if (stack_added && action == 1) {
+					var row = history.rpc_manager.get_file_from_active_project(
+						histories.get(0).path);
+					if (row == null) {
+						var found = new Gee.ArrayList<FileBase>();
+						FileBase.query(db, history.rpc_manager).select(
+							"WHERE path = '" + histories.get(0).path.replace("'", "''") +
+								"' AND base_type = 'f'", found);
+						if (found.size == 0) {
+							db.backupDB();
+							return;
+						}
+						row = new File(history.rpc_manager);
+						row.copy_from(found.get(0), {
+							"manager", "buffer", "parent"
+						});
+					}
+					histories.get(0).approve(db, row);
+					db.backupDB();
+					return;
+				}
 				left.get(0).since_id = poke;
 				FileHistory.query(db).updateById(left.get(0));
 				db.backupDB();
