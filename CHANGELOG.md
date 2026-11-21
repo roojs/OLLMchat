@@ -11,7 +11,40 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.14] - Unreleased
+## [1.4.15] - Unreleased
+
+Work since **1.4.14** (2026-11-17).
+
+### Changed
+
+#### Android
+
+- Pixiewood builds use prebuilt pixies only; Meson setup refuses a shell hack that would compile the GTK stack from source
+- `fetch-pixie-deps` re-fetches when the Android library pin list changes
+- Meson cross setup keeps a stable stripped `pixiewood-extra.cross` under `.pixiewood` for pixie sysroots
+
+#### libocrpc
+
+- Loopback TCP connections can use TLS so localhost matches a TLS-enabled desktop daemon
+
+### Fixed
+
+#### Chat
+
+- Startup picks the intended agent again
+- Tool calls and edit-mode streaming handle overlapping requests without critical warnings
+- Accepting or rejecting diff hunks updates the source view and file history consistently, including stacked adds against a baseline
+- File review keeps older pending rows in the queue when the newest history row is finished
+
+#### Android
+
+- TLS trust and file-connection setup on phone builds
+
+#### libocsqlite
+
+- Open discards a zero-byte on-disk backup file instead of failing to load
+
+## [1.4.14] - 2026-11-17
 
 Work since **1.4.13** (2026-11-17).
 
