@@ -27,6 +27,10 @@ Work since **1.4.14** (2026-11-17).
 
 - Loopback TCP connections can use TLS so localhost matches a TLS-enabled desktop daemon
 
+#### Packaging
+
+- openSUSE Tumbleweed CI installs `libllama1`, `libggml1`, and `libggml-base1` after the llamacpp 1.0 SONAME rename
+
 ### Fixed
 
 #### Chat
