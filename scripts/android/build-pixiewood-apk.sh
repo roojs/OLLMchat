@@ -23,6 +23,12 @@ PIXIEWOOD_ASSEMBLE_RELEASE="${PIXIEWOOD_ASSEMBLE_RELEASE:-}"
 # 1: link the published .pixie sysroot instead of compiling the GTK stack.
 PIXIEWOOD_USE_PIXIE="${PIXIEWOOD_USE_PIXIE:-}"
 
+if [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-chat-poc.xml* ]] &&
+   [ "$PIXIEWOOD_USE_PIXIE" != 1 ]; then
+  echo "pixiewood-chat-poc.xml requires PIXIEWOOD_USE_PIXIE=1." >&2
+  exit 1
+fi
+
 read_gtk_android_builder_revision() {
   local revision_file="$ROOT_DIR/scripts/android/gtk-android-builder.revision"
   if [ -z "$GTK_ANDROID_BUILDER_REVISION" ] && [ -f "$revision_file" ]; then
@@ -106,13 +112,6 @@ needs_pixiewood_prepare() {
     return 0
   fi
 
-  if [ "$PIXIEWOOD_USE_PIXIE" != 1 ] &&
-     [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-chat-poc.xml ]] &&
-     ! pixiewood_prefix_has_patched_gtk; then
-    echo "Pixiewood prefix was built without OLLMchat GTK fork markers; rerunning prepare." >&2
-    return 0
-  fi
-
   return 1
 }
 
@@ -170,9 +169,8 @@ download_meson_subprojects() {
   local meson="$1"
 
   if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
-    if compgen -G "$ROOT_DIR/subprojects/*.wrap" > /dev/null; then
-      with_android_meson_path "$meson" subprojects download --sourcedir "$ROOT_DIR"
-    fi
+    # Pixie sysroot satisfies GTK and the stack; redirect wraps still point at
+    # subprojects/gtk paths that must not exist on chat builds.
     return
   fi
 
@@ -188,11 +186,10 @@ download_meson_subprojects() {
 
   # Root-level wrap-redirects point at gtk/subprojects/*.wrap; GTK must exist
   # before meson subprojects download or setup can run.
-  ensure_gtk_subproject_checked_out
-  ensure_gtk_subproject_patched
+  ensure_gtk_subproject_ready
 
   with_android_meson_path "$meson" subprojects download --sourcedir "$ROOT_DIR"
-  ensure_gtk_subproject_patched
+  ensure_gtk_subproject_ready
 }
 
 ensure_gtk_android_builder() {
@@ -327,6 +324,16 @@ drop_pixie_satisfied_wraps() {
   done < <(jq -r '.provided_dependencies[]' "$manifest")
 }
 
+drop_pixie_wrap_redirects() {
+  local wrap
+  for wrap in "$ROOT_DIR/subprojects/"*.wrap; do
+    [ -f "$wrap" ] || continue
+    grep -q '^\[wrap-redirect\]' "$wrap" || continue
+    rm -f "$wrap"
+    echo "Removed redirect wrap (pixie sysroot): $(basename "$wrap")" >&2
+  done
+}
+
 init_pixiewood_env() {
   if [ ! -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ] ||
      [ ! -d "$ANDROID_SDK_ROOT/ndk" ]; then
@@ -335,11 +342,15 @@ init_pixiewood_env() {
 
   ensure_gtk_android_builder
   if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
+    # shellcheck source=refuse-gtk-subproject.sh
+    source "$ROOT_DIR/scripts/android/refuse-gtk-subproject.sh"
+    purge_gtk_subproject_trees
     activate_pixie_sysroot
   fi
   install_pixiewood_extra_wraps
   if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
     drop_pixie_satisfied_wraps
+    drop_pixie_wrap_redirects
   fi
   ensure_pixiewood_compile_state_consistent
 
@@ -423,7 +434,7 @@ write_ollmchat_android_runtime_tag() {
   if [ "$PIXIEWOOD_USE_PIXIE" = 1 ]; then
     printf 'pixie-gtk\n' > "$dest/ollmchat-android-runtime.tag"
   else
-    printf 'ollmchat-android-bugs-v16\n' > "$dest/ollmchat-android-runtime.tag"
+    printf 'gtk-compiled\n' > "$dest/ollmchat-android-runtime.tag"
   fi
 }
 
@@ -757,7 +768,6 @@ maybe_download_meson_subprojects() {
   ensure_pinned_wrap_git_checkouts
 
   if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ] &&
-     [ -f "$(gtk_subproject_patch_marker)" ] &&
      gtk_subproject_is_complete &&
      pango_checkout_matches_pin &&
      harfbuzz_checkout_matches_pin &&

@@ -227,29 +227,41 @@ namespace OLLMrpc.Transport
 						continue;
 					}
 					this.mutex.unlock();
-					if (this.watching) {
-						GLib.Idle.add(() => {
-							this.watch();
-							return false;
-						});
+					if (!this.watching) {
+						return (Response) parsed;
 					}
+					GLib.Idle.add(() => {
+						this.watch();
+						return false;
+					});
 					return (Response) parsed;
 				} catch (GLib.IOError e) {
 					if (e.code != GLib.IOError.WOULD_BLOCK ||
 						GLib.get_monotonic_time() >= reply_wait) {
 						this.mutex.unlock();
-						if (this.watching) {
-							GLib.Idle.add(() => {
-								this.watch();
-								return false;
-							});
+						if (!this.watching) {
+							throw e;
 						}
+						GLib.Idle.add(() => {
+							this.watch();
+							return false;
+						});
 						throw e;
 					}
 					var reply_poll = GLib.PollFD();
 					reply_poll.fd = this.fd;
 					reply_poll.events = GLib.IOCondition.IN;
 					GLib.poll(new GLib.PollFD[] { reply_poll }, 200);
+				} catch (GLib.Error e) {
+					this.mutex.unlock();
+					if (!this.watching) {
+						throw e;
+					}
+					GLib.Idle.add(() => {
+						this.watch();
+						return false;
+					});
+					throw e;
 				}
 			}
 		}

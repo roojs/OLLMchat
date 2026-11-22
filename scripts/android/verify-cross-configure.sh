@@ -19,6 +19,7 @@ set -euo pipefail
 #   PIXIEWOOD_PHASE=configure scripts/android/build-chat-poc-apk.sh
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export PIXIEWOOD_USE_PIXIE=1
 export PIXIEWOOD_MANIFEST="${PIXIEWOOD_MANIFEST:-$ROOT_DIR/android/pixiewood-chat-poc.xml}"
 export PIXIEWOOD_PHASE=configure
 exec "$ROOT_DIR/scripts/android/build-pixiewood-apk.sh"

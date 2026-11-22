@@ -32,6 +32,7 @@ for arg in "$@"; do
   esac
 done
 
+export PIXIEWOOD_USE_PIXIE=1
 export PIXIEWOOD_MANIFEST="${PIXIEWOOD_MANIFEST:-$ROOT_DIR/android/pixiewood-chat-poc.xml}"
 
 # Ninja's regenerate rule can invoke meson.real 1.7.0 (no PYTHONPATH). That

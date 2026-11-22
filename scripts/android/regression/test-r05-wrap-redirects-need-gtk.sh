@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 export ROOT_DIR
+unset PIXIEWOOD_USE_PIXIE
 
 # shellcheck source=gtk-subproject.sh
 source "$ROOT_DIR/scripts/android/gtk-subproject.sh"

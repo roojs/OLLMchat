@@ -38,6 +38,8 @@ FAST_TESTS=(
   "$REGRESSION_DIR/test-r18-webkit-get-network-session.sh"
   "$REGRESSION_DIR/test-r19-android-custom-vapi-gee-vapidir.sh"
   "$REGRESSION_DIR/test-r20-pixie-source-hack.sh"
+  "$REGRESSION_DIR/test-r21-pixie-gtk-resolve-latest.sh"
+  "$REGRESSION_DIR/test-r22-pixie-forbids-gtk-checkout.sh"
 )
 
 for script in "${FAST_TESTS[@]}"; do

@@ -1,7 +1,6 @@
 [wrap-git]
 url = https://gitlab.gnome.org/GNOME/gtk.git
-# Pin upstream so android-bugs.patch applies reproducibly (base for ~/git/gtk fork work).
-# Matches gnome/main merged into Knowles android-ime (2026-09).
+# Pinned for source-diff builds only (chat POC uses pixie GTK, not this checkout).
 revision = ae709f962a51f9108a1e6381bcfbd05bbaecc840
 depth = 1
 

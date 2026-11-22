@@ -1,0 +1,19 @@
+---
+description: Chat Android APK uses pixie prebuilts only — never GTK source workarounds
+globs:
+  - scripts/android/**
+  - android/pixie*.pins
+  - ollmapp/android/**
+---
+
+# Pixie GTK — do not work around this
+
+Chat POC builds **always** use `PIXIEWOOD_USE_PIXIE=1` (`build-chat-poc-apk.sh`).
+
+When pixie is on:
+
+- **Do not** check out, patch, or edit GTK in this repo (`subprojects/gtk`, `gtk-subproject-bootstrap`, `gtkimcontextandroid.c`, or any `android-bugs` / IME patch files — removed; chat uses pixie only).
+- **Do not** add bypass flags or unset pixie on chat scripts.
+- **Do** fix GTK/IME via Knowles pixie packages and `resolve-pixie-gtk-pins.sh` / `fetch-pixie-deps.sh`.
+
+Source GTK compile is **only** via `build-source-diff-apk.sh` (pixie unset). If `refuse-gtk-subproject.sh` or `refuse-pixie-source-hack.sh` stops the build, read the warning and fix pixie pins — do not circumvent the check.

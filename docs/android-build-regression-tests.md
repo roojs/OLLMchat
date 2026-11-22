@@ -21,7 +21,7 @@ GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 |----|-----------|-----------------|-----------------|
 | **R01** | [27520220666](https://github.com/roojs/OLLMchat/actions/runs/27520220666) | Icon staging: `sidebar-hide-symbolic.svg` missing on build host | `regression/test-r01-bundled-android-icons.sh` |
 | **R02** | [27585547860](https://github.com/roojs/OLLMchat/actions/runs/27585547860), [27585952776](https://github.com/roojs/OLLMchat/actions/runs/27585952776), [27586582052](https://github.com/roojs/OLLMchat/actions/runs/27586582052) | `wrap-redirect …/gtk/subprojects/graphene.wrap does not exist` | `regression/test-r02-gtk-bootstrap-restore.sh` |
-| **R03** | (patch not in APK) | `android-bugs.patch` not applied to cached GTK | `regression/test-r03-gtk-patch-marker.sh` |
+| **R03** | (source-diff only) | GTK subproject checkout incomplete before meson | `regression/test-r03-gtk-patch-marker.sh` |
 | **R04** | [27586907940](https://github.com/roojs/OLLMchat/actions/runs/27586907940) | `Undefined constant 'toolchain'` during configure | `regression/test-r04-stale-toolchain-discard.sh` |
 | **R05** | (same family as R02) | Meson setup before GTK tree exists | `regression/test-r05-wrap-redirects-need-gtk.sh` |
 | **R06** | (CI preflight) | Broken subprojects cache + stale toolchain + configure | `verify-android-ci-preflight.sh` (included in `--full`) |
@@ -39,6 +39,8 @@ GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 | **R18** | [32552806663](https://github.com/roojs/OLLMchat/actions/runs/32552806663) | `network_session` does not exist on `WebKitGtkAndroid.WebView` until wrap pin `v0.1.3` | `regression/test-r18-webkit-get-network-session.sh` |
 | **R19** | [32568270350](https://github.com/roojs/OLLMchat/actions/runs/32568270350) | `Package gee-0.8 not found` generating `ocmarkdowngtk.vapi`; laptop has host `libgee-0.8-dev` | `regression/test-r19-android-custom-vapi-gee-vapidir.sh` |
 | **R20** | (local) | Chat APK configured to compile GTK/GLib from source, or a local GLib scheduler hack is present | `regression/test-r20-pixie-source-hack.sh` |
+| **R21** | (local) | Pixie fetch pins a fixed Knowles GTK version instead of resolving `track: latest` from GitLab | `regression/test-r21-pixie-gtk-resolve-latest.sh` |
+| **R22** | (local) | Pixie chat build clones or restores GTK source under `subprojects/gtk` | `regression/test-r22-pixie-forbids-gtk-checkout.sh` |
 
 When a **new** CI failure appears:
 

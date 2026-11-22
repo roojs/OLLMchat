@@ -5,6 +5,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 export ROOT_DIR
+unset PIXIEWOOD_USE_PIXIE
 
 # shellcheck source=gtk-subproject.sh
 source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
@@ -35,7 +36,7 @@ grep -q 'Restoring GTK from bootstrap cache' "$log" ||
   { echo "expected bootstrap restore; log:" >&2; cat "$log" >&2; exit 1; }
 gtk_subproject_is_complete ||
   { echo "GTK still incomplete after bootstrap restore" >&2; exit 1; }
-[ -f "$(gtk_subproject_patch_marker)" ] ||
-  { echo "GTK patch marker missing after bootstrap restore" >&2; exit 1; }
+gtk_subproject_is_complete ||
+  { echo "GTK incomplete after bootstrap restore" >&2; exit 1; }
 
 echo "R02 gtk-bootstrap-restore: OK"

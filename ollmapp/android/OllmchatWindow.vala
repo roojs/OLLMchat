@@ -53,7 +53,11 @@ namespace OLLMapp
 		private bool is_tablet = false;
 		private Android.AgentManager agent_manager;
 		private uint fog_source = 0;
-		private bool reconnecting = false;
+		/**
+		 * True while {@link reconnect} is probing or replacing the live RPC.
+		 * Agent UI uses this to avoid a transient unavailable dialog.
+		 */
+		public bool reconnecting = false;
 		/**
 		 * Last hello {@link OLLMrpc.RpcErrorCode}. Zero when the probe
 		 * got no RPC error.
@@ -161,6 +165,25 @@ namespace OLLMapp
 						this.reconnect.begin(true, (obj, res) => {
 							this.reconnect.end(res);
 							this.view_stack.visible_child_name = "chat";
+						});
+						return;
+
+					case "client.filesd.connect":
+						this.view_stack.visible_child_name = "startup";
+						this.startup_status_label.label = "Connecting to the desktop…";
+						this.reconnecting = true;
+						this.reconnect.begin(true, (obj, res) => {
+							this.reconnect.end(res);
+							this.view_stack.visible_child_name = "chat";
+							if (this.app.config.filesd_client.state
+								!= FilesdClient.State.LIVE) {
+								return;
+							}
+							var empty = this.history_manager.create_new_session();
+							empty.project_path =
+								this.history_manager.session.project_path;
+							empty.agent_name = "agent-pi";
+							this.chat_widget.switch_to_session.begin(empty);
 						});
 						return;
 
@@ -669,9 +692,29 @@ namespace OLLMapp
 			};
 			tls.ensure();
 			this.probe_code = 0;
-			var lines = config.filesd_client.addresses.split("\n");
-			for (var i = 0; i < lines.length; i++) {
-				var line = lines[i].strip();
+			var hosts = new string[] {};
+			var saved_url = config.filesd_client.url.strip();
+			if (saved_url.has_prefix("tcp://")) {
+				hosts += saved_url.substring(6);
+			}
+			foreach (var raw in config.filesd_client.addresses.split("\n")) {
+				var text = raw.strip();
+				if (text == "") {
+					continue;
+				}
+				var seen = false;
+				for (var k = 0; k < hosts.length; k++) {
+					if (hosts[k] == text) {
+						seen = true;
+						break;
+					}
+				}
+				if (!seen) {
+					hosts += text;
+				}
+			}
+			for (var i = 0; i < hosts.length; i++) {
+				var line = hosts[i];
 				var colon = line.last_index_of(":");
 				if (colon <= 0) {
 					continue;
@@ -733,6 +776,7 @@ namespace OLLMapp
 				default:
 					break;
 			}
+			this.reconnecting = true;
 			for (var pass = 0; pass < 3; pass++) {
 				if (!yield this.probe_addresses(config)) {
 					continue;

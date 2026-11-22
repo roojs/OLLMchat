@@ -313,6 +313,10 @@ namespace OLLMapp.Agent
 			if (!this.is_android || this.unavailable_open) {
 				return;
 			}
+			var phone = this.shell as OLLMapp.OllmchatWindow;
+			if (phone != null && phone.reconnecting) {
+				return;
+			}
 			this.unavailable_open = true;
 			var desktop = (OLLMchat.ChatDesktopInterface) this.shell;
 			var body = "The desktop environment is unavailable.";

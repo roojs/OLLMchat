@@ -515,7 +515,10 @@ namespace OLLMrpc
 
 		public void disconnect()
 		{
-			if (!this.connected) {
+			if (!this.connected &&
+				this.socket == null &&
+				this.read_watch_id == 0 &&
+				this.bin == null) {
 				return;
 			}
 			GLib.debug("disconnect socket_path=%s pending=%u",

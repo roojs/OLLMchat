@@ -4,17 +4,17 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 export ROOT_DIR
+unset PIXIEWOOD_USE_PIXIE
 
 # shellcheck source=gtk-subproject.sh
 source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
 
 prepare_android_subprojects_before_meson
 
-marker="$(gtk_subproject_patch_marker)"
-if [ ! -f "$marker" ]; then
-  echo "expected patched gtk tree before stale-cache simulation" >&2
+gtk_subproject_is_complete || {
+  echo "expected complete gtk tree before stale-cache simulation" >&2
   exit 1
-fi
+}
 
 # Restored cache entry from a previous deps generation; current hash is different.
 old_hash="deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"

@@ -135,6 +135,12 @@ namespace OLLMchat.Settings
 		) {
 			var dir = GLib.Path.build_filename(
 				GLib.Environment.get_user_data_dir(), "ollmchat", this.server_id);
+			if (force_register) {
+				var ca_path = GLib.Path.build_filename(dir, "ollmrpc-ca.pem");
+				if (GLib.FileUtils.test(ca_path, GLib.FileTest.EXISTS)) {
+					GLib.FileUtils.remove(ca_path);
+				}
+			}
 			var tls_files = new OLLMrpc.Transport.Cert() {
 				dir = dir,
 				cert_pem = "client.pem",
@@ -190,7 +196,26 @@ namespace OLLMchat.Settings
 			if (this.addresses == "") {
 				this.addresses = host + ":" + port.to_string();
 			}
-			var authed = new OLLMrpc.Transport.TlsClient(host, port) {
+			var hello_host = host;
+			var hello_port = port;
+			foreach (var line in this.addresses.split("\n")) {
+				var text = line.strip();
+				if (text == "") {
+					continue;
+				}
+				var mark = text.last_index_of(":");
+				if (mark <= 0) {
+					continue;
+				}
+				var parsed = 0;
+				if (!int.try_parse(text.substring(mark + 1), out parsed) || parsed < 1) {
+					continue;
+				}
+				hello_host = text.substring(0, mark);
+				hello_port = (uint16) parsed;
+				break;
+			}
+			var authed = new OLLMrpc.Transport.TlsClient(hello_host, hello_port) {
 				tls_certificate = tls_files.certificate,
 				tls_database = tls_files.trust
 			};
@@ -213,7 +238,7 @@ namespace OLLMchat.Settings
 			if (hello.error != null) {
 				return hello.error.code;
 			}
-			this.url = "tcp://" + host + ":" + port.to_string();
+			this.url = "tcp://" + hello_host + ":" + hello_port.to_string();
 			return 0;
 		}
 

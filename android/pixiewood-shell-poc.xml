@@ -41,9 +41,7 @@
       <patch>hack</patch>
     </glib>
     <fontconfig/>
-    <gtk>
-      <patch>android-bugs</patch>
-    </gtk>
+    <gtk/>
     <libadwaita/>
   </dependencies>
   <build target="ollmchat-android-shell-poc">

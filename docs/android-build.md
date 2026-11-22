@@ -43,13 +43,26 @@ The existing release automation builds:
 The repository includes a Pixiewood-based Android packaging path. GitHub Actions
 sets `PIXIEWOOD_USE_PIXIE=1`. That downloads the published `.pixie` libraries
 from `https://roojs.github.io/pixiewood-pkgs/release.pins` and `snapshot.pins`,
-with `gtk` replaced by `android/pixie-gtk.pins`. `webkitgtk-android` is
+with `gtk` replaced by the newest Knowles generic `gtk` package (`android/pixie-gtk.pins`
+sets `track: latest`; `scripts/android/resolve-pixie-gtk-pins.sh` fills url and
+`inputs` at fetch time). Chat POC builds never check out `subprojects/gtk` or
+`.pixiewood/gtk-subproject-bootstrap` (`refuse-gtk-subproject.sh`). `webkitgtk-android` is
 `android/pixie-webkit.pins` (0.1.7). The chat APK script stops if that variable is unset, or if the Meson
 directory was configured to compile the GTK stack from source:
 
 ```bash
-PIXIEWOOD_USE_PIXIE=1 scripts/android/build-chat-poc-apk.sh
+scripts/android/build-chat-poc-apk.sh
 ```
+
+(`PIXIEWOOD_USE_PIXIE=1` is set inside that script.)
+
+### Pixie GTK — do not work around this
+
+**Chat POC / CI always use `PIXIEWOOD_USE_PIXIE=1`.** The stack (GTK, GLib, …) comes only from `.pixiewood/pixie` prebuilts. Enforcement is in `scripts/android/refuse-gtk-subproject.sh` and `refuse-pixie-source-hack.sh`.
+
+**Never attempt** (for chat APKs): checking out or patching `subprojects/gtk`; maintaining `.pixiewood/gtk-subproject-bootstrap`; editing GTK C sources (e.g. `gtkimcontextandroid.c`) in this tree; bypass env vars; unsetting pixie on chat build scripts; “temporary” local GTK builds mixed with pixie Meson.
+
+**Do instead:** publish or pin a new Knowles gtk pixie (`android/pixie-gtk.pins`, `resolve-pixie-gtk-pins.sh`, `fetch-pixie-deps.sh`). To compile GTK from source on purpose, use `scripts/android/build-source-diff-apk.sh` only (pixie off, separate APK).
 
 Each run reads the published pin list. `.pixiewood/pixie` is replaced when
 that list differs from the last download. `PIXIEWOOD_REFRESH_SUBPROJECTS=1`
@@ -130,42 +143,14 @@ Meson wraps, GTK patches, and cross options for libsoup, json-glib, gee,
 sqlite, openssl, glib-networking, and related dependencies live under
 `android/pixiewood-wraps/` and `android/pixiewood-extra.cross`.
 
-GTK is still fetched from upstream GNOME (`gitlab.gnome.org/GNOME/gtk.git`), not
-from a fork at build time. Android-specific fixes are developed in the live clone
-at `~/git/gtk` (`https://github.com/roojs/gtk.git`), stored as
-`android/pixiewood-wraps/gtk/android-bugs.patch`, and applied at prepare time via
-`<patch>android-bugs</patch>` in the Pixiewood manifest. `gtk.wrap` in that
-directory pins the upstream revision the patch was written against.
+Chat POC does **not** patch or compile GTK in this repository. GTK comes from the
+Knowles generic pixie package (`pixie-gtk.pins` → `resolve-pixie-gtk-pins.sh`).
+IME behaviour (e.g. numeric keyboard from `Gtk.InputPurpose`) is fixed in that
+pixie GTK build upstream, not via local `android-bugs.patch` or C edits in-tree.
 
-To refresh the patch after testing changes in `~/git/gtk`:
-
-```bash
-cd ~/git/gtk-Knowles
-# Pin matches android/pixiewood-wraps/gtk/gtk.wrap revision.
-BASE=$(sed -n 's/^revision[[:space:]]*=[[:space:]]*//p' \
-  /path/to/OLLMchat/android/pixiewood-wraps/gtk/gtk.wrap)
-# IME / text / atlas fixes from android-ime — TLS runtime stays out.
-git diff "$BASE"..android-ime -- \
-  gdk/android/glue/java/org/gtk/android/ImContext.java \
-  gdk/android/glue/java/org/gtk/android/ToplevelActivity.java \
-  gtk/gtktext.c \
-  gtk/gtktextview.c \
-  gtk/gtkgesturedrag.c \
-  gsk/gpu/gskgpudevice.c \
-  gsk/gpu/gskgpuuploadop.c \
-  > /tmp/ime-core.diff
-# Regenerate android-bugs.patch from a clean base worktree: copy the files above, add gdkandroidollmchatpatch.c + meson.build,
-# bumping ollmchat-android-bugs-vN in the marker, then replace android-bugs.patch.
-```
-
-Update the `revision` in `android/pixiewood-wraps/gtk/gtk.wrap` to match the
-upstream commit the diff is based on (`git merge-base upstream/main HEAD`).
-
-The patch includes a compile-only marker source,
-`gdk/android/gdkandroidollmchatpatch.c`, wired into `libgdk-android`. After a
-build, grep the Meson/Ninja log for `gdkandroidollmchatpatch.c.o`. If that line
-is missing, the patched GTK tree was not used (usually stale `subprojects/gtk`
-from cache).
+`android/pixiewood-wraps/gtk/gtk.wrap` is only for optional
+`build-source-diff-apk.sh` (unpatched upstream checkout). Do not reintroduce
+`<patch>android-bugs</patch>` on chat manifests.
 
 ### Host prerequisites
 

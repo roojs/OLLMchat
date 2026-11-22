@@ -1,21 +1,33 @@
 #!/usr/bin/env bash
 # Stop an Android chat build that compiles the GTK stack from source,
 # or that still contains a local GLib scheduler hack.
+#
+# ** DO NOT WORK AROUND THIS ** — See refuse-gtk-subproject.sh and docs/android-build.md
+# (section “Pixie GTK — no workarounds”). Chat APK builds always use PIXIEWOOD_USE_PIXIE=1.
 set -euo pipefail
 
 ROOT_DIR="${PIXIEWOOD_CHECK_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 PIXIEWOOD_BUILD_DIR="${PIXIEWOOD_BUILD_DIR:-$ROOT_DIR/.pixiewood/bin-aarch64}"
 PIXIEWOOD_USE_PIXIE="${PIXIEWOOD_USE_PIXIE:-}"
+PIXIEWOOD_MANIFEST="${PIXIEWOOD_MANIFEST:-}"
+
+# shellcheck source=refuse-gtk-subproject.sh
+source "$ROOT_DIR/scripts/android/refuse-gtk-subproject.sh"
 
 stop_hack() {
+  pixie_gtk_no_workarounds_warning
   echo "Stop. A hack has been done that is not allowed." >&2
   echo "$1" >&2
-  echo "The chat APK uses the published pixie libraries. It does not compile that stack from source and it does not patch GLib." >&2
   exit 1
 }
 
 if [ "$PIXIEWOOD_USE_PIXIE" != 1 ]; then
   stop_hack "PIXIEWOOD_USE_PIXIE is not 1, so this build would compile the GTK stack from source."
+fi
+
+purge_gtk_subproject_trees
+if [ -d "$ROOT_DIR/subprojects/gtk" ] || [ -d "$ROOT_DIR/.pixiewood/gtk-subproject-bootstrap" ]; then
+  stop_hack "subprojects/gtk or .pixiewood/gtk-subproject-bootstrap is still present after purge."
 fi
 
 if [ -f "$ROOT_DIR/ollmapp/android/android-sched.c" ]; then

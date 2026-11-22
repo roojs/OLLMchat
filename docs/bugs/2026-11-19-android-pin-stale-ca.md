@@ -48,9 +48,22 @@ File: `ollmapp/android/FileConnectionAdd.vala`, inside `request`, in place of th
 
 - ✔️ Log: stale CA → `FilesdClient.vala:243: Unacceptable TLS certificate` → `g_mutex_clear` abort on GTK thread in `libocrpc` during `try_connection` retry.
 - ✔️ `TlsClient` declared `GLib.Mutex` without `= GLib.Mutex()`; destructor aborts after the first failed `complete_pairing`.
+- ✔️ 2026-11-22 — `TlsClient.call` unlocks the mutex when `Bin.Stream.parse` throws `StreamError.PROTOCOL` (not only `IOError`). `FilesdClient.try_connection` drops a stale `ollmrpc-ca.pem` when `force_register` is true. PIN field matches Argus `RegisterWindow` layout (not `ActionRow` suffix).
+
+## IME numeric keyboard (2026-11-22)
+
+- ✔️ Logcat: `IME onCreateInputConnection kind=GtkText inputType=0x1` — QWERTY, not `TYPE_CLASS_NUMBER`.
+- ✔️ `getInputType()` uses `GtkIMContextAndroid.input_purpose` (default free-form), not `gtk_text_get_input_purpose()` on the focused `GtkText` entry.
+- ✔️ 2026-11-22 — Pixie GTK comes from Knowles gtk `track: latest` (`resolve-pixie-gtk-pins.sh` queries GitLab at fetch). Drops the stale hand-pinned `20261110g` row.
+
+## Post-pair reconnect (2026-11-22)
+
+- ✔️ `probe_addresses` probed every daemon address in list order; phone hit `10.0.3.1`, bridges, then `expected object type byte, got 0x70` before the LAN host.
+- ✔️ Pairing already sets `filesd_client.url`; probe now tries that `tcp://` host first.
 
 ## Next
 
 - ✔️ 2026-11-19 — `FileConnectionAdd.request` now repeats with `force_register` after `INTERNAL_ERROR`. APK rebuilt and installed on SM-S9380.
 - ✔️ 2026-11-20 — `TlsClient.mutex` initialized; unlock on `bin.write` failure.
-- ⏳ 🔷 Open Allow New Device on the desktop and enter that PIN once. The first handshake still rejects the October certificate. The same press then sends the PIN without crashing.
+- ✔️ 2026-11-22 — `FileConnectionAdd` follows Argus `RegisterWindow`: `registering` guard, `input_hints` for numeric IME, 1.5s auto-submit on sixth digit.
+- ⏳ 🔷 Rebuild APK, install on SM-S9380, open Allow New Device, enter PIN (auto-submit after pause). Expect retry with `force_register` without crash.

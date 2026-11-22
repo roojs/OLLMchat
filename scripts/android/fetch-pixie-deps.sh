@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Download the published Android libraries and activate them for Pixiewood.
 # The GTK stack comes from the pixiewood-pkgs GitHub Pages pin lists.
-# android/pixie-gtk.pins replaces the gtk line with the IME package from Knowles/gtk.
+# android/pixie-gtk.pins lists Knowles/gtk at track latest;
+# scripts/android/resolve-pixie-gtk-pins.sh expands it before merge.
 # webkitgtk-android is not in that set. android/pixie-webkit.pins is the
 # package this build compiles against.
 set -euo pipefail
@@ -12,7 +13,7 @@ DEST="${PIXIEWOOD_PIXIE:-$PIXIEWOOD_BASE/pixie}"
 CLONE="$PIXIEWOOD_BASE/pixie-pkg"
 RELEASE_URL="${PIXIE_RELEASE_PINS_URL:-https://roojs.github.io/pixiewood-pkgs/release.pins}"
 SNAPSHOT_URL="${PIXIE_SNAPSHOT_PINS_URL:-https://roojs.github.io/pixiewood-pkgs/snapshot.pins}"
-OVERRIDE="$ROOT_DIR/android/pixie-gtk.pins"
+GTK_TEMPLATE="$ROOT_DIR/android/pixie-gtk.pins"
 WEBKIT_PINS="$ROOT_DIR/android/pixie-webkit.pins"
 WEBKIT_STAMP="$DEST/share/pixiewood/webkitgtk-android.pin"
 PINS_STAMP="$DEST/share/pixiewood/pixie.pins"
@@ -40,8 +41,8 @@ if [ -d "$DEST" ] && [ ! -f "$DEST/share/pixiewood/pixie.cross" ]; then
   rm -rf "$DEST"
 fi
 
-if [ ! -f "$OVERRIDE" ]; then
-  echo "GTK pixie pin missing: $OVERRIDE" >&2
+if [ ! -f "$GTK_TEMPLATE" ]; then
+  echo "GTK pixie pin missing: $GTK_TEMPLATE" >&2
   exit 1
 fi
 
@@ -49,6 +50,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 curl -fsSL --retry 3 --retry-delay 2 "$RELEASE_URL" -o "$work/release.pins"
 curl -fsSL --retry 3 --retry-delay 2 "$SNAPSHOT_URL" -o "$work/snapshot.pins"
+"$ROOT_DIR/scripts/android/resolve-pixie-gtk-pins.sh" > "$work/gtk.pins"
 cp "$WEBKIT_PINS" "$work/webkit.pins"
 jq -s '
   .[0].packages as $rel
@@ -70,7 +72,7 @@ jq -s '
         ]
       )
     }
-' "$work/release.pins" "$work/snapshot.pins" "$OVERRIDE" "$work/webkit.pins" > "$work/merged.pins"
+' "$work/release.pins" "$work/snapshot.pins" "$work/gtk.pins" "$work/webkit.pins" > "$work/merged.pins"
 if ! jq -e '[.packages[] | select(.name == "webkitgtk-android")] | length > 0' "$work/merged.pins" >/dev/null; then
   echo "webkitgtk-android is missing from $WEBKIT_PINS" >&2
   exit 1

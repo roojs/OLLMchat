@@ -22,6 +22,14 @@ source "$ROOT_DIR/scripts/android/pixiewood-cache.sh"
 # shellcheck source=gtk-subproject.sh
 source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
 
+discard_gtk_when_using_pixie() {
+  if [ "${PIXIEWOOD_USE_PIXIE:-}" != 1 ]; then
+    return 0
+  fi
+  echo "Discarding GTK source trees (pixie build; GTK is prebuilt)." >&2
+  purge_gtk_subproject_trees
+}
+
 cache_key_matches_deps_hash() {
   local matched_key="${1:-}"
   local deps_hash="${2:-}"
@@ -41,8 +49,8 @@ discard_subprojects_gtk_if_stale() {
     return 0
   fi
 
-  if [ -d "$gtk_dir" ] && gtk_subproject_is_complete && ! gtk_subproject_patch_applied; then
-    echo "Discarding subprojects/gtk (android-bugs.patch not applied or marker outdated)." >&2
+  if [ -d "$gtk_dir" ] && ! gtk_subproject_is_complete; then
+    echo "Discarding subprojects/gtk (incomplete GTK checkout)." >&2
     rm -rf "$gtk_dir"
   fi
 }
@@ -93,8 +101,11 @@ discard_pixiewood_compile_if_stale() {
   ensure_pixiewood_compile_state_consistent
 }
 
-discard_subprojects_gtk_if_stale
-discard_gtk_bootstrap_if_stale
+discard_gtk_when_using_pixie
+if [ "${PIXIEWOOD_USE_PIXIE:-}" != 1 ]; then
+  discard_subprojects_gtk_if_stale
+  discard_gtk_bootstrap_if_stale
+fi
 discard_pixiewood_compile_if_stale
 
 usable=false

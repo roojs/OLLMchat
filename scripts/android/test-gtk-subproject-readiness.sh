@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 export ROOT_DIR
+unset PIXIEWOOD_USE_PIXIE
 
 # shellcheck source=gtk-subproject.sh
 source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
@@ -52,10 +53,6 @@ if ! gtk_subproject_is_complete; then
   exit 1
 fi
 
-if [ ! -f "$(gtk_subproject_patch_marker)" ]; then
-  echo "android-bugs.patch marker missing after bootstrap restore." >&2
-  exit 1
-fi
 
 # With compile cache restored, setup must not call pixiewood prepare when GTK is fixed.
 export CI=true

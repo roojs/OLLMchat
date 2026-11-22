@@ -58,15 +58,8 @@ trap 'rm -f "$apk_list"; rm -rf "$apk_extract"' EXIT
 unzip -q "$APK" "lib/arm64-v8a/libgtk-4.so" "classes.dex" "assets/share/ollmchat-android-runtime.tag" -d "$apk_extract"
 
 runtime_tag="$(tr -d '[:space:]' < "$apk_extract/assets/share/ollmchat-android-runtime.tag")"
-if [ "$runtime_tag" = "pixie-gtk" ]; then
-  :
-elif [ "$runtime_tag" = "ollmchat-android-bugs-v16" ]; then
-  if ! grep -q 'ollmchat-android-bugs-v16' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
-    echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v16)." >&2
-    exit 1
-  fi
-else
-  echo "APK runtime tag is '$runtime_tag' (expected ollmchat-android-bugs-v16 or pixie-gtk)." >&2
+if [ "$runtime_tag" != "gtk-compiled" ] && [ "$runtime_tag" != "pixie-gtk" ]; then
+  echo "APK runtime tag is '$runtime_tag' (expected gtk-compiled or pixie-gtk)." >&2
   exit 1
 fi
 

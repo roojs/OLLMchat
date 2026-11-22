@@ -194,7 +194,9 @@ namespace OLLMapp.SettingsDialog
 				this.dialog.app.config.save();
 				this.render_file_connection();
 #if ANDROID
-				this.dialog.parent.reconnect.begin();
+				this.dialog.parent.notification(new OLLMrpc.Notification() {
+					method = "client.filesd.connect",
+				});
 #endif
 			});
 			this.add_file_dialog.error_occurred.connect((error_message) => {

@@ -60,6 +60,13 @@ namespace OLLMapp
 		 */
 		public string uuid { get; private set; default = ""; }
 		internal BusyDialog? busy_dialog = null;
+		/**
+		 * Always false on desktop. Android
+		 * {@link android.OllmchatWindow} sets this during filesd
+		 * reconnect so {@link Agent.Manager} skips the unavailable
+		 * dialog.
+		 */
+		public bool reconnecting = false;
 
 		public OLLMchat.Agent.Base? session_agent()
 		{

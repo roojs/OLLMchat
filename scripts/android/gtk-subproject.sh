@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
 # GTK subproject bootstrap and patch helpers for Android Pixiewood builds.
+#
+# ** DO NOT WORK AROUND PIXIEWOOD_USE_PIXIE=1 ** — These helpers are for
+# build-source-diff-apk.sh / regression tests only (pixie unset). Chat POC must
+# not call checkout or patch paths; see refuse-gtk-subproject.sh.
 # shellcheck shell=bash
 
-gtk_subproject_patch_marker() {
-  echo "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c"
-}
-
-gtk_subproject_patch_applied() {
-  local marker im_context
-  marker="$(gtk_subproject_patch_marker)"
-  im_context="$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java"
-  [ -f "$marker" ] && grep -q 'ollmchat-android-bugs-v16' "$marker" &&
-  [ -f "$im_context" ] && grep -q 'syncEditableFromGtk' "$im_context" &&
-    ! grep -q 'gdk_android_scan_gio_modules' "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidruntime.c"
-}
+ROOT_DIR="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+# shellcheck source=refuse-gtk-subproject.sh
+source "$ROOT_DIR/scripts/android/refuse-gtk-subproject.sh"
 
 gtk_bootstrap_cache_dir() {
   echo "$ROOT_DIR/.pixiewood/gtk-subproject-bootstrap"
@@ -42,50 +37,35 @@ gtk_subproject_wrap_revision() {
   sed -n 's/^revision[[:space:]]*=[[:space:]]*//p' "$(gtk_wrap_file)" | head -1
 }
 
-gtk_subproject_patch_fingerprint() {
-  sha256sum "$ROOT_DIR/android/pixiewood-wraps/gtk/android-bugs.patch" | awk '{print $1}'
-}
-
 gtk_bootstrap_cache_is_valid() {
-  local cache expected_rev actual_rev expected_patch actual_patch
+  local cache expected_rev actual_rev
   cache="$(gtk_bootstrap_cache_dir)"
   expected_rev="$(gtk_subproject_wrap_revision)"
-  expected_patch="$(gtk_subproject_patch_fingerprint)"
 
   [ -n "$expected_rev" ] || return 1
-  [ -n "$expected_patch" ] || return 1
   actual_rev="$(cat "$cache/.revision" 2>/dev/null || true)"
-  actual_patch="$(cat "$cache/.patch-hash" 2>/dev/null || true)"
   [ "$actual_rev" = "$expected_rev" ] &&
-    [ "$actual_patch" = "$expected_patch" ] &&
     [ -f "$cache/meson.build" ] &&
-    [ -f "$cache/subprojects/graphene.wrap" ] &&
-    [ -f "$cache/gdk/android/gdkandroidollmchatpatch.c" ] &&
-    grep -q 'ollmchat-android-bugs-v16' "$cache/gdk/android/gdkandroidollmchatpatch.c" &&
-    ! grep -q 'gdk_android_scan_gio_modules' "$cache/gdk/android/gdkandroidruntime.c"
+    [ -f "$cache/subprojects/graphene.wrap" ]
 }
 
 save_gtk_subproject_bootstrap() {
-  local gtk_dir cache revision patch_hash
+  refuse_gtk_subproject_work "Saving GTK bootstrap cache"
+  local gtk_dir cache revision
   gtk_dir="$ROOT_DIR/subprojects/gtk"
   cache="$(gtk_bootstrap_cache_dir)"
   revision="$(gtk_subproject_wrap_revision)"
-  patch_hash="$(gtk_subproject_patch_fingerprint)"
 
-  if [ -z "$patch_hash" ] ||
-     ! gtk_subproject_is_complete ||
-     ! gtk_subproject_patch_applied; then
-    return 1
-  fi
+  gtk_subproject_is_complete || return 1
 
   rm -rf "$cache"
   mkdir -p "$(dirname "$cache")"
   cp -a "$gtk_dir" "$cache"
   printf '%s\n' "$revision" > "$cache/.revision"
-  printf '%s\n' "$patch_hash" > "$cache/.patch-hash"
 }
 
 restore_gtk_subproject_from_bootstrap() {
+  refuse_gtk_subproject_work "Restoring GTK from bootstrap cache"
   local gtk_dir cache
   gtk_dir="$ROOT_DIR/subprojects/gtk"
   cache="$(gtk_bootstrap_cache_dir)"
@@ -95,6 +75,7 @@ restore_gtk_subproject_from_bootstrap() {
 }
 
 clone_gtk_subproject_from_wrap() {
+  refuse_gtk_subproject_work "Cloning GTK from gtk.wrap"
   local gtk_dir url revision
   gtk_dir="$ROOT_DIR/subprojects/gtk"
   url="$(gtk_subproject_wrap_url)"
@@ -112,14 +93,10 @@ clone_gtk_subproject_from_wrap() {
 }
 
 ensure_gtk_subproject_checked_out() {
+  refuse_gtk_subproject_work "Ensuring GTK subproject checkout"
   local gtk_dir="$ROOT_DIR/subprojects/gtk"
 
   if gtk_subproject_is_complete; then
-    if gtk_subproject_patch_applied || [ ! -f "$(gtk_subproject_patch_marker)" ]; then
-      return 0
-    fi
-    echo "GTK patch marker outdated; discarding stale bootstrap cache." >&2
-    rm -rf "$(gtk_bootstrap_cache_dir)"
     return 0
   fi
 
@@ -349,49 +326,17 @@ pin_gtk_nested_pango_wrap() {
   discard_stale_pinned_checkouts
 }
 
-ensure_gtk_subproject_patched() {
-  local gtk_dir="$ROOT_DIR/subprojects/gtk"
-  local marker patch
-  marker="$(gtk_subproject_patch_marker)"
-  patch="$ROOT_DIR/android/pixiewood-wraps/gtk/android-bugs.patch"
-
-  if gtk_subproject_patch_applied; then
-    pin_gtk_nested_pango_wrap
-    save_gtk_subproject_bootstrap || true
-    return 0
-  fi
-
+ensure_gtk_subproject_ready() {
+  refuse_gtk_subproject_work "Preparing GTK subproject"
   ensure_gtk_subproject_checked_out
-
-  if [ ! -f "$patch" ]; then
-    echo "android-bugs.patch missing: $patch" >&2
-    exit 1
-  fi
-
-  echo "Applying android-bugs.patch to GTK subproject." >&2
-  patch -p1 -d "$gtk_dir" --forward --batch -s < "$patch" || true
-
-  if gtk_subproject_patch_applied; then
-    pin_gtk_nested_pango_wrap
-    save_gtk_subproject_bootstrap || true
-    return 0
-  fi
-
-  echo "Could not patch GTK subproject; refreshing from bootstrap or gtk.wrap." >&2
-  rm -rf "$gtk_dir"
-  ensure_gtk_subproject_checked_out
-  patch -p1 -d "$gtk_dir" --forward --batch -s < "$patch" || true
-
-  if ! gtk_subproject_patch_applied; then
-    echo "android-bugs.patch did not apply after GTK refresh." >&2
-    exit 1
-  fi
-
+  gtk_subproject_is_complete ||
+    { echo "GTK subproject checkout is incomplete." >&2; exit 1; }
   pin_gtk_nested_pango_wrap
   save_gtk_subproject_bootstrap || true
 }
 
 prepare_android_subprojects_before_meson() {
+  refuse_gtk_subproject_work "Preparing Android subprojects (GTK bootstrap)"
   local wrap
   mkdir -p "$ROOT_DIR/subprojects"
   for wrap in "$ROOT_DIR/subprojects/"*.wrap; do
@@ -403,6 +348,5 @@ prepare_android_subprojects_before_meson() {
     fi
   done
   discard_stale_pinned_checkouts
-  ensure_gtk_subproject_checked_out
-  ensure_gtk_subproject_patched
+  ensure_gtk_subproject_ready
 }

@@ -11,7 +11,42 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.15] - Unreleased
+## [1.4.16] - Unreleased
+
+Work since **1.4.15** (2026-11-21).
+
+### Changed
+
+#### Android
+
+- Pixie GTK resolves Knowles `track: latest` at fetch time (`resolve-pixie-gtk-pins.sh`) instead of a hand-pinned pixie URL in `pixie-gtk.pins`
+- Chat POC uses prebuilt pixie GTK only: drops `android-bugs.patch` and refuses in-tree GTK checkout or bootstrap when `PIXIEWOOD_USE_PIXIE=1` (`refuse-gtk-subproject.sh`, `refuse-pixie-source-hack.sh`)
+- `build-pixiewood-apk.sh` strips redirect wraps that pointed at absent `subprojects/gtk` trees on pixie builds and requires pixie mode for `pixiewood-chat-poc.xml`
+- CI Android cache keys and validation drop the GTK subproject bootstrap cache; preflight and regression tests cover pixie GTK resolve and forbidden checkout paths
+
+#### Chat
+
+- Android settings apply saved file connections through a `client.filesd.connect` notification so the main window runs one coordinated reconnect
+
+### Fixed
+
+#### Android
+
+- PIN pairing retries after a stale desktop CA or `INTERNAL_ERROR` (`CERT_NOT_REGISTERED` and reachability failures re-register); `FilesdClient` drops stored `ollmrpc-ca.pem` on forced re-register
+- Allow New Device dialog uses phased browse / PIN / enrolling states, digit-only PIN entry with auto-submit after six digits, and separate link vs PIN failure handling (Argus Register flow)
+- Reconnect probes the saved `tcp://` host before other discovered addresses
+- Agent manager skips the desktop-unavailable dialog while a filesd reconnect is in progress
+
+#### libocrpc
+
+- `disconnect()` still closes leftover socket, read watch, and stream when `connected` is already false so a later `connect` starts on a clean session
+- `TlsClient` initializes its mutex and unlocks on parse and I/O errors so pairing retries do not abort on `g_mutex_clear`
+
+#### libollmchat
+
+- File-server registration hello uses the first saved host:port from the connection list and updates the stored `tcp://` URL to match
+
+## [1.4.15] - 2026-11-21
 
 Work since **1.4.14** (2026-11-17).
 
