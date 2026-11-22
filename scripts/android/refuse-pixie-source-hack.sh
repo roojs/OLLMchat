@@ -6,13 +6,14 @@
 # (section “Pixie GTK — no workarounds”). Chat APK builds always use PIXIEWOOD_USE_PIXIE=1.
 set -euo pipefail
 
-ROOT_DIR="${PIXIEWOOD_CHECK_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+SCRIPT_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT_DIR="${PIXIEWOOD_CHECK_ROOT:-$SCRIPT_REPO}"
 PIXIEWOOD_BUILD_DIR="${PIXIEWOOD_BUILD_DIR:-$ROOT_DIR/.pixiewood/bin-aarch64}"
 PIXIEWOOD_USE_PIXIE="${PIXIEWOOD_USE_PIXIE:-}"
 PIXIEWOOD_MANIFEST="${PIXIEWOOD_MANIFEST:-}"
 
 # shellcheck source=refuse-gtk-subproject.sh
-source "$ROOT_DIR/scripts/android/refuse-gtk-subproject.sh"
+source "$SCRIPT_REPO/scripts/android/refuse-gtk-subproject.sh"
 
 stop_hack() {
   pixie_gtk_no_workarounds_warning
