@@ -24,24 +24,26 @@ namespace OLLMtools.EditMode
 	public class Request : OLLMchat.Tool.RequestBase
 	{
 		// Message constants
+		private const string INSTRUCTIONS_WRITE_STREAMING = """
+On this agent, the write tool applies edits from markdown code blocks you output in the assistant message — not from content inside the write tool call. That lets the user see the edit as it streams instead of the chat waiting while changes are gathered.
+""";
+
 		private const string INSTRUCTIONS_COMPLETE_FILE = """
 edit_mode=complete_file replaces the entire file. On the opening ``` fence, do not use a colon (no line ranges or symbol paths). A plain ``` opener is fine.
 """;
 
 		private const string INSTRUCTIONS_LINE_RANGE = """
-Code blocks must include line range in format type:startline:endline e.g.,
+You may start writing by outputting a code block like this:
 
 ```javascript:10:15
 the output goes here
 ```
 
-The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
+The opening fence uses type:startline:endline. The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
 """;
 
 		private const string INSTRUCTIONS_AST = """
-Default mode: AST path.
-
-Code blocks must include AST path in format type:Namespace-Class-Method e.g.
+AST path mode: fence openers use type:Namespace-Class-Method e.g.
 
 ```vala:OLLMchat-Client-chat
 /**
@@ -107,7 +109,7 @@ content to write
 		private const string CODE_BLOCK_REQUIREMENT_PARTIAL = """
 Edit mode is on for this path. In this same assistant message only:
 
-1. Output one or more fenced edits per the instructions above.
+1. Output one or more fenced edits per the format below.
 2. Do not call write again or any other tool for this file in this message.
 3. STOP generating after the last fence — the agent will send a confirmation message that your edits have been applied, and you may continue then.
 """;
@@ -304,20 +306,20 @@ Edit mode is on for this path. In this same assistant message only:
 			
 			// Build LLM message - tell LLM edit mode is activated and provide instructions
 			string llm_message = "Edit mode activated for file: " + this.normalized_path + "\n\n";
-			
-			string instructions = (this.edit_mode == "line_numbers"
-				? INSTRUCTIONS_LINE_RANGE
-				: (this.edit_mode == "complete_file" ? 
-				INSTRUCTIONS_COMPLETE_FILE : INSTRUCTIONS_AST));
-			llm_message += instructions;
-			
-			if (this.overwrite && !this.creating_file) {
-				llm_message += "\n" + OVERWRITE_MESSAGE;
-			}
-			
-			llm_message += "\n" + (this.edit_mode == "complete_file"
+			llm_message += INSTRUCTIONS_WRITE_STREAMING + "\n\n";
+			llm_message += (this.edit_mode == "complete_file"
 				? CODE_BLOCK_REQUIREMENT_COMPLETE_FILE
 				: CODE_BLOCK_REQUIREMENT_PARTIAL);
+			if (this.edit_mode == "line_numbers") {
+				llm_message += "\n\n" + INSTRUCTIONS_LINE_RANGE;
+			} else if (this.edit_mode == "complete_file") {
+				llm_message += "\n\n" + INSTRUCTIONS_COMPLETE_FILE;
+			} else {
+				llm_message += "\n\n" + INSTRUCTIONS_AST;
+			}
+			if (this.overwrite && !this.creating_file) {
+				llm_message += "\n\n" + OVERWRITE_MESSAGE;
+			}
 			
 			// Activate this request (cleans up existing requests for same file)
 			var edit_tool = (Tool) this.tool;

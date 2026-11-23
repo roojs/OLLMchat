@@ -1,8 +1,8 @@
 # New file + follow-up edits: diff baseline should be empty, not latest backup
 
-**Status:** ⏳ Applied in `FileHistory.rebuild_parts` — await user verify on gtktest1 `test-file.txt`.
+**Status:** ✅ 2026-11-23. User closed. Applied in `FileHistory.rebuild_parts` and stacked accept in `FileDiffPart.commit`.
 
-**Pointer:** `docs/bug-fix-process.md` · related [gtktest1 write loop](done/2026-11-20-FIXED-desktop-write-file-edit-loop.md).
+**Pointer:** `docs/bug-fix-process.md` · related [gtktest1 write loop](2026-11-20-FIXED-desktop-write-file-edit-loop.md).
 
 ## Problem
 
@@ -48,4 +48,4 @@
 
 ## Next
 
-- ⏳ Rebuild → restart filesd → open `test-file.txt` → all-green diff → Accept → white buffer, queue empty, bar inactive.
+- ✅ 2026-11-23 — User confirmed done; archived.

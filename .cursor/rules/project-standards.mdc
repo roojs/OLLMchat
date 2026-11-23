@@ -29,5 +29,6 @@ Do **not** implement until router-mandated reads are done.
 | Docblocks (when router includes `docblocks`) | `docs/code-documentation.md` |
 | Plans in `docs/plans/*` | `docs/guide-to-writing-plans.md` |
 | Bug fixes | `docs/bug-fix-process.md` |
+| Bug/feature logs in `docs/bugs/` | `docs/guide-to-writing-bug-reports.md` (and `docs/bug-fix-process.md` for process) |
 
 Partial compliance is a violation.

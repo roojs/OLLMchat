@@ -558,9 +558,11 @@ namespace OLLMtools.EditMode
 			this.request.reply_with_errors(
 				response,
 				"",
-				"You enabled edit mode for '" + this.request.normalized_path +
-					"' but did not provide any code blocks with changes. " +
-					"Please provide code blocks with the changes you want to make."
+				"You ended this turn without a fenced edit for '" + this.request.normalized_path +
+					"'. Re-read the write tool result above — it explains how edit mode works " +
+					"(output markdown code blocks in the assistant message, not in the tool call). " +
+					"Output a properly formatted fence next. Do not call write again for this file " +
+					"until you have emitted the fence in the assistant message."
 			);
 		}
 		

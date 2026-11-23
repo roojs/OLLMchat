@@ -1,6 +1,6 @@
 # `Client.disconnect()` no-op leaves transport after `connected` is false
 
-**Status:** ⏳ applied (pending verify)
+**Status:** ✅ 2026-11-23. User closed.
 
 **Pointer:** `docs/bug-fix-process.md`, `libocrpc/Client.vala`
 
@@ -58,5 +58,4 @@ Run the existing teardown body (set `connected` false, clear pending, close sock
 
 ## Next
 
-- Verify reconnect after failed connect / parse error.
-- Ship in **v1.4.16** (`./scripts/release.sh` when ready); Argus Android bumps `libocrpc` pixie pin from `release.pins` after publish.
+- ✅ 2026-11-23 — User confirmed done; archived.

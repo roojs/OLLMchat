@@ -15,14 +15,11 @@ When fixing a bug, follow this order. Do not skip steps or apply code changes be
 ### a) DEBUG first
 
 - Reproduce the failure.
-- **Issue log (`docs/bugs/`):** **Always** create or update a file under **`docs/bugs/`** **unless** the change is **trivial**: a **single line** and you already know it is the correct fix. Otherwise keep a **paper trail**:
-  - **Resolved logs:** When a bug is **fully** fixed and verified, move its **`…-FIXED-….md`** file to **`docs/bugs/done/`** (keep the same filename). Active **`docs/bugs/`** holds OPEN investigations and non‑trivial in‑progress logs.
-  - **Name:** **`YYYY-MM-DD-{short-slug}.md`** — use **today’s date** (calendar day you start or update the log) as the prefix, plus a **kebab-case** slug. Add **`FIXED`** in the name only when the bug is **fully** resolved and verified (e.g. `2026-04-19-FIXED- vector search results.md`, `2026-04-04-FIXED-markdown-link-digit-lead.md`).
-  - **Problem** — what's wrong, how to reproduce, expected vs actual.
-  - **Attempts / changelog** — code or config changes (file + purpose); **debug code added** (file, what it logs, how to run, e.g. `build/oc-markdown-test --debug tests/markdown/foo.md`).
-  - **Conclusions** — what's ruled in/out, root cause if known, open questions.
-  - **Record of what was tried** — enough that others don't repeat dead ends.
-  - **After the fix** — final conclusion (link plan/commit if useful); remove temporary **`GLib.debug()`** when merged (note in the log if helpful).
+- **Issue log (`docs/bugs/`):** **Always** create or update a file under **`docs/bugs/`** **unless** the change is **trivial**: a **single line** and you already know it is the correct fix. Otherwise keep a **paper trail**. **Shape, sections, and filename** are defined in **`docs/guide-to-writing-bug-reports.md`** (read that guide when opening or restructuring a log).
+  - **Resolved logs:** When the **user confirms the whole bug is done**, set **`Status:`** **✅** and **move** the file to **`docs/bugs/done/`** in the same update (add **`FIXED`** or **`CLOSED`** in the slug when that matches existing convention). **Active `docs/bugs/`** holds only **⏳** and **✔️** — no user-done reports left in the open folder.
+  - **Name:** **`YYYY-MM-DD-{ISSUE|FEATURE}-{kebab-slug}.md`** — **today’s date** when you create the file, plus **`ISSUE`** (broken behavior) or **`FEATURE`** (new/extended behavior), plus a **kebab-case** slug.
+  - **Body:** **User decisions required** (**💩** or **`None.`** — update when stopping for approval/device/cross-repo), **User reported**, **Success scenario**, **Current behavior** (relevant only: what you said, tool calls, verbatim tool/assistant text when it is the repro, tight outcomes — rest in **LLM**), **Codebase observed behavior** (file links + short snippets), **Debugging** (**Current debug output** = `*.debug.log` fences only; session JSON text → **Current behavior**; **Debug code added**), **Proposed fix** (phased when large; **✔️** on applied phase headings), **LLM** (everything else agents need; user can skip). **Lists, not paragraphs** — **`docs/guide-to-writing-bug-reports.md`**. Do not use the old generic “Problem / Evidence / Attempts” layout for new reports.
+  - **After apply** — set **`Status:`** to **✔️**; file stays in **`docs/bugs/`**. **After user verify of the whole fix** — **`Status:`** **✅** and **must** live under **`docs/bugs/done/`** (see **`docs/guide-to-writing-bug-reports.md`** — **Filenames and folders**). Remove temporary **`GLib.debug()`** when merged (note under **Debug code added** / **LLM** if helpful).
 - Add **minimal, targeted** logging—only what's needed to see the real values and control flow. Don't splatter debug code everywhere; keep it small so we're less likely to forget to remove it.
 - Use **GLib.debug()** for debug output. Do not add method/class name in the message—file and line are already in the output.
 - **OLLMchat test apps** (`TestAppBase`, main app): `GLib.debug()` is routed through `ApplicationInterface.debug_log`. Pass **`--debug`** so debug lines are printed to stderr. Setting `G_MESSAGES_DEBUG` alone is not enough for those programs because the default GLib log handler is replaced.
@@ -45,8 +42,11 @@ When fixing a bug, follow this order. Do not skip steps or apply code changes be
 ### d) Continue or request a decision
 
 - Continue autonomously when the root cause is confirmed and the proposal uses an existing in-tree pattern or is a routine, reversible correction with no material product-design choice.
-- Stop only when user input is genuinely required, the user explicitly asks to pause, or the proposal introduces a major design, API, security, persistence, compatibility, or destructive change. Present that decision and wait for approval.
+- **Stop turns** only as in **`docs/guide-to-writing-bug-reports.md`** (**Agent stop points**): **A**–**E** (including **E** cross-repo bug report + **scope** — no edits outside this workspace without explicit permission), or the listed **material decision** exception.
+- **Requesting a decision (especially **B** or a material choice):** put the full argument in the bug report (**Proposed fix**, **LLM**, etc.). In chat, **one line only** — stop code + pointer to what to read, e.g. “**B** — review **Proposed fix → Phase 2** in [`docs/bugs/….md`](docs/bugs/….md).” **Never** dump the proposal, evidence, or options into the prompt; that belongs in the report.
+- Other stops (**A**, **C**, **D**, **E**): same rule — **one sentence** in chat (code + minimal fact), not an essay.
 - Do not stop merely to report progress, restate status, or ask permission for a routine next step already determined by the evidence.
+- **“Was that a valid stop point?”** (or similar): means **carry on** — resume **d** → **e** as allowed. **Do not** explain that the stop was invalid; see **`docs/guide-to-writing-bug-reports.md`** (**Agent stop points** — *When the user asks about stop points*).
 - When a new failure appears during verification, record and diagnose it, update the proposal, and continue under the same rule. Do not apply an improvised workaround.
 
 ### e) Apply the documented proposal
@@ -56,37 +56,27 @@ When fixing a bug, follow this order. Do not skip steps or apply code changes be
 
 ## Bug log markup (emoji + shape)
 
-Bug logs in **`docs/bugs/`** use the **same emoji legend** as plans —
-**`docs/guide-to-writing-plans.md`** (**Discussion style (emoji prefixes)**). Do
-**not** write unmarked mandate bullets.
+**Canonical layout:** **`docs/guide-to-writing-bug-reports.md`**. Summary:
 
-| Marker | Use in bug logs |
-| ------ | ---------------- |
-| 🔷 | User-stated symptom, requirement, or approved fix direction |
-| 💩 | Agent-inferred hypothesis, optional debug, or proposed change not yet confirmed by the user |
-| ℹ️ | Pointers (log path, related plan, file, prior bug) |
+- **Header:** title + **`Status:`** **⏳** (open), **✔️** (applied), or **✅** (user confirmed done) only — **✅** is **not** for applied-only; see plans guide **✅** vs **✔️**.
+- **🔷** only in **User reported** (user intent, grammar-fixed).
+- **No emoji** in **Success scenario**, **Current behavior**, **Codebase observed behavior**, or **Current debug output** intro lines (blocks are raw log text).
+- **LLM** section: full legend from **`docs/guide-to-writing-plans.md`** (**Discussion style (emoji prefixes)**) — **ℹ️**, **💩**, **🚫**, **⏳**, **✔️**, etc.
+
+| Marker | Typical use (mostly **LLM**) |
+| ------ | ------------------------------ |
+| 🔷 | **User reported** only |
+| 💩 | Agent hypothesis or unconfirmed proposal |
+| ℹ️ | Pointers (log, plan, file, prior bug) |
 | 🚫 | Ruled out / do not implement |
-| ⏳ | Open work (always pair with 🔷 or 💩) |
-| ✔️ | Agent claims implemented / evidence captured — not user-verified |
-| ✅ | User verified fixed on device |
+| ⏳ | Open work |
+| ✔️ | Report **Status** when fix **applied**; also evidence/changelog in **LLM** |
+| ✅ | Report **Status** when **user confirmed whole fix** — file **only** in **`docs/bugs/done/`**; **✅** on individual phase headings is OK |
 
-**Minimum shape for a non-trivial bug log:**
-
-1. **Title** + **Status:** line (may use ⏳ alone for overall state).
-2. **Problem** — 🔷 expected vs actual; reproduction bullets.
-3. **Evidence** — nested bullets (prefer over tables); prefix with ℹ️ / ✔️ as appropriate.
-4. **Root cause** — only after evidence; mark ✔️ when confirmed from logs, not guesses.
-5. **Proposed fix** — 🔷 / 💩 clearly separated; **inline code fences** (Remove / Replace with / Add) when applying will touch Vala.
-6. **Attempts / changelog** + **Next** — ⏳ items paired with provenance.
-
-**🚫** Unmarked paragraphs that read like requirements. **🚫** Promoting ✔️ → ✅ without the user.
-
-Example status line:
-
-`**Status:** ⏳ root cause confirmed; fix proposed — await apply approval`
+**🚫** Report-level **✅** in **`docs/bugs/`** (active folder). **🚫** Using **✅** on the header for “applied but not verified”. **🚫** Analysis dressed as user report. **🚫** Promoting **✔️ → ✅** without the user.
 
 ## Summary
 
-1. **DEBUG first** (including **`docs/bugs/YYYY-MM-DD-*.md`** unless a **one-line** fix is already certain) → 2. **Understand real issue** → 3. **Propose fix** (emoji + fences) → 4. **Continue routine fixes or request a major decision** → 5. **Apply only the documented proposal**
+1. **DEBUG first** (including **`docs/bugs/YYYY-MM-DD-{ISSUE|FEATURE}-*.md`** unless a **one-line** fix is already certain) → 2. **Understand real issue** → 3. **Propose fix** (fences in **Proposed fix**; scratch in **LLM**) → 4. **Continue routine fixes or request a major decision** → 5. **Apply only the documented proposal**
 
 No guards or symptom-only patches that hide the real bug.

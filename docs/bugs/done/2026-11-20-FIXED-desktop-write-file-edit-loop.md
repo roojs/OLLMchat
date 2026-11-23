@@ -1,6 +1,6 @@
 # Desktop Agent Pi `write` test spins instead of creating file via edit mode
 
-**Status:** ✅ Closed 2026-11-21 — harness fixes landed; LLM copy in [write-tool-llm-copy](../2026-11-21-write-tool-llm-copy.md). Related: [stream-handler criticals](2026-11-21-FIXED-edit-mode-stream-handler-criticals.md), [monitored-requests](2026-11-21-FIXED-monitored-requests-stack.md).
+**Status:** ✅ Closed 2026-11-21 — harness fixes landed; LLM copy in [write-tool-llm-copy](2026-11-21-FIXED-write-tool-llm-copy.md). Related: [stream-handler criticals](2026-11-21-FIXED-edit-mode-stream-handler-criticals.md), [monitored-requests](2026-11-21-FIXED-monitored-requests-stack.md), [stacked diff baseline](2026-11-21-FIXED-test-file-stacked-add-diff-baseline.md).
 
 **Started:** 2026-11-20
 
@@ -72,7 +72,7 @@ ERROR: edit_mode must be one of: ast_path, line_numbers, complete_file
 
 ## Fix direction
 
-- 🔷 **Tool result copy only** — before/after and Vala **Remove / Replace** in [2026-11-21-write-tool-llm-copy.md](2026-11-21-write-tool-llm-copy.md).
+- 🔷 **Tool result copy only** — before/after and Vala **Remove / Replace** in [2026-11-21-FIXED-write-tool-llm-copy.md](2026-11-21-FIXED-write-tool-llm-copy.md).
 - 🚫 **Duplicate-`write` guard** — ruled out (2026-11-21); repeat `write` + `activate_request` cleanup stays allowed.
 - ℹ️ Harness fixes (stream monitor, `monitored_requests`) — done in sibling bug logs.
 
@@ -83,5 +83,5 @@ ERROR: edit_mode must be one of: ast_path, line_numbers, complete_file
 
 ## Next
 
-- ⏳ 🔷 Implement [write-tool-llm-copy](2026-11-21-write-tool-llm-copy.md); re-run gtktest1 prompt.
+- ✅ LLM copy — [2026-11-21-FIXED-write-tool-llm-copy.md](2026-11-21-FIXED-write-tool-llm-copy.md) closed 2026-11-23.
 - ⏳ 💩 Optional: scripted harness test with forced fence reply.

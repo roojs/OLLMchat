@@ -35,7 +35,7 @@
 - 🚫 LLM connection / model verification (completes before filesd hello in the captured logs).
 - 🚫 filesd hang on hello or `db_projects` (replies logged through id=2).
 - 🚫 Blocking forever on `EmptySession.restore_messages` (not used on cold start with empty session).
-- 🚫 Using hello version mismatch work (`docs/bugs/2026-11-21-filesd-hello-version-mismatch.md`) as the explanation for this hang (separate issue).
+- 🚫 Using hello version mismatch work (`docs/bugs/2026-11-21-FEATURE-rpc-daemon-hello-version-mismatch.md`) as the explanation for this hang (separate issue).
 
 ## Proposed fix
 

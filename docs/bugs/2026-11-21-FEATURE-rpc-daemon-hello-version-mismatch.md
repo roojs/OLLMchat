@@ -1,37 +1,75 @@
-# `RPC-Daemon.hello` does not verify client/server build version
+# `RPC-Daemon.hello` does not verify client and server build version.
 
-**Status:** ⏳ root cause confirmed; fix proposed — await apply
+**Status:** ⏳
 
-**Started:** 2026-11-21
+## User decisions required
 
-**Pointer:** `docs/bug-fix-process.md` · `docs/guide-to-writing-plans.md` — **Checklist for plans**, **Edit syntax contract**. Proposed Vala follows `docs/coding-standards.md`.
+💩 Approve applying **Proposed fix** Topics 1–5 in order (Topic 6 at release cut).
 
-**Copy from Argus:** `/home/alan/gitlive/argusrm/server/Daemon.vala`, `/home/alan/gitlive/argusrm/docs/rpc-commands.md` § `RPC-Daemon.hello`, post-hello compare in `/home/alan/gitlive/argusrm/agent/linux/Application.vala` and `/home/alan/gitlive/argusrm/agent/Connection.vala`, `Argus.VERSION` in `/home/alan/gitlive/argusrm/paths.vala.in`.
+## User reported
 
-## Problem
+- 🔷 `RPC-Daemon.hello` should carry **`OLLMchat.VERSION`** (Meson `project()` version, same string in app and `ollmfilesd`). Missing version → **`0.0.0`**.
+- 🔷 Same rules as Argus: newer client refused by server; older client accepted with warning; client refuses when server is **older** than client.
+- 🔷 With **`ClientBoot`**, when the daemon binary is too old for this client, **`kill()` + `ensure_daemon()`** once, then hello again (at most one respawn per `connect`).
+- 🔷 Bump root `meson.build` `project(..., version: …)` in the release that ships this handshake; follow `docs/creating-releases.md` for changelog/packages.
 
-- 🔷 **Expected:** `RPC-Daemon.hello` carries **`OLLMchat.VERSION`** (Meson `project()` version, same string in app and `ollmfilesd`). Missing version → **`0.0.0`**. Same rules as Argus: newer client refused by server; older client accepted with warning; client refuses when server is **older** than client. With **`ClientBoot`**, when the daemon binary is too old for this client, **`kill()` + `ensure_daemon()`** once, then hello again (at most one respawn per `connect`).
-- 🔷 **Actual:** Hello is **`is`** only (`protocol`, client). Reply is a **`Daemon` object** with no version. No compare. `ClientBoot` only restarts when the socket is down, not when the binary is stale.
-- ℹ️ Repro: install or leave an older `ollmfilesd` on the socket, run a newer desktop build; hello succeeds and RPC proceeds with mismatched semantics.
+## Success scenario
 
-## Evidence
+- Hello uses args **`iss`** (protocol, client name, client version) and returns the server version string as **`retval`**, not a `Daemon` object.
+- Client and server compare versions after hello; mismatches produce the Argus-style errors and warnings.
+- Every caller sends **`OLLMchat.VERSION`** as the third hello arg; one compile-time constant is shared across app, daemon, examples, and tests.
+- Local **`ClientBoot`**: stale daemon binary is replaced at most once per `connect`, then hello is retried.
+- Remote connect (`boot == null`): compare only; no spawn.
+- Tests and RPC script stubs match the new wire shape.
 
-- ✔️ `ollmfilesd/Daemon.vala` — `"hello", "is"`; `retval` = `OLLMrpc.Daemon` object.
-- ✔️ Callers — `OLLMrpc.args("is", 1, "ollmchat")` (`ollmapp/Window.vala`, CLI, Android, settings rows, tests, examples).
-- ✔️ `libocrpc/Client.connect` — treats hello as OK when `response.error == null`; does not read version from `retval`.
-- ℹ️ Argus hello: args **`iss`**, reply **`retval` `s`** (server version), server compare via `strverscmp`; client compare via `GLib.strcmp` + `collate_key_for_filename()` on both version strings.
-- ℹ️ `OLLMapp.APP_VERSION` (`ollmapp/version.vala.in`, git-date UI) is **not** the release pairing string.
+## Current behavior
 
-## Root cause
+- Hello is **`is`** only (`protocol`, client). Reply is a **`Daemon` object** with no version. No compare.
+- `ClientBoot` only restarts when the socket is down, not when the binary is stale.
+- Repro: install or leave an older `ollmfilesd` on the socket, run a newer desktop build; hello succeeds and RPC proceeds with mismatched semantics.
 
-- ✔️ Hello checks reachability only, not release pairing.
-- ✔️ No shared **`OLLMchat.VERSION`** embedded in app and daemon at build time.
+## Codebase observed behavior
 
-## Ruled out
+- [`ollmfilesd/Daemon.vala`](../../ollmfilesd/Daemon.vala) registers hello as **`is`**; handler returns a **`Daemon` object**, not a version string.
 
-- 🚫 Using `OLLMapp.APP_VERSION` for the handshake (wrong semantics).
-- 🚫 Returning a hybrid hello reply (Daemon object **and** version string).
-- 🚫 Adding libocrpc → libollmchat dependency for version (`Client.connect` reads version from `hello_request` args and `retval` only).
+```vala
+"hello", "is",
+```
+
+```vala
+request.reply(new OLLMrpc.Response() {
+	retval = OLLMrpc.val("o", this)
+});
+```
+
+- [`ollmapp/Window.vala`](../../ollmapp/Window.vala) (and CLI, Android, settings rows, tests, examples) send two args only — e.g. desktop:
+
+```vala
+args = OLLMrpc.args("is", 1, "ollmchat")
+```
+
+- [`libocrpc/Client.vala`](../../libocrpc/Client.vala) `connect`: hello succeeds when `response.error == null`; no read of version from `retval`.
+
+```vala
+if (hello.error != null) {
+	…
+}
+GLib.debug("connect ok hello id=%d", hello_request.id);
+return true;
+```
+
+- Argus reference (out of tree): hello args **`iss`**, reply **`retval` `s`**; server `strverscmp`; client `GLib.strcmp` + `collate_key_for_filename()`.
+- [`ollmapp/version.vala.in`](../../ollmapp/version.vala.in) **`OLLMapp.APP_VERSION`** is git-date UI text, not the Meson release string used for pairing.
+
+## Debugging
+
+### Current debug output
+
+No log capture yet — evidence so far is static inspection under **Codebase observed behavior**; planned runs are in **LLM**.
+
+### Debug code added (remove when complete)
+
+None.
 
 ## Proposed fix
 
@@ -173,7 +211,7 @@ ollmchat_ollama_src = files([
 
 **Depends on:** Topic 2 (server returns `s`).
 
-**Flow (🔷):**
+**Flow:**
 
 1. After `wait_response` for hello, if `hello.error != null` and code is `INVALID_PARAMS` and `boot != null` and not yet respawned → `disconnect()`, `yield boot.kill()`, `yield boot.ensure_daemon()`, reopen socket and streams, **one** repeat of hello (not unbounded).
 2. If hello still errors → existing fail path (`connect_error`, `disconnect`, `return false`).
@@ -231,8 +269,6 @@ Outer shape (pseudo — implementer merges with existing setup **without** extra
 				 * continue loop on respawn; return false on hard fail */
 			}
 ```
-
-💩 First pass keeps today's code path (`boot.ensure_daemon` / `boot.connect` or TCP/socket) **before** the loop; second pass (`pass > 0`) only runs the `kill` / `ensure_daemon` / reconnect / stream re-init block above. Do not call `ensure_daemon` twice on the first successful path.
 
 #### Part 2 — post-`wait_response` version gate
 
@@ -388,8 +424,6 @@ Keep existing client name strings (`"ollmchat"`, `"ollmchat-cli"`, `"oc-test-sou
 				args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 ```
 
-ℹ️ Repeat the same **Remove** / **Replace with** for every site in the table. ℹ️ When applying `docs/bugs/2026-10-27-filesd-restart-drops-client.md`, use **`iss`** + `OLLMchat.VERSION` in its reconnect hello block too.
-
 #### Part — `libocrpc/namespace.vala` and `libocrpc/android/namespace.vala` doc examples
 
 Same **Remove** / **Replace with** as Topic 3 Part 3 (`my-app` name).
@@ -462,8 +496,6 @@ Same **Remove** / **Replace with** as Topic 3 Part 3 (`my-app` name).
 {"id":1,"method":"RPC-Daemon.hello","*type":"Request","args":[1,"test-rpc","1.4.12"]}
 ```
 
-💩 Use current `meson.build` `project()` version at apply time; scripts are not generated.
-
 ℹ️ Tests that use a minimal `hello` with signature `""` (`client-drop-on-reply-test.vala`, `values-test.vala`) stay as-is unless FFI routing requires `iss` on a live daemon test.
 
 ---
@@ -472,22 +504,51 @@ Same **Remove** / **Replace with** as Topic 3 Part 3 (`my-app` name).
 
 **Why:** Pairing only bites when versions differ across installs.
 
-- 🔷 Bump root `meson.build` `project(..., version: …)` in the release that ships this handshake; follow `docs/creating-releases.md` for changelog/packages.
+- Bump root `meson.build` `project(..., version: …)` in the release that ships this handshake; follow `docs/creating-releases.md` for changelog/packages.
 
----
+## LLM
 
-## Test plan
+**Started:** 2026-11-21
 
-- ⏳ 🔷 Local: old `ollmfilesd` on socket, new app + `ClientBoot` → one kill/spawn, second hello, matching versions → `connect` true.
-- ⏳ 🔷 Remote TLS (`boot == null`): server older → `connect` false, `connect_error` names both versions; no spawn.
-- ⏳ 🔷 Server newer, client older → warning in log, session connects.
-- ⏳ 🔷 `build/oc-test-rpc` (or affected scripts) after `.script.in` arg updates.
+**Pointer:** `docs/bug-fix-process.md` · `docs/guide-to-writing-plans.md` — **Checklist for plans**, **Edit syntax contract**. Proposed Vala follows `docs/coding-standards.md`. Shape: `docs/guide-to-writing-bug-reports.md`.
 
-## Attempts / changelog
+**Copy from Argus:** `/home/alan/gitlive/argusrm/server/Daemon.vala`, `/home/alan/gitlive/argusrm/docs/rpc-commands.md` § `RPC-Daemon.hello`, post-hello compare in `/home/alan/gitlive/argusrm/agent/linux/Application.vala` and `/home/alan/gitlive/argusrm/agent/Connection.vala`, `Argus.VERSION` in `/home/alan/gitlive/argusrm/paths.vala.in`.
+
+### Root cause (analysis)
+
+- ✔️ Hello checks reachability only, not release pairing.
+- ✔️ No shared **`OLLMchat.VERSION`** embedded in app and daemon at build time.
+
+### Ruled out
+
+- 🚫 Using `OLLMapp.APP_VERSION` for the handshake (wrong semantics).
+- 🚫 Returning a hybrid hello reply (Daemon object **and** version string).
+- 🚫 Adding libocrpc → libollmchat dependency for version (`Client.connect` reads version from `hello_request` args and `retval` only).
+
+### Implementation notes
+
+- 💩 First pass keeps today's code path (`boot.ensure_daemon` / `boot.connect` or TCP/socket) **before** the loop; second pass (`pass > 0`) only runs the `kill` / `ensure_daemon` / reconnect / stream re-init block. Do not call `ensure_daemon` twice on the first successful path.
+- 💩 Use current `meson.build` `project()` version at apply time for RPC scripts; scripts are not generated.
+- ℹ️ Repeat the same **Remove** / **Replace with** for every site in the Topic 4 table. ℹ️ When applying `docs/bugs/2026-10-27-filesd-restart-drops-client.md`, use **`iss`** + `OLLMchat.VERSION` in its reconnect hello block too.
+- ℹ️ `ollmfilesd` already links `ollmchat_base_lib` / `--pkg=ollmchat`; no extra meson in `ollmfilesd/` beyond using `OLLMchat.VERSION` in `Daemon.vala`.
+
+### Test plan
+
+- ⏳ Local: old `ollmfilesd` on socket, new app + `ClientBoot` → one kill/spawn, second hello, matching versions → `connect` true.
+- ⏳ Remote TLS (`boot == null`): server older → `connect` false, `connect_error` names both versions; no spawn.
+- ⏳ Server newer, client older → warning in log, session connects.
+- ⏳ `build/oc-test-rpc` (or affected scripts) after `.script.in` arg updates.
+
+### Attempts / changelog
 
 - ✔️ 2026-11-21 — Opened; aligned proposal with Argus `server/Daemon.vala` (string `retval`, no hybrid object).
 - ✔️ 2026-11-21 — Expanded bug log with full **Remove** / **Replace with** / **Add** proposal per `docs/guide-to-writing-plans.md`.
+- ✔️ 2026-11-23 — Restructured per `docs/guide-to-writing-bug-reports.md`; renamed to `2026-11-21-FEATURE-rpc-daemon-hello-version-mismatch.md`.
 
-## Next
+### Next
 
-- ⏳ 🔷 Apply Topics 1–5 in order after approval (Topic 6 at release cut).
+- ⏳ Apply Topics 1–5 in order after approval (Topic 6 at release cut).
+
+### Related
+
+- 🚫 Using hello version mismatch work as the explanation for desktop startup hang after file nav — separate issue (`docs/bugs/done/2026-11-21-FIXED-desktop-startup-hang-after-file-nav.md`).

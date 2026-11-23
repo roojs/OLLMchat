@@ -1,12 +1,12 @@
 # `write` tool — LLM result copy (validation + success STOP)
 
-**Status:** ✔️ Applied 2026-11-21 in `liboctools/EditMode/Request.vala`. ⏳ gtktest1 user-verify.
+**Status:** ✅ 2026-11-23. User closed. Applied 2026-11-21 in `liboctools/EditMode/Request.vala`.
 
 **Started:** 2026-11-21
 
 **Pointer:** `docs/bug-fix-process.md`
 
-**Related:** [gtktest1 edit-loop](done/2026-11-20-FIXED-desktop-write-file-edit-loop.md) (why this matters). Harness bugs: [stream-handler criticals](done/2026-11-21-FIXED-edit-mode-stream-handler-criticals.md).
+**Related:** [gtktest1 edit-loop](2026-11-20-FIXED-desktop-write-file-edit-loop.md) (why this matters). Harness bugs: [stream-handler criticals](2026-11-21-FIXED-edit-mode-stream-handler-criticals.md).
 
 ## Problem
 
@@ -242,7 +242,7 @@ Edit mode is on for this path. In this same assistant message only:
 
 ## Ruled out
 
-- 🚫 Duplicate-`write` guard while edit mode active — see [gtktest1 log](done/2026-11-20-FIXED-desktop-write-file-edit-loop.md).
+- 🚫 Duplicate-`write` guard while edit mode active — see [gtktest1 log](2026-11-20-FIXED-desktop-write-file-edit-loop.md).
 - 🚫 Alias bogus mode names (e.g. `curry-combined`).
 
 ## Attempts / changelog
@@ -253,4 +253,4 @@ Edit mode is on for this path. In this same assistant message only:
 
 ## Next
 
-- ⏳ 🔷 Re-run gtktest1 prompt: valid `complete_file` → streamed fence → apply → no bash detour.
+- ✅ 2026-11-23 — User confirmed done; archived.
