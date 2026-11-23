@@ -209,6 +209,6 @@ ocwebkit_vapi_dep = declare_dependency(
   sources: [ocwebkit_vapi[0]],
 )
 
-if not is_android_cross
+if not is_android_cross and get_option('oc_test_webkit')
   subdir('examples')
 endif

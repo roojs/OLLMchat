@@ -1,5 +1,11 @@
 option('docs', type: 'boolean', value: true, description: 'Build valadoc documentation')
 option('examples', type: 'boolean', value: true, description: 'Build example and test utility executables')
+option(
+  'oc_test_webkit',
+  type: 'boolean',
+  value: false,
+  description: 'Build libocwebkit/examples/oc-test-webkit (WebKit spike; off by default for packaging)',
+)
 option('tests', type: 'boolean', value: true, description: 'Configure test suite')
 option(
   'local_gguf',

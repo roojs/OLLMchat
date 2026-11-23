@@ -21,6 +21,10 @@ Work since **1.4.16**.
 
 - Disk backup writes `filename.new`, then copies over `filename` and deletes `.new` instead of `rename`, so Windows in-place upgrades do not leave an orphaned `.new` and an empty on-disk store
 
+#### Packaging
+
+- Debian builds no longer compile ``oc-test-webkit`` by default (``-Doc_test_webkit=false``); enables Trixie ``dpkg-buildpackage`` when the webdriver ``.so`` link line is incomplete
+
 ## [1.4.16] - 2026-11-22
 
 Work since **1.4.15** (2026-11-21).
