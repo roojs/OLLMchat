@@ -272,8 +272,8 @@ namespace OLLMapp
 					this.window.notification(new OLLMrpc.Notification() {
 						method = "Banner.show",
 						object_type = "SearchFault",
-						args = OLLMrpc.args("iis",
-							(int) model_usage.fault, (int) slot, model_usage.detail)
+						args = OLLMrpc.args("iis",	(int) model_usage.fault, 
+							(int) slot, model_usage.detail)
 					});
 				}
 			}

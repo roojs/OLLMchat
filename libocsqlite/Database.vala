@@ -124,13 +124,11 @@ namespace SQ {
 			var file = GLib.File.new_for_path(this.filename);
 			GLib.FileInfo info;
 			try {
-				info = file.query_info(
-					GLib.FileAttribute.STANDARD_SIZE,
+				info = file.query_info(GLib.FileAttribute.STANDARD_SIZE,
 					GLib.FileQueryInfoFlags.NONE);
+
 				if (info.get_size() == 0) {
-					GLib.debug(
-						"discarding zero-byte database file %s",
-						this.filename);
+					GLib.debug("discarding zero-byte database file %s", this.filename);
 					GLib.FileUtils.remove(this.filename);
 					return false;
 				}
@@ -212,7 +210,8 @@ namespace SQ {
 
 		/**
 		 * Write the in-memory database to {@link filename} now (mutex,
-		 * Sqlite.Backup, atomic rename). Updates last_backup on success.
+		 * Sqlite.Backup, copy over {@link filename}, delete ''.new'').
+		 * Updates last_backup on success.
 		 */
 		public void backup_real()
 		{
@@ -248,7 +247,16 @@ namespace SQ {
 					GLib.FileUtils.remove(new_filename);
 					return;
 				}
-				GLib.FileUtils.rename(new_filename, this.filename);
+				try {
+					GLib.File.new_for_path(new_filename).copy(GLib.File.new_for_path(this.filename),
+						GLib.FileCopyFlags.OVERWRITE);
+
+					GLib.FileUtils.remove(new_filename);
+				} catch (GLib.Error e) {
+					GLib.warning("Error promoting database backup %s → %s: %s",
+						new_filename, this.filename, e.message);
+					return;
+				}
 				this.is_dirty = false;
 				this.last_backup = new GLib.DateTime.now_local().to_unix();
 				//GLib.debug("disk backup done path=%s", this.filename);

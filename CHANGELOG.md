@@ -11,6 +11,16 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
+## [1.4.17] - Unreleased
+
+Work since **1.4.16**.
+
+### Fixed
+
+#### libocsqlite
+
+- Disk backup writes `filename.new`, then copies over `filename` and deletes `.new` instead of `rename`, so Windows in-place upgrades do not leave an orphaned `.new` and an empty on-disk store
+
 ## [1.4.16] - Unreleased
 
 Work since **1.4.15** (2026-11-21).

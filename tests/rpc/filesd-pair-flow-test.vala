@@ -181,10 +181,8 @@ namespace OLLMrpcTests
 					cert_pem = "client.pem",
 					key_pem = "client-key.pem",
 					cn = "ollmchat-stranger",
-					ca_pem_path = GLib.Path.build_filename(
-						daemon_dir, "tls", "server-ca.pem"),
-					ca_key_path = GLib.Path.build_filename(
-						daemon_dir, "tls", "server-ca-key.pem"),
+					ca_pem_path = GLib.Path.build_filename(daemon_dir, "tls", "server-ca.pem"),
+					ca_key_path = GLib.Path.build_filename(daemon_dir, "tls", "server-ca-key.pem"),
 				};
 				stranger.ensure();
 				var stranger_pem = "";
