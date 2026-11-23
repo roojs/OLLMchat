@@ -1,7 +1,184 @@
+ollmchat (1.4.17-1) unstable; urgency=medium
+
+  * Disk backup writes `filename.new`, then copies over `filename` and deletes `.new` instead of `rename`, so Windows in-place upgrades do not leave an orphaned `.new` and an empty on-disk store
+
+ -- Alan Knowles <alan@roojs.com>  Mon, 23 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.16-1) unstable; urgency=medium
+
+  * Pixie GTK resolves Knowles `track: latest` at fetch time (`resolve-pixie-gtk-pins.sh`) instead of a hand-pinned pixie URL in `pixie-gtk.pins`
+  * Chat POC uses prebuilt pixie GTK only: drops `android-bugs.patch` and refuses in-tree GTK checkout or bootstrap when `PIXIEWOOD_USE_PIXIE=1` (`refuse-gtk-subproject.sh`, `refuse-pixie-source-hack.sh`)
+  * `build-pixiewood-apk.sh` strips redirect wraps that pointed at absent `subprojects/gtk` trees on pixie builds and requires pixie mode for `pixiewood-chat-poc.xml`
+  * CI Android cache keys and validation drop the GTK subproject bootstrap cache; preflight and regression tests cover pixie GTK resolve and forbidden checkout paths
+  * Android settings apply saved file connections through a `client.filesd.connect` notification so the main window runs one coordinated reconnect
+  * PIN pairing retries after a stale desktop CA or `INTERNAL_ERROR` (`CERT_NOT_REGISTERED` and reachability failures re-register); `FilesdClient` drops stored `ollmrpc-ca.pem` on forced re-register
+  * Allow New Device dialog uses phased browse / PIN / enrolling states, digit-only PIN entry with auto-submit after six digits, and separate link vs PIN failure handling (Argus Register flow)
+  * Reconnect probes the saved `tcp://` host before other discovered addresses
+  * Agent manager skips the desktop-unavailable dialog while a filesd reconnect is in progress
+  * `disconnect()` still closes leftover socket, read watch, and stream when `connected` is already false so a later `connect` starts on a clean session
+  * `TlsClient` initializes its mutex and unlocks on parse and I/O errors so pairing retries do not abort on `g_mutex_clear`
+  * File-server registration hello uses the first saved host:port from the connection list and updates the stored `tcp://` URL to match
+
+ -- Alan Knowles <alan@roojs.com>  Sun, 22 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.15-1) unstable; urgency=medium
+
+  * Pixiewood builds use prebuilt pixies only; Meson setup refuses a shell hack that would compile the GTK stack from source
+  * `fetch-pixie-deps` re-fetches when the Android library pin list changes
+  * Meson cross setup keeps a stable stripped `pixiewood-extra.cross` under `.pixiewood` for pixie sysroots
+  * Loopback TCP connections can use TLS so localhost matches a TLS-enabled desktop daemon
+  * openSUSE Tumbleweed CI installs `libllama1`, `libggml1`, and `libggml-base1` after the llamacpp 1.0 SONAME rename
+  * Startup picks the intended agent again
+  * Tool calls and edit-mode streaming handle overlapping requests without critical warnings
+  * Accepting or rejecting diff hunks updates the source view and file history consistently, including stacked adds against a baseline
+  * File review keeps older pending rows in the queue when the newest history row is finished
+  * TLS trust and file-connection setup on phone builds
+  * Open discards a zero-byte on-disk backup file instead of failing to load
+
+ -- Alan Knowles <alan@roojs.com>  Sat, 21 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.14-1) unstable; urgency=medium
+
+  * `args` takes an `ai` array and its length, and an `ax` array and its length. A varargs call does not pass the length on its own
+  * A bad `ai` or `ax` value is an invalid-params error. Dispatch does not call the method
+
+ -- Alan Knowles <alan@roojs.com>  Tue, 17 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.13-1) unstable; urgency=medium
+
+  * Version tags attach `ollmchat-vX.Y.Z.apk` and `ollmchat-vX.Y.Z-debug.apk` (one native build, Gradle release plus debug)
+  * Tag Release builds the x86_64 and aarch64 AppImages together and attaches both to the packages release. Publish waits for them
+  * `args` packs an `int[]` as `ai` and an `int64[]` as `ax`, and dispatch passes each array as a pointer plus its length
+  * Accepting a hunk clears the red and green highlighting so those lines look like normal source
+  * Accepting a deleted file with no hunks approves it, then the editor opens the next pending file or closes
+  * Rejecting a newly added file deletes it instead of leaving an empty file
+  * Finishing the newest history row keeps older pending rows in the review queue, and the decision is written to disk
+  * Checking a deleted file, or asking for diff parts when there are none, no longer initializes an invalid value
+
+ -- Alan Knowles <alan@roojs.com>  Tue, 17 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.12-1) unstable; urgency=medium
+
+  * The Windows build installs the prebuilt `faiss` MSYS2 package (`1.16.0`) and ships `libocvector2` and `ollmfilesd` again
+  * Release CI skips the AppImage build for now (manual **Release - AppImage** remains available)
+  * Deleted and missing files in review show a deleted banner instead of an editable buffer
+  * File review navigation shows pending action labels in the file popover and updates previous/next tooltips
+  * Hunk accept/reject calls serialize cleanly and refresh the pending diff
+  * Ignored directories and files (including `.git`) are marked by `check_path_ignored` and excluded from pending reviews
+  * Diff part generation handles deleted files without failing on missing disk paths
+  * On Windows, `Connection.start`, `Client.connect`, and `Client.call_poll` use `GLib.IOChannel.win32_socket` and `win32_get_fd` on Winsock sockets
+
+ -- Alan Knowles <alan@roojs.com>  Fri, 13 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.11-1) unstable; urgency=medium
+
+  * `webkitgtk-android` is pin 0.1.7
+  * The pin list is published by the docs workflow
+  * The APK copies the GtkSourceView language schema from the pixie package
+  * Releases build the x86_64 AppImage only
+  * The Windows build does not compile FAISS, and it does not ship `ollmfilesd` or `libocvector2`
+  * Stop on a shell frame stops that tool
+  * The file tree reloads when the project cache is invalidated
+  * On Windows, `args` and `val` advance the varargs cursor, so each signature letter reads the next value
+
+ -- Alan Knowles <alan@roojs.com>  Thu, 12 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.10-1) unstable; urgency=medium
+
+  * The Android build links the published Pixie packages instead of compiling GTK and the rest of that stack
+  * `webkitgtk-android` comes from `https://roojs.github.io/webkitgtk-android/release.pins` instead of the wrap
+  * Those packages are downloaded once and reused on the next build
+  * A version tag publishes one `.pixie` per Android library the build installed
+  * `https://roojs.github.io/OLLMchat/release.pins` lists those files
+
+ -- Alan Knowles <alan@roojs.com>  Wed, 11 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.9-1) unstable; urgency=medium
+
+  * Shell listing and tool output use Droid Sans Mono at 8pt
+  * The collapse arrow sits against the frame title
+  * Debian 13 packages link `libwebkitgtk-6.0-webdriver` from the Trixie WebDriver build
+  * A bash tool frame is added to the chat
+  * An empty tool status line stays hidden
+  * `Transport.TlsClient` closes the socket and emits `closed` when the idle read fails, and `connected` is then false so `open` can handshake again
+
+ -- Alan Knowles <alan@roojs.com>  Mon, 09 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.8-1) unstable; urgency=medium
+
+  * Windows releases publish one MSYS2 pacman package per library (DLL, import library, header, and VAPI)
+
+ -- Alan Knowles <alan@roojs.com>  Sat, 07 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.7-1) unstable; urgency=medium
+
+  * Ubuntu packages are built per release: 25.04 (`+plucky`, girepository 1.0), 25.10 (`+questing`), and 26.04 (plain revision)
+
+ -- Alan Knowles <alan@roojs.com>  Sat, 07 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.6-1) unstable; urgency=medium
+
+  * A bash fence is the shell listing, and the command is the title
+  * Live tool output and a restored bash result both use that fence
+  * The restored result is collapsed and shows the command
+  * Stop on that frame stops the running tools
+  * Ubuntu 26.04 packages are the plain revision again, for 25.10 and resolute
+  * Debian 13 is an added Trixie build, versioned `+trixie`
+  * That Trixie build links stock WebKit until WebDriver is built for Debian
+
+ -- Alan Knowles <alan@roojs.com>  Fri, 06 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.5-1) unstable; urgency=medium
+
+  * Long bash output spills under `tools/bash/YYYY/MM/DD` in the cache
+  * Starting the file daemon keeps the current spill month and the previous month, and deletes the rest
+  * Tool output uses Droid Sans Mono at 10pt
+  * `Transport.TlsClient` delivers a server notification that arrives during `call`, and `watch` keeps reading notifications while the socket is idle
+  * That idle read uses the TLS stream, stays up when the read times out, and skips the read when the stream is not readable so the next `call` is not held for the socket timeout
+  * A blocking subscription returns the remote handler's value in the signal's declared type, and `Callback.reply` completes that wait
+  * Packages no longer embed a CA private key. Each server generates its own CA, and pairing returns only the public certificate
+
+ -- Alan Knowles <alan@roojs.com>  Thu, 05 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.4-1) unstable; urgency=medium
+
+  * Pair publish can lower the minimum advertised TCP port; the default stays 1024
+  * `ProjectManager.db_projects` replaces `rpc_load_projects_from_db`
+  * Creating a project broadcasts `event.project.list_dirty` so other clients refresh the list
+  * An empty object array encodes as count `0` with no element type, so a one-shot TLS call no longer aborts
+  * `StreamValue` reads the stream live-handles flag instead of a missing connection
+  * Folder counts update when a folder is already in the tree, so hide-empty keeps non-empty folders
+  * File nav reloads the project tree after the folder load finishes
+  * Bash tool output stays white on black
+  * Select project reloads when the daemon marks the project list dirty
+  * Long command output is spilled on the server, where the next `bash` call can open it
+
+ -- Alan Knowles <alan@roojs.com>  Wed, 04 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.3-1) unstable; urgency=medium
+
+  * Debian release packages are built on Ubuntu 26.04 with GIRepository 2.0
+  * GIRepository 2.0 requires version 2.86 or newer; older distributions keep the GIRepository 1.0 implementation
+  * Native builds map all four `libocsqlite` outputs to their correct install destinations
+  * Monolithic Debian and RPM packages include the installed `ocsqlite.h`
+
+ -- Alan Knowles <alan@roojs.com>  Tue, 03 Nov 2026 00:00:00 +0000
+
+ollmchat (1.4.2-1) unstable; urgency=medium
+
+  * Newer distributions can use GIRepository 2.0 while older distributions keep the GIRepository 1.0 implementation
+  * User-message quotes use the normal UI font and wrap long text
+  * The Debian `libocsqlite-dev` and RPM `libocsqlite-devel` packages include `ocsqlite.h`
+  * GIRepository 2.0 is initialized on first use, avoiding a null repository when static methods run before class initialization
+  * The model dropdown stays open on tablets
+
+ -- Alan Knowles <alan@roojs.com>  Tue, 03 Nov 2026 00:00:00 +0000
+
 ollmchat (1.4.1-1) unstable; urgency=medium
 
   * `Live.Buffer.from_bytes` writes a byte array into a new memfd
   * `Live.Buffer.read_exact` drains that memfd
+  * `Transport.TlsClient` sends one or more requests on one TLS handshake
   * Allow New Device publishes `_rpc._tcp` while the PIN dialog is open
   * Those A records use `hostname-rpc.local`
   * Agent Π registers `bash` next to `read` and `write`
@@ -18,6 +195,7 @@ ollmchat (1.4.1-1) unstable; urgency=medium
   * A missing codebase-search model names the Settings row, the model, and the connection
   * Handler names outside the RPC daemon drop the `RPC-` prefix
   * `RPC-Daemon` and `RPC-Live-*` keep it
+  * Phone registration and the address probe send those requests through `Transport.TlsClient`
   * The file-name button has no icon
   * The project button and the file button sit closer together
   * Save and the markdown toggle use icons that exist on Android

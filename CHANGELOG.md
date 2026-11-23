@@ -21,7 +21,7 @@ Work since **1.4.16**.
 
 - Disk backup writes `filename.new`, then copies over `filename` and deletes `.new` instead of `rename`, so Windows in-place upgrades do not leave an orphaned `.new` and an empty on-disk store
 
-## [1.4.16] - Unreleased
+## [1.4.16] - 2026-11-22
 
 Work since **1.4.15** (2026-11-21).
 
