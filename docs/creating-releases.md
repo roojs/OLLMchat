@@ -39,7 +39,7 @@ CI then:
 3. Builds **AppImages** (sqgipkg) for x86_64 and aarch64 at the same time. Each arch has its own Debian sysroot, Faiss, and Meson cache. **Release - AppImage** runs the same jobs without publishing. Leave **Rebuild sqgipkg and Meson caches from scratch** off unless the caches should be ignored.
 4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**, plus one MSYS2 package per library: **`mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst`**.
 5. Builds **Android** APKs on the version tag: `ollmchat-v*.apk` (Gradle release) and `ollmchat-v*-debug.apk` (Gradle debug), from one native compile. An Android failure fails the Release workflow. Publish does not run, so neither GitHub Release is created.
-6. On a tag push, publishes **two** GitHub Releases only after Android, Debian, RPM, Windows, and AppImage have all succeeded. An AppImage failure skips Publish. Publish first pushes the git tag `${tag}-packages` at the same commit (this workflow ignores `v*-packages`, so that push does not rebuild). Without that git tag, GitHub leaves the release as an untagged draft. `.deb`, `.rpm`, `.pixie`, Windows library archives, and the AppImage go on `${tag}-packages` (not marked Latest). The Windows installer and the APKs go on the version tag, so that tag appears above packages on the Releases page. Publish deletes a leftover draft for either tag before creating it, and refuses to publish when the APK or either AppImage is missing.
+6. On a tag push, publishes **two** GitHub Releases only after Android, Debian, RPM, Windows, and AppImage have all succeeded. An AppImage failure skips Publish. `scripts/release.sh` pushes the git tag `${tag}-packages` to git.roojs.com with the version tag. The GitHub mirror copies it. This workflow ignores `v*-packages`, so that push does not rebuild. Publish refuses to create the packages release when that tag is not already on GitHub. A packages tag created only on GitHub is deleted on the next mirror sync, and GitHub turns the release back into a draft. `.deb`, `.rpm`, `.pixie`, Windows library archives, and the AppImage go on `${tag}-packages` (not marked Latest). The Windows installer and the APKs go on the version tag, so that tag appears above packages on the Releases page. Publish deletes a leftover draft for either tag before creating it, and refuses to publish when the APK or either AppImage is missing.
 
 AppImage packaging is configured in [`sqgipkg.json`](../sqgipkg.json) (Linux only). Debian packaging lives under [`debian/`](../debian/). The RPM spec is [`packaging/rpm/ollmchat.spec`](../packaging/rpm/ollmchat.spec).
 
@@ -100,7 +100,7 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    ./scripts/release.sh --retry
    ```
 
-   That deletes the local and origin version tag **and** the matching `v*-packages` tag, then tags HEAD and pushes again. Existing GitHub Releases for those tags are updated (`gh release upload --clobber`), not recreated.
+   That deletes the local and origin version tag **and** the matching `v*-packages` tag, then tags HEAD and pushes both tags again. Existing GitHub Releases for those tags are updated (`gh release upload --clobber`), not recreated. Pushing only the version tag leaves the packages release as a draft after the next mirror sync.
 
 4. **Watch CI.** Open **Actions → Release** on GitHub and wait for Debian, Fedora, openSUSE, AppImage, Windows, Android, and Publish to finish.
 

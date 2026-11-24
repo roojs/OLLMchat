@@ -6,9 +6,11 @@ name: Release
 # everything else: .deb, .rpm, .pixie, Windows library archives, AppImage.
 # Packages is created first so the Releases page (newest created_at
 # first) shows the version tag, then packages, then older versions.
-# Publish pushes the packages git tag itself. This workflow ignores
-# v*-packages, so that push does not start another build. gh will not
-# publish a release whose git tag does not already exist.
+# scripts/release.sh pushes vX.Y.Z-packages to git.roojs.com with the
+# version tag. The mirror copies it here. This workflow ignores
+# v*-packages, so that push does not start another build. A packages
+# tag that exists only on GitHub is deleted on the next mirror sync,
+# and GitHub turns the release back into a draft.
 # To test one distro, run Release - Debian / Fedora / etc.
 
 run-name: Release - ${{ github.ref_name }}
@@ -157,10 +159,14 @@ jobs:
           chmod +x scripts/release/changelog.sh scripts/release/render-release-notes.sh
           ./scripts/release/render-release-notes.sh "$GITHUB_REF_NAME" release-notes.md
           pkg_tag="${GITHUB_REF_NAME}-packages"
-          # A release whose git tag is missing stays an untagged draft.
-          # Push the tag at this commit before creating the release.
+          # scripts/release.sh pushes this tag to git.roojs.com with the
+          # version tag. The mirror copies it here. Creating it only on
+          # GitHub gets it deleted on the next mirror sync, and GitHub
+          # turns the release back into a draft.
           if ! git ls-remote --exit-code --tags origin "refs/tags/${pkg_tag}" >/dev/null; then
-            git push origin "${GITHUB_SHA}:refs/tags/${pkg_tag}"
+            echo "missing git tag ${pkg_tag}." >&2
+            echo "scripts/release.sh has to push that tag to git.roojs.com with the version tag." >&2
+            exit 1
           fi
           # Deleting a tag (scripts/release.sh --retry) turns that release
           # into an untagged draft and leaves it there. Drop those before

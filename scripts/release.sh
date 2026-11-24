@@ -5,7 +5,8 @@
 # 2. Exit if tag vX.Y.Z already exists (local or origin)
 #    unless --retry: delete that tag locally and on origin, then continue
 # 3. Verify: clean tree, non-empty notes
-# 4. git tag -a + git push (branch + tag) → GitHub Actions builds packages
+# 4. git tag -a + git push (branch + version tag + packages tag)
+#    → the git.roojs.com mirror copies both tags to GitHub
 #
 # Does NOT rewrite debian/changelog, the RPM spec changelog, or build packages.
 # GitHub Actions copies CHANGELOG.md into Debian and RPM packaging after the
@@ -41,7 +42,7 @@ Create an annotated tag from CHANGELOG.md and push it to origin.
 
   --retry   Delete the existing version tag and the matching
             v*-packages tag locally and on origin, then retag HEAD
-            and push (use after a failed release CI run).
+            and push both tags (use after a failed release CI run).
 EOF
       exit 0
       ;;
@@ -98,24 +99,34 @@ if [[ "${retry}" -eq 1 ]]; then
   done
 fi
 
-if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-  echo "Tag ${tag} already exists locally — nothing to do."
-  echo "Re-run with --retry to delete it and retag HEAD." >&2
-  exit 0
-fi
+pkg="${tag}-packages"
 
-if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-  echo "Tag ${tag} already exists on origin — nothing to do."
-  echo "Re-run with --retry to delete it and retag HEAD." >&2
+# A packages tag that exists only on GitHub is deleted by the git.roojs.com
+# mirror. GitHub then turns that release back into a draft.
+if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null \
+  || git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+  if git ls-remote --exit-code --tags origin "refs/tags/${pkg}" >/dev/null 2>&1; then
+    echo "Tag ${tag} already exists — nothing to do."
+    echo "Re-run with --retry to delete it and retag HEAD." >&2
+    exit 0
+  fi
+  echo "Pushing missing ${pkg} at the same commit as ${tag}."
+  if git rev-parse -q --verify "refs/tags/${pkg}" >/dev/null; then
+    git tag -d "${pkg}"
+  fi
+  git tag "${pkg}" "${tag}^{}"
+  git push origin "${pkg}"
+  echo "Pushed ${pkg}. The GitHub mirror will keep the packages release published."
   exit 0
 fi
 
 echo "Creating annotated tag ${tag}..."
 git tag -a "${tag}" -m "${tag}"
+git tag "${pkg}" "${tag}^{}"
 
 branch="$(git rev-parse --abbrev-ref HEAD)"
-echo "Pushing ${branch} and ${tag} to origin..."
+echo "Pushing ${branch}, ${tag}, and ${pkg} to origin..."
 git push -u origin "${branch}"
-git push origin "${tag}"
+git push origin "${tag}" "${pkg}"
 
 echo "Released ${tag}. GitHub Actions will copy CHANGELOG.md into debian/changelog and the RPM spec, then build .deb/.rpm."
