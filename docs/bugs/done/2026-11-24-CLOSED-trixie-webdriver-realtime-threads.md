@@ -1,15 +1,16 @@
 # Trixie packages fail to link because the WebDriver library calls removed WebKit symbols
 
-**Status:** ⏳
+**Status:** ✅
 
 ## User decisions required
 
-- 💩 Rebuild and publish `libwebkitgtk-6.0-webdriver` from [webkitgtk-automation](https://github.com/roojs/webkitgtk-automation) against Debian WebKit `2.54.3-1~deb13u1`, then put that package in the roojs trixie suite. Nothing in this tree can make the current `.so` link.
+None.
 
 ## User reported
 
 - 🔷 The Pixie build is still failing and needs a fix.
 - 🔷 A previous explanation about something wrong with the Web view was not clear.
+- 🔷 Close this. The rebuild is being handled in the automation library.
 
 ## Success scenario
 
@@ -25,7 +26,7 @@
 
 ## Codebase observed behavior
 
-- [`config/meson.build`](../../config/meson.build) prefers pkg-config module `webkitgtk-6.0-webdriver` and links the versioned library directly:
+- [`config/meson.build`](../../../config/meson.build) prefers pkg-config module `webkitgtk-6.0-webdriver` and links the versioned library directly:
 
 ```meson
 webkit_webdriver_dep = declare_dependency(
@@ -37,7 +38,7 @@ webkit_webdriver_dep = declare_dependency(
 )
 ```
 
-- [`ollmapp/meson.build`](../../ollmapp/meson.build) passes that dependency into the `ollmchat` executable.
+- [`ollmapp/meson.build`](../../../ollmapp/meson.build) passes that dependency into the `ollmchat` executable.
 - The Trixie job apt-installs `libwebkitgtk-6.0-webdriver-dev` after the roojs suite is enabled. That is the same install as the Ubuntu jobs.
 
 ## Debugging
@@ -67,7 +68,7 @@ None.
 
 Why: `libwebkitgtk-6.0-webdriver.so.4` at `2.54.0-1~deb13u3+webdriver1` was compiled against WebKit 2.54.0. That build still calls `WTF::RealTimeThreads`. Debian security replaced JavaScriptCore and WebKit with `2.54.3-1~deb13u1`, which removed those symbols (upstream replaced `RealTimeThreads` with `HighPriorityThreads`). The chat binary links the old WebDriver `.so` to the new JavaScriptCore, so the link fails. Rebuilding the WebDriver package on current Debian 13 compiles it against the JavaScriptCore that the job installs.
 
-No edit in this repository. [`docs/bugs/done/2026-11-06-CLOSED-trixie-webkit-webdriver.md`](done/2026-11-06-CLOSED-trixie-webkit-webdriver.md) already rules out shipping Trixie without WebDriver, and rules out linking an Ubuntu WebDriver `.so`.
+No edit in this repository. [`2026-11-06-CLOSED-trixie-webkit-webdriver.md`](2026-11-06-CLOSED-trixie-webkit-webdriver.md) already rules out shipping Trixie without WebDriver, and rules out linking an Ubuntu WebDriver `.so`.
 
 Steps:
 
@@ -77,10 +78,10 @@ Steps:
 
 ## LLM
 
+- ✅ 2026-11-24. User closed this report. The WebDriver rebuild stays in `webkitgtk-automation`. This tree has no change.
 - ℹ️ User said "Pixie". The Android pixie APK job on run `45348982046` was still compiling when this was written. The finished failure is **Debian / Trixie packages**. "Web view" is this WebDriver build of WebKitGTK, which is the library behind the in-app browser.
-- ℹ️ Prior close: [`docs/bugs/done/2026-11-06-CLOSED-trixie-webkit-webdriver.md`](done/2026-11-06-CLOSED-trixie-webkit-webdriver.md). That package was published 2026-11-07 as GitHub release `webkit2gtk-2.54.0-1-deb13u3-webdriver1`. It matched Debian at the time. Debian security has since moved WebKit to 2.54.3.
+- ℹ️ Prior close: [`2026-11-06-CLOSED-trixie-webkit-webdriver.md`](2026-11-06-CLOSED-trixie-webkit-webdriver.md). That package was published 2026-11-07 as GitHub release `webkit2gtk-2.54.0-1-deb13u3-webdriver1`. It matched Debian at the time. Debian security has since moved WebKit to 2.54.3.
 - ℹ️ Debian main trixie still lists `libwebkitgtk-6.0-4` `2.52.6-1~deb13u1`. The CI container installs `2.54.3-1~deb13u1` from `trixie-security`. Pinning the job to 2.52.6 would miss the WebDriver build by a larger gap.
 - 🚫 Do not set `-Dwebkit_webdriver=disabled` on Trixie. The closed report says that hold is not the package we ship.
 - 🚫 Do not install the Ubuntu plucky, questing, or resolute WebDriver `.so` into the Trixie root. Those builds do not match Trixie JavaScriptCore.
 - ℹ️ Upstream: WebKit PR 71157, "[Linux] Remove RT threads", labeled for a 2.54 backport. It deletes `WTF::RealTimeThreads` and adds `WTF::HighPriorityThreads`. The two missing symbols are `setEnabled(bool)` and `singleton()`.
-- ⏳ Stop **E**. The rebuild is in `webkitgtk-automation`, not this workspace.
