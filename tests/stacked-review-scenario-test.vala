@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
  *
  * Emulates: open file → Accept three visible hunks → file fully approved, no second wave.
- * Stub server models today's stacked-modified chunk advance (not full approve).
+ * Stub server: full approve on last hunk + pending delta (reviewed=1 removal).
  */
 
 public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
@@ -21,6 +21,9 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 	private string project_path = "/tmp/ollm-stacked-review-scenario";
 	private string file_path;
 	private bool head_chunk_closed;
+	private Gee.ArrayList<OLLMfiles.FileWithHistory> pending_deltas =
+		new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+	private int64 pending_marker = 10;
 
 	public StackedReviewScenarioTest()
 	{
@@ -55,9 +58,22 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 				break;
 
 			case "Folder.fetch_pending_approvals":
+				if (this.pending_deltas.size > 0) {
+					var deltas = new Gee.ArrayList<GLib.Object>();
+					foreach (var row in this.pending_deltas) {
+						deltas.add(row);
+					}
+					this.pending_deltas.clear();
+					this.pending_marker++;
+					request.reply(new OLLMrpc.Response() {
+						retval = OLLMrpc.val("o", deltas),
+						msg = this.pending_marker.to_string()
+					});
+					break;
+				}
 				if (this.pending.size < 1) {
 					request.reply(new OLLMrpc.Response() {
-						msg = "10"
+						msg = this.pending_marker.to_string()
 					});
 					break;
 				}
@@ -67,7 +83,7 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 				}
 				request.reply(new OLLMrpc.Response() {
 					retval = OLLMrpc.val("o", rows),
-					msg = "10"
+					msg = this.pending_marker.to_string()
 				});
 				break;
 
@@ -161,13 +177,16 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 		if (head_id != 3) {
 			return;
 		}
+		if (this.pending.size > 0) {
+			var row = this.pending.get(0);
+			this.pending_deltas.add(new OLLMfiles.FileWithHistory() {
+				id = row.id,
+				path = row.path,
+				last_change_type = row.last_change_type,
+				reviewed = 1
+			});
+		}
 		this.pending.clear();
-		this.pending.add(new OLLMfiles.FileWithHistory() {
-			id = 1,
-			path = this.file_path,
-			last_change_type = "modified",
-			approve_id = 2
-		});
 	}
 
 	protected override async void run_test(

@@ -15,6 +15,6 @@ fi
 echo "=== Stacked review demo ==="
 echo "Run: $BIN"
 echo "Walkthrough: open file → Accept 3 hunks → expect full approve, no second wave."
-echo "Today: expect FAIL on 'second diff wave' or 'still on needs-review list'."
+echo "Expect PASS after Phase 1 fix (queue clears, no second wave)."
 echo ""
 exec "$BIN" "${@:2}"

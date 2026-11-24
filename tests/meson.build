@@ -679,7 +679,6 @@ test('test-stacked-review-scenario',
   test_stacked_review_scenario,
   suite: 'coder',
   timeout: 60,
-  should_fail: true,
 )
 
 # Response.Chat.check_back_token — oc-test-loop; assert twelve equidistant repeats trigger detection

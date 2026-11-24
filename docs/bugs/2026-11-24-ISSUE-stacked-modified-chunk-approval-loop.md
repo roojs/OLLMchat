@@ -78,27 +78,52 @@ None.
 
 ## Proposed fix
 
-DEBUG first: reproduce with `--debug`, accept three hunks, capture `FileDiffPart.apply` / `fetch_pending_approvals` / second `FileHistory.parts` in one session. No product change until root cause is confirmed on the live chunk sequence.
-
-### Phase 1 — Confirm chunk advance after last hunk
+### Phase 1 — Applied: full path approve on last visible hunk accept (daemon)
 
 - Why
-  - User sees a **new hunk set** after the third accept; DB already shows many head chunks still `reviewed = 0`.
-- Investigate
-  - Log sequence: `approve_id` before/after refresh, `file_history.reviewed` and `since_id` on `43180` → `43179`, part counts from `rebuild_parts`.
-  - Whether mismatched green is accepted-but-not-plaintext (`ChangeView.proposal`) vs undecided parts on the new chunk.
-- Outcome
-  - **Remove** / **Replace with** fences once confirmed (likely extend stacked close beyond `stack_added` only).
+  - After the last hunk on the head chunk, commit only bulk-approved when oldest pending was `stack_added`; stacked `modified` only poked `since_id` → client loaded the next chunk’s hunks.
+- Change
+  - When the chunk closes and more `reviewed = 0` rows remain, **`action == 1`** calls existing `FileHistory.approve` (clears all pending on path). Reject/other actions still poke `since_id` on the next row.
+- **Remove** (`ollmfilesd/FileDiffPart.vala`, stacked-close branch inside `left.size > 0`):
 
-### Phase 2 — Approve entire pending stack when user finishes the visible wave
+```vala
+				var oldest = new Gee.ArrayList<FileHistory>();
+				FileHistory.query(db).select(
+					"WHERE path = '" + histories.get(0).path.replace("'", "''") +
+						"' AND reviewed = 0 ORDER BY id ASC LIMIT 1",
+					oldest
+				);
+				var stack_added = oldest.size > 0
+					&& oldest.get(0).change_type == "added"
+					&& oldest.get(0).backup_path == "";
+				if (stack_added && action == 1) {
+					… approve …
+					return;
+				}
+				left.get(0).since_id = poke;
+```
+
+- **Replace with:**
+
+```vala
+				if (action == 1) {
+					… same resolve row + histories.get(0).approve(db, row) …
+					return;
+				}
+				left.get(0).since_id = poke;
+```
+
+- Verify
+  - `meson test test-stacked-review-scenario test-stacked-review-widget` pass; manual gtktest1 after rebuild `ollmfilesd`.
+- Client
+  - No `SourceView` change required if queue clears on refresh (Tier B already expects empty pending + bar visible).
+
+### Phase 2 — Cumulative diff display (optional, not done)
 
 - Why
-  - User intent: visible hunks for the open file = approve **up to current disk** for that path.
+  - User may still want one diff surface (oldest backup → disk) instead of per-chunk hunks before approve-all; separate from Phase 1 queue semantics.
 - Investigate
-  - Match [`FileDiffPart.commit`](../../ollmfilesd/FileDiffPart.vala) stacked close to [`FileHistory.approve`](../../ollmfilesd/FileHistory.vala) when **all** pending rows are intermediate `modified` edits whose cumulative result is already on disk (contrast with per-chunk rollback semantics in [source-view diff walkthrough](../../docs/plans/done/CODER-4.2.3.1-DONE-source-view-diff-walkthrough-hello.md) Flow B).
-  - Alternative: change `rebuild_parts` / `approve_id` to one cumulative diff (oldest pending backup or last-approved → disk) and one decision surface — aligns display with “approve everything now”.
-- Outcome
-  - **💩** Document chosen behavior in **User decisions required** before apply.
+  - `rebuild_parts` / `approve_id` vs [stacked add diff baseline](done/2026-11-21-FIXED-test-file-stacked-add-diff-baseline.md).
 
 ### Phase 3 — Diff baseline vs stacked `modified` (if mismatch persists)
 
@@ -162,6 +187,7 @@ Goal: replay **disk file + backup cache + SQLite rows** and assert queue / `revi
 - ℹ️ **2026-11-24** — User asked for DB-backed automated repro; inventory + Tier A/B/C plan under **Proposed fix → Automated reproduction**.
 - ℹ️ **2026-11-24** — Product intent: server-side full approve for stacked edits; client keeps tab + review bar after refresh ([`ReviewBar.sync_pending`](../../liboccoder/Diff/ReviewBar.vala) already has a “Changes accepted” path when queue is empty but parts are decided — extend that story for stacked modified, avoid `show_pending_diff` loading the next chunk).
 - ✔️ User: product target confirmed; test plan = A+B+C in parallel.
-- ✔️ Tests (test-only): `test-stacked-review-scenario` (main demo), `test-stacked-review-widget` (tab+bar), `test-rpc-stacked-review` (daemon, `should_fail`), `test-stacked-review-visual` (optional).
+- ✔️ Tests: `test-stacked-review-scenario`, `test-stacked-review-widget` pass after Phase 1; `test-rpc-stacked-review` (daemon, `should_fail`), `test-stacked-review-visual` (optional).
+- ✔️ Phase 1 product fix in [`FileDiffPart.commit`](../../ollmfilesd/FileDiffPart.vala) (2026-11-24).
 - ⏳ Tier A: checked-in `tests/rpc-fixtures/stacked-review/` SQLite seed (history was not persisting from write-only RPC setup).
 - ℹ️ Report shape: **Desired behavior** is the spec (action → expect; ✅ = works today). Repro symptoms → **User reported** + **LLM**.

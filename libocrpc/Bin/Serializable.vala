@@ -76,6 +76,9 @@ namespace OLLMrpc.Bin
 				if (prop.name == "g-type-instance" || prop.name == "ref-count") {
 					continue;
 				}
+				if ((prop.flags & GLib.ParamFlags.WRITABLE) == 0) {
+					continue;
+				}
 				this.bin_write_prop(ctx, prop);
 			}
 			ctx.out_stream.put_uint16(Stream.TOKEN_END);
@@ -317,6 +320,10 @@ namespace OLLMrpc.Bin
 			uint8 type_byte
 		) throws GLib.Error
 		{
+			if ((prop.flags & GLib.ParamFlags.WRITABLE) == 0) {
+				StreamValue.read(ctx, type_byte);
+				return;
+			}
 			var val = StreamValue.read(ctx, type_byte);
 			if (prop.value_type == GLib.Type.STRING && val.type() == typeof(GLib.Bytes)) {
 				var bytes = (GLib.Bytes) val.get_boxed();
