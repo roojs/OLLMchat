@@ -40,7 +40,7 @@
 - ℹ️ Browser **`download`** basic (**DONE**): [`done/5.0.5-DONE-webkit-download.md`](done/5.0.5-DONE-webkit-download.md); advanced V2 **DEFERRED**: [`WEBKIT-5.0.7-DEFERRED-webkit-download-advanced.md`](WEBKIT-5.0.7-DEFERRED-webkit-download-advanced.md)
 - ℹ️ Activity progress Cancel / Pause (**DONE**): [`done/5.0.6-DONE-activity-progress-actions.md`](done/5.0.6-DONE-activity-progress-actions.md)
 - ℹ️ Phase **6** detail (generic tool button + view): [`done/5.0.4-DONE-webkit-tool-ui-affordance.md`](done/5.0.4-DONE-webkit-tool-ui-affordance.md)
-- ℹ️ Android backlog W1/W2 previously assumed DOM/JS SERP scrape — **5.0** supersedes the approach; **Android port** is **5.0.2** ([`docs/bugs/2026-07-18-android-poc-completion.md`](../bugs/2026-07-18-android-poc-completion.md))
+- ℹ️ Android backlog W1/W2 previously assumed DOM/JS SERP scrape — **5.0** supersedes the approach; **Android port** is **5.0.2** (POC backlog closed: [`docs/bugs/done/2026-07-18-CLOSED-android-poc-completion.md`](../bugs/done/2026-07-18-CLOSED-android-poc-completion.md))
 
 ---
 

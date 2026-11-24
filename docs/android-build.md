@@ -3,7 +3,7 @@
 How to build the OLLMchat Android remote chat POC locally and in GitHub Actions,
 plus background on what is implemented today versus the full desktop application.
 
-**Current port status:** [`docs/plans/done/9.0-DONE-android-poc-summary.md`](plans/done/9.0-DONE-android-poc-summary.md) — archived POC summary. **Open completion backlog:** [`docs/bugs/2026-07-18-android-poc-completion.md`](bugs/2026-07-18-android-poc-completion.md).
+**Current port status:** [`docs/plans/done/9.0-DONE-android-poc-summary.md`](plans/done/9.0-DONE-android-poc-summary.md) — archived POC summary. **Completion backlog:** closed — [`docs/bugs/done/2026-07-18-CLOSED-android-poc-completion.md`](bugs/done/2026-07-18-CLOSED-android-poc-completion.md). Active Android bug: [`docs/bugs/2026-09-02-android-add-model-search-popover-layout.md`](bugs/2026-09-02-android-add-model-search-popover-layout.md) (add-model popover layout).
 
 ## Summary
 

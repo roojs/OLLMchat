@@ -8,7 +8,7 @@
 **Related:**
 
 - ℹ️ Knowles GTK: `/home/alan/git/gtk-Knowles` · Demo: `org.gtk.EntryPopupTest`
-- ℹ️ Tracker pointer was: [`2026-07-18-android-poc-completion.md`](../2026-07-18-android-poc-completion.md) **IME-3** (updated to passed over)
+- ℹ️ Tracker pointer was: [`2026-07-18-CLOSED-android-poc-completion.md`](2026-07-18-CLOSED-android-poc-completion.md) **IME-3** (updated to passed over)
 - ℹ️ Prior OPEN log (evidence retained below)
 
 ---

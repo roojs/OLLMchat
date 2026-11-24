@@ -9,7 +9,7 @@
 **Related:**
 
 - ℹ️ `docs/bugs/done/2026-07-16-FIXED-composer-expanded-height.md` — `ScrolledView` owns height
-- ℹ️ `docs/bugs/2026-07-18-android-poc-completion.md` **T1**
+- ℹ️ `docs/bugs/done/2026-07-18-CLOSED-android-poc-completion.md` **T1**
 - ℹ️ Plus path → `ChatInput.update_entry` → `ScrolledView.buffer_change`
 
 ---

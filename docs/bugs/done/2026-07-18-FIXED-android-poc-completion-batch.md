@@ -10,7 +10,7 @@
 
 **Related:**
 
-- ℹ️ [`docs/bugs/2026-07-18-android-poc-completion.md`](../2026-07-18-android-poc-completion.md) — open tracker (remaining work)
+- ℹ️ [`2026-07-18-CLOSED-android-poc-completion.md`](2026-07-18-CLOSED-android-poc-completion.md) — closed umbrella tracker (2026-11-24)
 - ℹ️ [`docs/plans/done/9.0-DONE-android-poc-summary.md`](../../plans/done/9.0-DONE-android-poc-summary.md) — archived POC summary
 - ℹ️ [`docs/bugs/done/2026-07-09-FIXED-android-poc-device-issues.md`](2026-07-09-FIXED-android-poc-device-issues.md) — history / TLS / default model
 

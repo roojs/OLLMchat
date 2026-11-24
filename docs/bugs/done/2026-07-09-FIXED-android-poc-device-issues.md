@@ -105,7 +105,7 @@ Config2.vala:585: Failed to create config directory: …/ollmchat: File exists
 
 ## Problem 3 — Screen timeout kills in-flight LLM stream → “Network error”
 
-**Status:** DEFERRED (2026-07-18) — POC 9.0 closed; reopened as **C1** in [`docs/bugs/2026-07-18-android-poc-completion.md`](../2026-07-18-android-poc-completion.md).
+**Status:** DEFERRED (2026-07-18) — POC 9.0 closed; reopened as **C1** in [`2026-07-18-CLOSED-android-poc-completion.md`](2026-07-18-CLOSED-android-poc-completion.md) (umbrella closed 2026-11-24).
 
 **Expected:** Long replies can finish even if the user is not touching the screen, **or** an interrupted stream fails gracefully with partial reply preserved and a clear message (not a generic network fault).
 
