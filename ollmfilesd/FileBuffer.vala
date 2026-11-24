@@ -120,7 +120,11 @@ namespace OLLMfilesd
 			// Update last_viewed timestamp
 			this.file.last_viewed = new GLib.DateTime.now_local().to_unix();
 			
-			return (string)data;
+			var text = (string) data;
+			if (this.file.is_text && !text.validate()) {
+				text = text.make_valid();
+			}
+			return text;
 		}
 		
 		/**

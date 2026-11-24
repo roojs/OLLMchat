@@ -79,7 +79,9 @@ Use **today’s calendar date** when you **create** the file or start a **new** 
    - **✔️** — **Applied** — fix is in the tree (agent landed it); user has **not** confirmed done yet. Use this so applied reports are easy to spot for bulk moves to **`docs/bugs/done/`** after verify.
    - **✅** — **User confirmed done** for the **whole report** — only on files under **`docs/bugs/done/`**. **Do not** use **✅** for “applied but not verified”. **Do not** promote **✔️ → ✅** without the user.
 
-Do **not** put pointers, dates, “Started”, Argus paths, or process links under the header. Those belong in **LLM** (below).
+Do **not** put pointers, dates, “Started”, Argus paths, or process links under the header. Those belong in **LLM** at the **end** of the file (last section).
+
+**🚫 Legacy `**Pointer:**` line** (title → `Status` → blank → `**Pointer:**` → `---`) — **do not** use on new or touched reports. Agents used to paste a path wall under the header; that floods the top of the log. Put the same paths as plain bullets under **`### LLM`** instead (product source only unless the user asked for plans).
 
 **✔️** reports stay in **`docs/bugs/`** until the user confirms the whole fix; then **✅**, **move to `done/`**, and optionally rename (e.g. `…-FIXED-…`).
 
@@ -213,7 +215,7 @@ When this guide and **`docs/bug-fix-process.md`** disagree on **filename** or **
 
 ## Checklist before **✔️** or **✅**
 
-- [ ] Header is title + **Status** only (**⏳**, **✔️**, or **✅**).
+- [ ] Header is title + **Status** only (**⏳**, **✔️**, or **✅**). **No** `**Pointer:**` or `---` divider immediately after **Status**.
 - [ ] **User decisions required** is up to date (**💩** or **`None.`**); refreshed on any stop turn.
 - [ ] **User reported** is user words (**🔷**), not analysis.
 - [ ] **Success scenario** matches what the user will accept as done.

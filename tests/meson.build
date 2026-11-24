@@ -33,6 +33,8 @@ test('test-ollamaweb-merge',
 test_rpc_script = files('test-rpc.sh')
 test_rpc_t1_script = files('test-rpc-t1.sh')
 test_rpc_t2_script = files('test-rpc-t2.sh')
+test_rpc_stacked_review_script = files('test-rpc-stacked-review.sh')
+test_stacked_review_visual_script = files('test-stacked-review-visual.sh')
 ollmfilesd_bin = get_variable('ollmfilesd_bin', disabler())
 rpc_test_app_base_vala = configure_file(
   input: '../examples/TestAppBase.vala',
@@ -456,6 +458,28 @@ test('test-rpc-t2',
   timeout: 120,
   suite: 'rpc'
 )
+test('test-rpc-stacked-review',
+  find_program('bash'),
+  args: [
+    test_rpc_stacked_review_script,
+    meson.current_build_dir() / '..'
+  ],
+  depends: [ollmfilesd_bin],
+  should_fail: true,
+  workdir: meson.current_source_dir(),
+  timeout: 120,
+  suite: 'rpc'
+)
+test('test-stacked-review-visual',
+  find_program('bash'),
+  args: [
+    test_stacked_review_visual_script,
+    meson.current_build_dir() / '..'
+  ],
+  workdir: meson.current_source_dir(),
+  timeout: 30,
+  suite: 'coder'
+)
 
 # Test script for oc-test-files
 test_file_ops_script = files('test-file-ops.sh')
@@ -572,6 +596,90 @@ test('test-review-flow',
   test_review_flow,
   suite: 'coder',
   timeout: 30,
+)
+
+stacked_review_widget_rpath = review_flow_rpath
+test_stacked_review_widget = executable('test-stacked-review-widget',
+  'stacked-review-widget-test.vala',
+  dependencies: [
+    dependency('gtk4'),
+    dependency('libadwaita-1'),
+    dependency('gtksourceview-5'),
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+    ocrpc_vapi_dep,
+    ollmchat_vapi_dep,
+    ocfiles_vapi_dep,
+    occoder_vapi_dep,
+    rpc_test_app_dep,
+  ],
+  link_with: [ollmchat_base_lib],
+  include_directories: [
+    include_directories('../libollmchat'),
+    include_directories('../libocfiles'),
+    include_directories('../liboccoder'),
+  ],
+  build_rpath: stacked_review_widget_rpath,
+  vala_args: rpc_test_vala_args + [
+    '--pkg=gtk4',
+    '--pkg=libadwaita-1',
+    '--pkg=gtksourceview-5',
+    '--pkg=ocfiles',
+    '--pkg=occoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+  ],
+)
+test('test-stacked-review-widget',
+  test_stacked_review_widget,
+  suite: 'coder',
+  timeout: 30,
+)
+
+test_stacked_review_scenario = executable('test-stacked-review-scenario',
+  'stacked-review-scenario-test.vala',
+  dependencies: [
+    dependency('gtk4'),
+    dependency('libadwaita-1'),
+    dependency('gtksourceview-5'),
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+    ocrpc_vapi_dep,
+    ollmchat_vapi_dep,
+    ocfiles_vapi_dep,
+    occoder_vapi_dep,
+    rpc_test_app_dep,
+  ],
+  link_with: [ollmchat_base_lib],
+  include_directories: [
+    include_directories('../libollmchat'),
+    include_directories('../libocfiles'),
+    include_directories('../liboccoder'),
+  ],
+  build_rpath: stacked_review_widget_rpath,
+  vala_args: rpc_test_vala_args + [
+    '--pkg=gtk4',
+    '--pkg=libadwaita-1',
+    '--pkg=gtksourceview-5',
+    '--pkg=ocfiles',
+    '--pkg=occoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+  ],
+)
+test('test-stacked-review-scenario',
+  test_stacked_review_scenario,
+  suite: 'coder',
+  timeout: 60,
+  should_fail: true,
 )
 
 # Response.Chat.check_back_token — oc-test-loop; assert twelve equidistant repeats trigger detection

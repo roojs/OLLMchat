@@ -209,7 +209,7 @@ Shared assembly order in `execute_request()`:
   - **GValue** `type id '0' / cannot initialize GValue with type '(null)'** on `FileHistory.parts` (**11:23:29**) — same failure class as empty-list `retval` in [`done/2026-11-15-FIXED-review-queue-multi-history-and-db-sync.md`](done/2026-11-15-FIXED-review-queue-multi-history-and-db-sync.md); re-check daemon/build if it still fires on a **clean** edit-mode repro (one pending file, no bash spiral).
   - **`gtk_text_buffer_emit_insert: g_utf8_validate` failed** (**11:24:31**) while review bar loaded diff — likely bad on-disk bytes from sandbox/`bash` rewrites, not the phone chat path; confirm with `file` / `hexdump` on `test-file.txt` if it reproduces after copy fix.
   - **Review queue `files=1` → `3`** — stacked pending rows from overlay writes during fallback; related baseline [`done/2026-11-21-FIXED-test-file-stacked-add-diff-baseline.md`](done/2026-11-21-FIXED-test-file-stacked-add-diff-baseline.md).
-- ℹ️ Desktop criticals (GValue, UTF-8, review queue): [2026-11-23-ISSUE-gtktest1-review-criticals-overlay-run.md](2026-11-23-ISSUE-gtktest1-review-criticals-overlay-run.md).
+- ℹ️ Desktop criticals (GValue, UTF-8, review queue): [gtktest1 review criticals](done/2026-11-24-FIXED-gtktest1-review-criticals-overlay-run.md) (**✅** UTF-8 fixed + daemon restart).
 - ⏳ Re-test phone edit after copy fix; confirm whether that ISSUE still needs work on a clean edit-only path.
 - ✔️ Copy reorder applied in `Request.vala` (`line_numbers`, `complete_file`, `ast_path`) + `Stream.vala` no-fence text — re-test from phone pending.
 - 🚫 Duplicate-`write` guard — ruled out in gtktest1.

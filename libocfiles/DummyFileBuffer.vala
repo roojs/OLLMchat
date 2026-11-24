@@ -105,6 +105,9 @@ namespace OLLMfiles
 					
 					string contents;
 					GLib.FileUtils.get_contents(this.file.path, out contents);
+					if (this.file.is_text && !contents.validate()) {
+						contents = contents.make_valid();
+					}
 					this.lines = contents.split("\n");
 				} catch (GLib.Error e) {
 					GLib.debug("DummyFileBuffer.get_text: Failed to read file %s: %s", this.file.path, e.message);
@@ -141,6 +144,9 @@ namespace OLLMfiles
 					
 					string contents;
 					GLib.FileUtils.get_contents(this.file.path, out contents);
+					if (this.file.is_text && !contents.validate()) {
+						contents = contents.make_valid();
+					}
 					this.lines = contents.split("\n");
 				} catch (GLib.Error e) {
 					return 0;
@@ -168,6 +174,9 @@ namespace OLLMfiles
 					
 					string contents;
 					GLib.FileUtils.get_contents(this.file.path, out contents);
+					if (this.file.is_text && !contents.validate()) {
+						contents = contents.make_valid();
+					}
 					this.lines = contents.split("\n");
 				} catch (GLib.Error e) {
 					return "";

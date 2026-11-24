@@ -693,8 +693,13 @@ namespace OLLMfilesd
 				&& oldest.get(0).change_type == "added"
 				&& oldest.get(0).backup_path == "";
 			if (!stack_added && history.backup_path != "") {
-				backup = (string) GLib.File.new_for_path(
-					history.backup_path).load_bytes(null).get_data();
+				var backup_bytes = GLib.File.new_for_path(
+					history.backup_path).load_bytes(null);
+				var backup_text = (string) backup_bytes.get_data();
+				if (!backup_text.validate()) {
+					backup_text = backup_text.make_valid();
+				}
+				backup = backup_text;
 			}
 			var project = "";
 			var stamp = (int64) 0;
