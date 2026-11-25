@@ -107,6 +107,33 @@ test('test-rpc-bin',
   suite: 'rpc',
   timeout: 10,
 )
+# Fails while peer blob lengths are allocated before a cap check.
+test_rpc_blob_cap = executable('test-rpc-blob-cap',
+  'rpc/blob-cap-test.vala',
+  'rpc/blob-cap-rlimit.c',
+  dependencies: [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+    meson.get_compiler('vala').find_library('posix'),
+    ocrpc_vapi_dep,
+  ],
+  build_rpath: meson.current_build_dir() / '..' / 'libocrpc',
+  include_directories: include_directories('rpc'),
+  vala_args: [
+    '--pkg=posix',
+    '--pkg=libsoup-3.0',
+    '--pkg=json-glib-1.0',
+  ],
+)
+test('test-rpc-blob-cap',
+  test_rpc_blob_cap,
+  suite: 'rpc',
+  timeout: 120,
+)
 test_rpc_live = executable('test-rpc-live-handles',
   'rpc/live-handles-test.vala',
   dependencies: rpc_test_deps + [rpc_test_app_dep],
