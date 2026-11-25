@@ -681,6 +681,73 @@ test('test-stacked-review-scenario',
   timeout: 60,
 )
 
+# File-tool path containment. Fails until write/read/edit and the file
+# daemon refuse paths that resolve outside the open project.
+path_containment_rpath = ':'.join([
+  meson.current_build_dir() / '..' / 'libocrpc',
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocfiles',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollamaweb',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'liboctools',
+  meson.current_build_dir() / '..' / 'liboccoder',
+  meson.current_build_dir() / '..' / 'libocbwrap',
+  meson.current_build_dir() / '..' / 'libochf',
+  meson.current_build_dir() / '..' / 'libocvector2',
+])
+test_path_containment = executable('test-path-containment',
+  'path-containment-test.vala',
+  dependencies: [
+    dependency('gtk4'),
+    dependency('gtksourceview-5'),
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+    meson.get_compiler('vala').find_library('posix'),
+    ocrpc_vapi_dep,
+    ollmchat_vapi_dep,
+    ocfiles_vapi_dep,
+    occoder_vapi_dep,
+    octools_vapi_dep,
+  ],
+  link_with: [ollmchat_base_lib],
+  include_directories: [
+    include_directories('../libollmchat'),
+    include_directories('../libocfiles'),
+    include_directories('../liboccoder'),
+  ],
+  build_rpath: path_containment_rpath,
+  vala_args: rpc_test_vala_args + [
+    '--pkg=gtk4',
+    '--pkg=gtksourceview-5',
+    '--pkg=posix',
+    '--pkg=ocfiles',
+    '--pkg=occoder',
+    '--pkg=octools',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
+    '--vapidir', meson.current_build_dir() / '..' / 'libochf',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  ],
+)
+test('test-path-containment',
+  test_path_containment,
+  suite: 'files',
+  timeout: 120,
+  depends: [ollmfilesd_bin],
+  env: {
+    'OLLM_OLLMFILESD': meson.current_build_dir() / '..' / 'ollmfilesd' / 'ollmfilesd',
+    'OLLMFILES_IS_TEST': '1',
+  },
+)
+
 # Response.Chat.check_back_token — oc-test-loop; assert twelve equidistant repeats trigger detection
 oc_test_loop_exe = get_variable('oc_test_loop', disabler())
 oc_test_loop_bin = meson.current_build_dir() / '..' / 'examples' / 'oc-test-loop'
