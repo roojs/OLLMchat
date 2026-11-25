@@ -72,6 +72,20 @@ namespace OLLMrpc.Live
 				return false;
 			}
 			this.service.incoming.connect((conn) => {
+				var peer_uid = -1;
+				try {
+					peer_uid = (int) conn.get_socket().get_credentials().get_unix_user();
+				} catch (GLib.Error e) {
+					GLib.warning("could not read fd socket peer credentials: %s", e.message);
+				}
+				if (peer_uid != (int) Posix.getuid()) {
+					GLib.warning("refusing fd socket peer uid %d", peer_uid);
+					try {
+						conn.close();
+					} catch (GLib.Error e) {
+					}
+					return true;
+				}
 				this.on_fd_accept(conn.get_socket());
 				return true;
 			});

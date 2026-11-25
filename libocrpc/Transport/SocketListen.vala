@@ -68,6 +68,22 @@ namespace OLLMrpc.Transport
 				return false;
 			}
 			this.service.incoming.connect((conn) => {
+				// The daemon runs with umask 0, so the socket file does not
+				// keep other accounts out. Check the kernel peer credentials.
+				var peer_uid = -1;
+				try {
+					peer_uid = (int) conn.get_socket().get_credentials().get_unix_user();
+				} catch (GLib.Error e) {
+					GLib.warning("could not read socket peer credentials: %s", e.message);
+				}
+				if (peer_uid != (int) Posix.getuid()) {
+					GLib.warning("refusing socket peer uid %d", peer_uid);
+					try {
+						conn.close();
+					} catch (GLib.Error e) {
+					}
+					return true;
+				}
 				var connection = new Connection(conn) {
 					live_handles = this.live_handles
 				};
