@@ -684,6 +684,94 @@ test('test-stacked-review-scenario',
 # Response.Chat.check_back_token — oc-test-loop; assert twelve equidistant repeats trigger detection
 oc_test_loop_exe = get_variable('oc_test_loop', disabler())
 oc_test_loop_bin = meson.current_build_dir() / '..' / 'examples' / 'oc-test-loop'
+# web_fetch must not send until the approved host is the host contacted.
+# Fails while permissionless fetches are still sent. See web-fetch-exfil-test.vala.
+exfil_rpath = ':'.join([
+  meson.current_build_dir() / '..' / 'liboctools',
+  meson.current_build_dir() / '..' / 'libocbwrap',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libocrpc',
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libollamaweb',
+  meson.current_build_dir() / '..' / 'libochf',
+  meson.current_build_dir() / '..' / 'libocfiles',
+])
+exfil_deps = [
+  dependency('gee-0.8'),
+  dependency('gio-2.0'),
+  dependency('glib-2.0'),
+  dependency('gobject-2.0'),
+  dependency('json-glib-1.0'),
+  dependency('libsoup-3.0'),
+  octools_vapi_dep,
+  ocbwrap_vapi_dep,
+  ollmchat_vapi_dep,
+  ocmarkdown_vapi_dep,
+]
+exfil_vala_args = [
+  '--pkg=octools',
+  '--pkg=ocbwrap',
+  '--pkg=ollmchat',
+  '--pkg=ocmarkdown',
+  '--pkg=json-glib-1.0',
+  '--pkg=libsoup-3.0',
+  '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--vapidir', meson.current_source_dir() / '../vapi',
+]
+test_web_fetch_exfil = executable('test-web-fetch-exfil',
+  'web-fetch-exfil-test.vala',
+  dependencies: exfil_deps,
+  c_args: ['-I' + meson.current_build_dir() / '..' / 'libollmchat'],
+  build_rpath: exfil_rpath,
+  vala_args: exfil_vala_args,
+)
+test('test-web-fetch-exfil',
+  test_web_fetch_exfil,
+  timeout: 180,
+  suite: 'security',
+)
+test_web_fetch_exfil_android = executable('test-web-fetch-exfil-android',
+  'web-fetch-exfil-test.vala',
+  '../ollmapp/android/tools/WebFetch/Tool.vala',
+  '../ollmapp/android/tools/WebFetch/Request.vala',
+  dependencies: [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+    ocbwrap_vapi_dep,
+    ollmchat_vapi_dep,
+    ocmarkdown_vapi_dep,
+    ocfiles_vapi_dep,
+  ],
+  c_args: ['-I' + meson.current_build_dir() / '..' / 'libollmchat'],
+  build_rpath: exfil_rpath,
+  vala_args: [
+    '--pkg=ocbwrap',
+    '--pkg=ollmchat',
+    '--pkg=ocmarkdown',
+    '--pkg=ocfiles',
+    '--pkg=json-glib-1.0',
+    '--pkg=libsoup-3.0',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_source_dir() / '../vapi',
+  ],
+)
+test('test-web-fetch-exfil-android',
+  test_web_fetch_exfil_android,
+  timeout: 180,
+  suite: 'security',
+)
+
 test('check-back-token-test',
   find_program('bash'),
   args: [
