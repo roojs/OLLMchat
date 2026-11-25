@@ -408,12 +408,90 @@ namespace OLLMfilesd
 		
 		/**
 		 * Internal method: Write contents to file on disk.
-		 * 
+		 *
+		 * A path inside a project is only written where it really resolves
+		 * inside that project. The containing directory is opened and
+		 * checked once; missing folders, a temporary file and the final
+		 * rename all go through that directory handle, so a symlink swapped
+		 * in after the check cannot redirect the write.
+		 *
 		 * @param contents file bytes, length included, zeros kept
 		 * @throws Error if file cannot be written
 		 */
 		protected async void write_to_disk(uint8[] contents) throws Error
 		{
+#if !G_OS_WIN32
+			var canonical = GLib.File.new_for_path(this.file.path).get_path();
+			var target = Posix.realpath(canonical);
+			if (target == null) {
+				target = canonical;
+			}
+			var dir = GLib.Path.get_dirname(target);
+			string[] missing = {};
+			var dir_fd = Posix.open(dir, Posix.O_RDONLY | Posix.O_DIRECTORY | Posix.O_CLOEXEC);
+			while (dir_fd < 0 && Posix.errno == Posix.ENOENT && dir != "/") {
+				missing += GLib.Path.get_basename(dir);
+				dir = GLib.Path.get_dirname(dir);
+				dir_fd = Posix.open(dir, Posix.O_RDONLY | Posix.O_DIRECTORY | Posix.O_CLOEXEC);
+			}
+			if (dir_fd < 0) {
+				throw new GLib.IOError.FAILED("%s: %s", dir, GLib.strerror(Posix.errno));
+			}
+			var name = GLib.Path.get_basename(target);
+			var temp = "." + name + "." + GLib.Random.next_int().to_string("%08x");
+			var temp_created = false;
+			try {
+				var location = GLib.FileUtils.read_link("/proc/self/fd/" + dir_fd.to_string());
+				foreach (var root in this.file.manager.projects.path_map.keys) {
+					if (!this.file.path.has_prefix(root + "/") && !canonical.has_prefix(root + "/")) {
+						continue;
+					}
+					var real_root = Posix.realpath(root);
+					if (real_root != null && (location == real_root || location.has_prefix(real_root + "/"))) {
+						continue;
+					}
+					throw new GLib.IOError.PERMISSION_DENIED("%s is in project %s but resolves to %s",
+						this.file.path, root, location);
+				}
+				for (var i = missing.length - 1; i >= 0; i--) {
+					if (Posix.mkdirat(dir_fd, missing[i], 0777) != 0 && Posix.errno != Posix.EEXIST) {
+						throw new GLib.IOError.FAILED("%s: %s", missing[i], GLib.strerror(Posix.errno));
+					}
+					var child_fd = Posix.openat(dir_fd, missing[i],
+						Posix.O_RDONLY | Posix.O_DIRECTORY | Posix.O_NOFOLLOW | Posix.O_CLOEXEC);
+					Posix.close(dir_fd);
+					dir_fd = child_fd;
+					if (dir_fd < 0) {
+						throw new GLib.IOError.FAILED("%s: %s", missing[i], GLib.strerror(Posix.errno));
+					}
+				}
+				var fd = Posix.openat(dir_fd, temp,
+					Posix.O_WRONLY | Posix.O_CREAT | Posix.O_EXCL | Posix.O_NOFOLLOW | Posix.O_CLOEXEC, 0666);
+				if (fd < 0) {
+					throw new GLib.IOError.FAILED("%s: %s", temp, GLib.strerror(Posix.errno));
+				}
+				temp_created = true;
+				Posix.Stat st;
+				if (Posix.fstatat(dir_fd, name, out st, Posix.AT_SYMLINK_NOFOLLOW) == 0 &&
+					Posix.S_ISREG(st.st_mode)) {
+					Posix.fchmod(fd, st.st_mode & 07777);
+				}
+				var output_stream = new GLib.UnixOutputStream(fd, true);
+				size_t bytes_written;
+				yield output_stream.write_all_async(
+					contents, GLib.Priority.DEFAULT, null, out bytes_written);
+				yield output_stream.close_async(GLib.Priority.DEFAULT, null);
+				if (Posix.renameat(dir_fd, temp, dir_fd, name) != 0) {
+					throw new GLib.IOError.FAILED("%s: %s", target, GLib.strerror(Posix.errno));
+				}
+				temp_created = false;
+			} finally {
+				if (temp_created) {
+					Posix.unlinkat(dir_fd, temp, 0);
+				}
+				Posix.close(dir_fd);
+			}
+#else
 			var dirname = GLib.Path.get_dirname(this.file.path);
 			var dir_file = GLib.File.new_for_path(dirname);
 			if (!GLib.FileUtils.test(dir_file.get_path(), GLib.FileTest.EXISTS)) {
@@ -436,6 +514,7 @@ namespace OLLMfilesd
 			
 			// Close stream asynchronously
 			yield output_stream.close_async(GLib.Priority.DEFAULT, null);
+#endif
 		}
 		
 		/**

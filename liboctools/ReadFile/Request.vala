@@ -52,7 +52,9 @@ namespace OLLMtools.ReadFile
 		 * When the agent sends the workspace path to the LLM, the LLM may request
 		 * files with relative paths. This override prepends the active project path
 		 * from the tool's project_manager if the path is still relative after
-		 * permission provider normalization.
+		 * permission provider normalization. Dot and dot-dot segments are
+		 * resolved so the project check in {@link build_perm_question} sees
+		 * where the path really points.
 		 */
 		protected override string normalize_file_path(string in_path)
 		{
@@ -61,15 +63,15 @@ namespace OLLMtools.ReadFile
 			}
 			var path = base.normalize_file_path(in_path);
 			
-			// If path is already absolute, return it as-is
 			if (GLib.Path.is_absolute(path)) {
-				return path;
+				return GLib.File.new_for_path(path).get_path();
 			}
 			
 			// If path is still relative, try to prepend project path
 			var project_manager = ((Tool) this.tool).project_manager;
 			if (project_manager != null && project_manager.active_project != null) {
-				path = GLib.Path.build_filename(project_manager.active_project.path, path);
+				path = GLib.File.new_for_path(GLib.Path.build_filename(
+					project_manager.active_project.path, path)).get_path();
 			}
 			
 			return path;

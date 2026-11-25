@@ -154,6 +154,8 @@ Edit mode is on for this path. In this same assistant message only:
 		 * When the agent sends the workspace path to the LLM, the LLM may request
 		 * files with relative paths. This override ensures relative paths are
 		 * normalized using the active project path, which will then get auto-approved.
+		 * Dot and dot-dot segments are resolved so the project check in
+		 * {@link build_perm_question} sees where the path really points.
 		 */
 		protected override string normalize_file_path(string in_path)
 		{
@@ -163,12 +165,16 @@ Edit mode is on for this path. In this same assistant message only:
 				// If path is relative, normalize it using the project path directly
 				// This ensures project files get auto-approved
 				if (!GLib.Path.is_absolute(in_path)) {
-					return GLib.Path.build_filename(project_manager.active_project.path, in_path);
+					return GLib.File.new_for_path(GLib.Path.build_filename(
+						project_manager.active_project.path, in_path)).get_path();
 				}
 			}
 			
 			// For absolute paths or when no project is available, use base normalization
-			return base.normalize_file_path(in_path);
+			var path = base.normalize_file_path(in_path);
+			// Relative paths are left for the daemon; this process's cwd is
+			// not the daemon's (remote clients).
+			return GLib.Path.is_absolute(path) ? GLib.File.new_for_path(path).get_path() : path;
 		}
 		
 		public override bool build_perm_question()

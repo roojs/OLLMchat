@@ -70,8 +70,50 @@ namespace OLLMfilesd
 		{
 			uint8[] data;
 			string etag;
+			var source = path;
+#if !G_OS_WIN32
+			// Check the opened file, not the path, so a symlink swapped
+			// after the check cannot redirect the read.
+			var fd = Posix.open(path, Posix.O_RDONLY | Posix.O_CLOEXEC);
+			if (fd < 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error.INTERNAL_ERROR(path + ": " + GLib.strerror(Posix.errno))
+				});
+				return;
+			}
+			source = "/proc/self/fd/" + fd.to_string();
+			var location = "";
 			try {
-				GLib.File.new_for_path(path).load_contents(
+				location = GLib.FileUtils.read_link(source);
+			} catch (GLib.FileError e) {
+				Posix.close(fd);
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
+				});
+				return;
+			}
+			var canonical = GLib.File.new_for_path(path).get_path();
+			foreach (var root in this.manager.projects.path_map.keys) {
+				if (!path.has_prefix(root + "/") && !canonical.has_prefix(root + "/")) {
+					continue;
+				}
+				var real_root = Posix.realpath(root);
+				if (real_root != null && location.has_prefix(real_root + "/")) {
+					continue;
+				}
+				Posix.close(fd);
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error.INTERNAL_ERROR(
+						path + " is in project " + root + " but resolves to " + location)
+				});
+				return;
+			}
+#endif
+			try {
+				GLib.File.new_for_path(source).load_contents(
 					null,
 					out data,
 					out etag
@@ -82,6 +124,10 @@ namespace OLLMfilesd
 					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
+			} finally {
+#if !G_OS_WIN32
+				Posix.close(fd);
+#endif
 			}
 			var row = new File(this.manager);
 			var indexed = this.manager.get_file_from_active_project(path);
@@ -397,6 +443,18 @@ namespace OLLMfilesd
 			var unix_mode_val = GLib.Value(typeof(uint));
 			request.args.get(4).transform(ref unix_mode_val);
 			var unix_mode = unix_mode_val.get_uint();
+			var canonical = GLib.File.new_for_path(path).get_path();
+			foreach (var root in this.manager.projects.path_map.keys) {
+				if (!path.has_prefix(root + "/") || canonical.has_prefix(root + "/")) {
+					continue;
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error.INTERNAL_ERROR(
+						path + " is in project " + root + " but resolves to " + canonical)
+				});
+				return;
+			}
 			try {
 				switch (base_type) {
 					case "d": {

@@ -43,10 +43,14 @@ namespace OLLMtools.WriteFile
 			var project_manager = ((Tool) this.tool).project_manager;
 			if (project_manager != null && project_manager.active_project != null) {
 				if (!GLib.Path.is_absolute(in_path)) {
-					return GLib.Path.build_filename(project_manager.active_project.path, in_path);
+					return GLib.File.new_for_path(GLib.Path.build_filename(
+						project_manager.active_project.path, in_path)).get_path();
 				}
 			}
-			return base.normalize_file_path(in_path);
+			var path = base.normalize_file_path(in_path);
+			// Relative paths are left for the daemon; this process's cwd is
+			// not the daemon's (remote clients).
+			return GLib.Path.is_absolute(path) ? GLib.File.new_for_path(path).get_path() : path;
 		}
 
 		public override string to_summary ()
