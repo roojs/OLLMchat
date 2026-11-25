@@ -314,6 +314,13 @@ namespace OLLMchat.ChatPermission
 				return path;
 			}
 			
+			// Keys such as "web_fetch#https#example.com#443" name no
+			// file; a symlink created under that name must not swap in
+			// another stored permission.
+			if (!GLib.Path.is_absolute(path) && path.contains("#")) {
+				return path;
+			}
+			
 			// Convert to absolute path if relative and relative_path is set
 			string normalized = path;
 			if (!GLib.Path.is_absolute(path) && this.relative_path != "") {

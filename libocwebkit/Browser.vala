@@ -472,7 +472,16 @@ public class OLLMwebkit.Browser : Gtk.Box
 		}
 	}
 
-	private string normalize_uri(string uri)
+	/**
+	 * Rewrite ''uri'' the way {@link load} does before loading it.
+	 *
+	 * Callers that ask permission for a URL use this so the approved
+	 * URL is the one loaded.
+	 *
+	 * @param uri page URL
+	 * @return the URL {@link load} will open
+	 */
+	public string normalize_uri(string uri)
 	{
 		if (uri.contains(".blogspot.") && !uri.contains(".blogspot.com")) {
 			try {

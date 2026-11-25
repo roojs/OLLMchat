@@ -38,6 +38,14 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 	 */
 	public Gee.HashMap<string, string> fill { get; set; default = new Gee.HashMap<string, string>(); }
 
+	/**
+	 * URL for action ''fetch'', bound by {@link build_perm_question}
+	 * as {@link Browser.load} will open it. The permission target is
+	 * its host, and only this URL is loaded. Empty until bound, or
+	 * when the URL is refused.
+	 */
+	private string fetch_uri = "";
+
 	public Request()
 	{
 	}
@@ -94,6 +102,36 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 	public override bool build_perm_question()
 	{
 		switch (this.action.strip().down()) {
+			case "fetch":
+				// Bind once: if the URL changes while the user is
+				// being asked, the answer still applies to this URL.
+				if (this.fetch_uri != "") {
+					return true;
+				}
+				var load_uri = ((OLLMwebkit.Tool) this.tool).stack.primary.normalize_uri(this.url.strip());
+				// WebKit must load the host GLib reads here; the two
+				// parse backslashes, spaces and user info differently.
+				if (load_uri.contains("\\") || GLib.Regex.match_simple("[\\x00-\\x20]", load_uri)) {
+					return false;
+				}
+				GLib.Uri uri;
+				try {
+					uri = GLib.Uri.parse(load_uri, GLib.UriFlags.NONE);
+				} catch (GLib.UriError e) {
+					return false;
+				}
+				if ((uri.get_scheme() != "http" && uri.get_scheme() != "https") ||
+					uri.get_userinfo() != null || uri.get_host() == null || uri.get_host() == "") {
+					return false;
+				}
+				var port = uri.get_port() != -1 ? uri.get_port() : (uri.get_scheme() == "https" ? 443 : 80);
+				this.fetch_uri = load_uri;
+				this.permission_target_path = "browser_fetch#" + uri.get_scheme() + "#" +
+					uri.get_host().down() + "#" + port.to_string();
+				this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
+				this.permission_question = "Agent wants to open " + load_uri + "?";
+				return true;
+
 			case "press":
 				if (this.press <= 0) {
 					return false;
@@ -172,7 +210,14 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 				if (this.url.strip() == "") {
 					throw new GLib.IOError.INVALID_ARGUMENT("url is required for fetch");
 				}
-				yield browser.load(this.url.strip());
+				if (this.fetch_uri == "") {
+					throw new GLib.IOError.INVALID_ARGUMENT("url must be an absolute http(s) URL without user info, " +
+						"backslashes or spaces");
+				}
+				if (browser.normalize_uri(this.url.strip()) != this.fetch_uri) {
+					throw new GLib.IOError.PERMISSION_DENIED("url changed after permission was asked; nothing was loaded");
+				}
+				yield browser.load(this.fetch_uri);
 				result = yield browser.dump(fmt);
 				break;
 

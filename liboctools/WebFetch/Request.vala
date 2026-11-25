@@ -35,6 +35,21 @@ namespace OLLMtools.WebFetch
 		public string format { get; set; default = "markdown"; }
 		/** Actual result type after conversion: "markdown", "html", "json", "text", or "base64". Set by convert_content. */
 		private string result_format = "text";
+
+		/**
+		 * GET built from {@link url} by {@link build_perm_question}.
+		 *
+		 * The permission target is this message's host, and it is
+		 * the only message ever sent, so the host the user approved
+		 * is the host contacted. Null until bound, or when the URL
+		 * is not http(s) with a host.
+		 */
+		private Soup.Message? message = null;
+
+		/**
+		 * {@link url} as it was when {@link message} was built.
+		 */
+		private string message_url = "";
 		
 		/**
 		 * Default constructor.
@@ -50,8 +65,29 @@ namespace OLLMtools.WebFetch
 		
 		public override bool build_perm_question()
 		{
-			// Permission check removed - web fetch does not require user approval to fetch a URL
-			return false;
+			// Bind once: if the URL changes while the user is being
+			// asked, the answer still applies to this message only.
+			if (this.message != null) {
+				return true;
+			}
+			this.message_url = this.url;
+			this.message = new Soup.Message("GET", this.url);
+			if (this.message == null) {
+				return false;
+			}
+			var uri = this.message.get_uri();
+			if (uri.get_scheme() != "http" && uri.get_scheme() != "https") {
+				this.message = null;
+				return false;
+			}
+			this.message.flags = Soup.MessageFlags.NO_REDIRECT;
+			this.message.request_headers.replace("User-Agent", USER_AGENT);
+			var port = uri.get_port() != -1 ? uri.get_port() : (uri.get_scheme() == "https" ? 443 : 80);
+			this.permission_target_path = "web_fetch#" + uri.get_scheme() + "#" +
+				uri.get_host().down() + "#" + port.to_string();
+			this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
+			this.permission_question = "Fetch URL: " + this.message_url + "?";
+			return true;
 		}
 		
 		protected override async string execute_request() throws Error
@@ -61,11 +97,13 @@ namespace OLLMtools.WebFetch
 				throw new GLib.IOError.INVALID_ARGUMENT("URL parameter is required");
 			}
 			
-			// Validate that we can extract domain (URL must be valid)
-			if (this.extract_domain(this.url) == "") {
-				throw new GLib.IOError.INVALID_ARGUMENT(
-					"Invalid URL: unable to extract domain from '" + this.url + "'"
-				);
+			if (this.message == null) {
+				throw new GLib.IOError.INVALID_ARGUMENT("Invalid URL (http or https with a host required): '" +
+					this.url + "'");
+			}
+			
+			if (this.url != this.message_url) {
+				throw new GLib.IOError.PERMISSION_DENIED("URL changed after permission was asked; nothing was fetched");
 			}
 			
 			// Validate format
@@ -77,35 +115,26 @@ namespace OLLMtools.WebFetch
 			this.agent.add_message(new OLLMchat.Message("ui", 
 				OLLMchat.Message.fenced("text.oc-frame-info.collapsed request", this.to_summary ())));
 			
-			// Fetch URL with redirects disabled (redirects require approval)
+			// NO_REDIRECT is set on the message: following a redirect
+			// would reach a host the user did not approve.
 			Bytes content;
-			Soup.Message? message = null;
 			try {
-				// Note: libsoup 3.0 handles redirects automatically, but we check status codes
-				// and handle redirects manually below to require approval
-				message = new Soup.Message("GET", this.url);
-				message.request_headers.replace("User-Agent", USER_AGENT);
 				content = yield ((Tool) this.tool).soup.send_and_read_async(
-					message, GLib.Priority.DEFAULT, null);
+					this.message, GLib.Priority.DEFAULT, null);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to fetch URL: " + e.message);
 			}
 			
-			// Ensure message is valid before accessing properties
-			if (message == null) {
-				throw new GLib.IOError.FAILED("Failed to create HTTP message");
-			}
-			
 			// Handle non-redirect cases (redirects are handled below)
 			// Check HTTP status for errors
-			if (message.status_code < 200 || message.status_code >= 400) {
-				throw new GLib.IOError.FAILED("HTTP error: " + message.status_code.to_string());
+			if (this.message.status_code < 200 || this.message.status_code >= 400) {
+				throw new GLib.IOError.FAILED("HTTP error: " + this.message.status_code.to_string());
 			}
 			
 			// Success case (200-299) - convert and return
-			if (message.status_code < 300) {
+			if (this.message.status_code < 300) {
 				// Detect content type
-				var content_type = this.detect_content_type(message.response_headers);
+				var content_type = this.detect_content_type(this.message.response_headers);
 				
 				// Convert content based on content type and format (updates this.format to actual format used)
 				var result = this.convert_content(content, content_type);
@@ -134,10 +163,10 @@ namespace OLLMtools.WebFetch
 			
 			// Handle redirect status codes (3xx range)
 		
-			var location = message.response_headers.get_one("Location");
+			var location = this.message.response_headers.get_one("Location");
 			if (location == null || location == "") {
 				throw new GLib.IOError.FAILED(
-					"Redirect detected (status " + message.status_code.to_string() + 
+					"Redirect detected (status " + this.message.status_code.to_string() + 
 					") but no Location header found"
 				);
 			}
@@ -180,49 +209,26 @@ namespace OLLMtools.WebFetch
 		
 		/**
 		 * Core HTTP fetching logic (GET only).
+		 *
+		 * Sends only the message bound by {@link build_perm_question}
+		 * for this same URL; any other URL is refused unsent.
 		 * 
 		 * @param url The URL to fetch
 		 * @return The response body as Bytes
 		 */
 		protected async Bytes fetch_url(string url) throws Error
 		{
-			var message = new Soup.Message("GET", url);
-			message.request_headers.replace("User-Agent", USER_AGENT);
+			if (this.message == null || url != this.message_url) {
+				throw new GLib.IOError.PERMISSION_DENIED("URL was not approved for fetching: " + url);
+			}
 			var bytes = yield ((Tool) this.tool).soup.send_and_read_async(
-				message, GLib.Priority.DEFAULT, null);
+				this.message, GLib.Priority.DEFAULT, null);
 			
-			if (message.status_code < 200 || message.status_code >= 300) {
-				throw new GLib.IOError.FAILED("HTTP error: " + message.status_code.to_string());
+			if (this.message.status_code < 200 || this.message.status_code >= 300) {
+				throw new GLib.IOError.FAILED("HTTP error: " + this.message.status_code.to_string());
 			}
 			
 			return bytes;
-		}
-		
-		/**
-		 * Extract domain from URL and normalize to [[https://domain/]] format.
-		 *
-		 * @param url The URL to extract domain from
-		 * @return Normalized domain string (e.g., "[[https://example.com/]]") or empty string on error
-		 */
-		protected string extract_domain(string url)
-		{
-			try {
-				var uri = GLib.Uri.parse(url, GLib.UriFlags.NONE);
-				if (uri == null) {
-					return "";
-				}
-				
-				var host = uri.get_host();
-				
-				if (host == null || host == "") {
-					return "";
-				}
-				
-				// Normalize to https://{domain}/ format (even if original was http)
-				return "https://" + host + "/";
-			} catch (GLib.Error e) {
-				return "";
-			}
 		}
 		
 		/**
