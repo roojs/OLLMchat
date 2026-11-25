@@ -11,26 +11,64 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#if ANDROID
+[CCode (cheader_filename = "openssl/rand.h")]
+extern int RAND_bytes(uint8[] buf);
+#else
+[CCode (cheader_filename = "gnutls/crypto.h")]
+extern int gnutls_rnd(int level, [CCode (array_length_type = "size_t")] uint8[] data);
+#endif
+
 namespace OLLMrpc.Transport
 {
 	/**
 	 * TCP loopback {@link Listen} for platforms without Unix sockets.
 	 *
-	 * Defaults to loopback; remote access needs an authenticated transport
-	 * before callers should bind a public address.
+	 * Any local account can open a loopback port, so {@link start}
+	 * writes a fresh random secret to {@link token_path}. Each
+	 * {@link Connection} refuses every request until the peer sends
+	 * that secret in ''RPC-Transport.auth''. {@link OLLMrpc.Client}
+	 * reads the file and sends it before its hello.
+	 *
+	 * Defaults to loopback; remote access needs an authenticated
+	 * transport before callers should bind a public address.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var listen = new OLLMrpc.Transport.TcpListen(
+	 *     GLib.Path.build_filename(data_dir, "ollmfilesd.token"),
+	 *     "127.0.0.1", 4141);
+	 * var listening = listen.start();
+	 * }}}
 	 */
 	public class TcpListen : Listen
 	{
 		public string host { get; construct; default = "127.0.0.1"; }
 		public uint16 port { get; construct; default = 4141; }
 
+		/**
+		 * File that receives the connection secret on {@link start}.
+		 *
+		 * Written mode 0600 and replaced on every start. Keep it in a
+		 * directory only the daemon account can read; on Windows the
+		 * per-user data directory ACL is what keeps other accounts out.
+		 */
+		public string token_path { get; construct; default = ""; }
+
+		private string token = "";
 		private GLib.SocketService service { get; set; default = new GLib.SocketService(); }
 		private bool listening = false;
 		private Gee.ArrayList<Connection> connections = new Gee.ArrayList<Connection>();
 
-		public TcpListen(string host = "127.0.0.1", uint16 port = 4141)
+		/**
+		 * @param token_path file {@link start} writes the secret to
+		 * @param host listen address
+		 * @param port listen port
+		 */
+		public TcpListen(string token_path, string host = "127.0.0.1", uint16 port = 4141)
 		{
-			GLib.Object(host: host, port: port);
+			GLib.Object(token_path: token_path, host: host, port: port);
 		}
 
 		public override bool start()
@@ -61,9 +99,31 @@ namespace OLLMrpc.Transport
 				);
 				return false;
 			}
+			var raw = new uint8[32];
+#if ANDROID
+			var rnd_failed = RAND_bytes(raw) != 1;
+#else
+			// 2 is GNUTLS_RND_KEY.
+			var rnd_failed = gnutls_rnd(2, raw) != 0;
+#endif
+			if (rnd_failed) {
+				GLib.warning("could not generate the TCP listener secret");
+				this.service.close();
+				return false;
+			}
+			this.token = GLib.Base64.encode(raw);
+			try {
+				GLib.FileUtils.set_contents_full(this.token_path, this.token, -1,
+					GLib.FileSetContentsFlags.CONSISTENT, 0600);
+			} catch (GLib.FileError e) {
+				GLib.warning("could not write TCP listener secret %s: %s", this.token_path, e.message);
+				this.service.close();
+				return false;
+			}
 			this.service.incoming.connect((conn) => {
 				var connection = new Connection(conn) {
-					live_handles = this.live_handles
+					live_handles = this.live_handles,
+					token = this.token
 				};
 				connection.start();
 				this.connections.add(connection);
@@ -77,6 +137,9 @@ namespace OLLMrpc.Transport
 		public override void broadcast(GLib.Object gobject)
 		{
 			foreach (var connection in this.connections) {
+				if (!connection.authed) {
+					continue;
+				}
 				connection.write(gobject);
 			}
 		}

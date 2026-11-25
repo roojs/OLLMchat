@@ -145,6 +145,17 @@ namespace OLLMrpc
 		public bool force_localhost_tls { get; set; default = false; }
 
 		/**
+		 * Secret file a plaintext TCP {@link connect} reads.
+		 *
+		 * {@link Transport.TcpListen} writes it on start. {@link connect}
+		 * sends its contents in ''RPC-Transport.auth'' before the hello.
+		 * Defaults to ''ollmfilesd.token'' in {@link data_dir}, or in the
+		 * user data ''ollmchat'' directory when {@link data_dir} is empty.
+		 */
+		public string token_path { get; set; default = GLib.Path.build_filename(
+			GLib.Environment.get_user_data_dir(), "ollmchat", "ollmfilesd.token"); }
+
+		/**
 		 * Bin POST transport to a {@link Transport.HttpServer} (the
 		 * ''ollmfilesd'' HTTPS gate).
 		 *
@@ -291,6 +302,9 @@ namespace OLLMrpc
 				pid: full_pid,
 				socket_path: full_socket
 			);
+			if (data_dir != "") {
+				this.token_path = GLib.Path.build_filename(data_dir, "ollmfilesd.token");
+			}
 			if (this.socket_path.has_prefix("http://")
 				|| this.socket_path.has_prefix("https://")) {
 				this.protocol = Protocol.HTTP;
@@ -472,6 +486,23 @@ namespace OLLMrpc
 			);
 			GLib.debug("read watch started");
 
+			if (this.protocol == Protocol.TCP && this.tls_connection == null) {
+				var token = "";
+				try {
+					GLib.FileUtils.get_contents(this.token_path, out token);
+				} catch (GLib.FileError e) {
+					this.connect_error = e.message;
+					GLib.critical("connect %s: %s", this.socket_path, this.connect_error);
+					this.disconnect();
+					return false;
+				}
+				// avoid async vala ctor bug
+				var auth = new Request();
+				auth.id = this.next_id++;
+				auth.method = "RPC-Transport.auth";
+				auth.args = OLLMrpc.args("s", token);
+				this.pending.add(new PendingWrite(auth));
+			}
 			var entry = new PendingWrite(hello_request);
 			this.pending.add(entry);
 			this.send_head.begin();

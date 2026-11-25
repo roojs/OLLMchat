@@ -41,6 +41,24 @@ namespace OLLMrpc.Transport
 		 */
 		public string cert_fingerprint { get; set; default = ""; }
 
+		/**
+		 * Secret the peer must send in ''RPC-Transport.auth''.
+		 *
+		 * {@link TcpListen} sets it. Until the peer sends it,
+		 * {@link allow_request} refuses every request. Empty on stdio
+		 * and on Unix sockets, where {@link SocketListen} checks the
+		 * peer uid instead.
+		 */
+		public string token { get; set; default = ""; }
+
+		/**
+		 * True once the peer sent {@link token}.
+		 *
+		 * {@link TcpListen.broadcast} skips connections where this is
+		 * false.
+		 */
+		public bool authed { get; private set; default = false; }
+
 		public Bin.Stream? bin { get; protected set; }
 
 		public bool live_handles { get; set; default = false; }
@@ -322,7 +340,10 @@ namespace OLLMrpc.Transport
 		/**
 		 * Return true when this request may run.
 		 *
-		 * Unix and plaintext TCP stay open.
+		 * Unix sockets and stdio stay open. When {@link token} is set
+		 * (plaintext TCP), the first request must be
+		 * ''RPC-Transport.auth'' with that secret as its one string
+		 * argument; every request before it is refused.
 		 * {@link OLLMfilesd.SslConnection} overrides this.
 		 *
 		 * @param request inbound RPC
@@ -330,7 +351,22 @@ namespace OLLMrpc.Transport
 		 */
 		public virtual bool allow_request(OLLMrpc.Request request)
 		{
-			return true;
+			if (this.token == "" || this.authed) {
+				return true;
+			}
+			// Hash both sides so the compare time does not leak a prefix.
+			if (request.method == "RPC-Transport.auth" && request.args.size == 1 &&
+				request.args.get(0) != null && request.args.get(0).holds(typeof(string)) &&
+				GLib.Checksum.compute_for_string(GLib.ChecksumType.SHA256, request.args.get(0).get_string()) ==
+					GLib.Checksum.compute_for_string(GLib.ChecksumType.SHA256, this.token)) {
+				this.authed = true;
+				this.reply(request, new OLLMrpc.Response());
+				return false;
+			}
+			this.reply(request, new OLLMrpc.Response() {
+				error = new OLLMrpc.Error.INVALID_REQUEST("authentication required")
+			});
+			return false;
 		}
 
 		/**

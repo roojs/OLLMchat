@@ -334,6 +334,7 @@ Examples:
 
 			if (!opt_interactive && opt_tcp) {
 				this.listen = new OLLMrpc.Transport.TcpListen(
+					GLib.Path.build_filename(this.data_dir, "ollmfilesd.token"),
 					opt_tcp_host,
 					(uint16) opt_tcp_port
 				) {
