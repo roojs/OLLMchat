@@ -695,3 +695,65 @@ test('check-back-token-test',
   ],
   depends: [oc_test_loop_exe],
   suite: 'libollmchat')
+
+# Browser tool must refuse non-http(s) fetch and download URLs, including a
+# later navigation from an http(s) page to a file URL. Fails until that is fixed.
+if host_machine.system() == 'linux'
+  browser_scheme_rpath = ':'.join([
+    meson.current_build_dir() / '..' / 'libocwebkit',
+    meson.current_build_dir() / '..' / 'libollmchat',
+    meson.current_build_dir() / '..' / 'libocsqlite',
+    meson.current_build_dir() / '..' / 'libocrpc',
+    meson.current_build_dir() / '..' / 'libollamaweb',
+  ])
+  test_browser_scheme = executable('test-browser-scheme',
+    'browser-scheme-test.vala',
+    dependencies: [
+      dependency('gtk4'),
+      dependency('gee-0.8'),
+      dependency('gio-2.0'),
+      dependency('glib-2.0'),
+      dependency('gobject-2.0'),
+      dependency('json-glib-1.0'),
+      dependency('libsoup-3.0'),
+      dependency('atspi-2'),
+      webkit_webdriver_dep,
+      ollmchat_vapi_dep,
+    ],
+    link_with: [ollmchat_base_lib, ocwebkit_base_lib],
+    build_rpath: browser_scheme_rpath,
+    include_directories: [
+      include_directories('../libollmchat'),
+      include_directories('../libocwebkit'),
+    ],
+    c_args: [
+      '-I' + (meson.current_build_dir() / '..' / 'libocwebkit'),
+      '-I' + (meson.current_build_dir() / '..' / 'libollmchat'),
+    ],
+    vala_args: [
+      '--pkg=ollmchat',
+      '--pkg=gtk4',
+      '--pkg=libsoup-3.0',
+      '--pkg=json-glib-1.0',
+      '--pkg=webkitgtk-6.0',
+      '--pkg=atspi-2',
+      '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+      '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+      '--vapidir', '/usr/share/vala/vapi',
+    ],
+  )
+  test('browser-scheme',
+    find_program('bash'),
+    args: [
+      '-c',
+      'export GDK_BACKEND=x11 GTK_A11Y=atspi; exec dbus-run-session -- xvfb-run -a "$1"',
+      '_',
+      test_browser_scheme.full_path(),
+    ],
+    depends: [test_browser_scheme],
+    suite: 'webkit',
+    timeout: 180,
+  )
+endif
