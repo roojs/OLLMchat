@@ -317,6 +317,16 @@ namespace OLLMfilesd
 		 * Empty ''pin'' means the handshake requires a client
 		 * certificate. Unix socket only.
 		 *
+		 * The reply ''retval'' is six check digits: HMAC-SHA256 keyed
+		 * by ''pin'' over the DER of
+		 * {@link OLLMfilesd.SslListen.certificate}, first 32 bits
+		 * modulo one million. The dialog shows them after the PIN. The
+		 * phone recomputes them over the certificate its handshake
+		 * received and sends the PIN only when they match.
+		 *
+		 * An approved TLS client sends the current PIN here to finish
+		 * a pairing window with its stored certificate.
+		 *
 		 * @param request inbound RPC from the GTK app
 		 * @param pin six digits, or empty to close the window
 		 */
@@ -331,7 +341,11 @@ namespace OLLMfilesd
 			}
 			if (!(request.connection is SslConnection)) {
 				listen.pin = pin;
+				var mac = GLib.Hmac.compute_for_data(GLib.ChecksumType.SHA256,
+					pin.data, listen.certificate.certificate.data);
 				request.reply(new OLLMrpc.Response() {
+					retval = OLLMrpc.val("s",
+						"%06u".printf((uint) (uint64.parse(mac.substring(0, 8), 16) % 1000000))),
 					msg = "ok"
 				});
 				return;

@@ -132,8 +132,8 @@ namespace OLLMrpcTests
 				var force_register = false;
 				var code = 0;
 				while (true) {
-					code = phone.try_connection(
-						"127.0.0.1", 18422, "159264", force_register, "ollmchat");
+					code = phone.try_connection("127.0.0.1", 18422,
+						"159264" + armed.retval.get_string(), force_register, "ollmchat");
 					if (code == (int) OLLMrpc.RpcErrorCode.CERT_NOT_REGISTERED
 						&& !force_register) {
 						force_register = true;
@@ -167,10 +167,12 @@ namespace OLLMrpcTests
 				var rearmed = again_bin.parse() as OLLMrpc.Response;
 				this.check(command_line, rearmed != null && rearmed.error == null,
 					"could not re-arm the PIN");
-				code = phone.try_connection("127.0.0.1", 18422, "159264", false, "ollmchat");
+				code = phone.try_connection("127.0.0.1", 18422,
+					"159264" + rearmed.retval.get_string(), false, "ollmchat");
 				this.check(command_line, code == 0,
 					"stored certificate code " + code.to_string());
-				code = phone.try_connection("127.0.0.1", 18422, "000000", false, "ollmchat");
+				code = phone.try_connection("127.0.0.1", 18422,
+					"000000" + rearmed.retval.get_string(), false, "ollmchat");
 				this.check(command_line,
 					code == (int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
 					"wrong PIN code " + code.to_string());
@@ -213,8 +215,8 @@ namespace OLLMrpcTests
 				force_register = false;
 				var saw_unregistered = false;
 				while (true) {
-					code = phone.try_connection(
-						"127.0.0.1", 18422, "159264", force_register, "ollmchat");
+					code = phone.try_connection("127.0.0.1", 18422,
+						"159264" + third_armed.retval.get_string(), force_register, "ollmchat");
 					if (code == (int) OLLMrpc.RpcErrorCode.CERT_NOT_REGISTERED
 						&& !force_register) {
 						saw_unregistered = true;
@@ -246,7 +248,8 @@ namespace OLLMrpcTests
 				var fourth_armed = fourth_bin.parse() as OLLMrpc.Response;
 				this.check(command_line, fourth_armed != null && fourth_armed.error == null,
 					"could not arm the PIN after remove");
-				code = phone.try_connection("127.0.0.1", 18422, "159264", false, "ollmchat");
+				code = phone.try_connection("127.0.0.1", 18422,
+					"159264" + fourth_armed.retval.get_string(), false, "ollmchat");
 				this.check(command_line, code == 0,
 					"pair after remove code " + code.to_string());
 				this.check(command_line,
@@ -254,7 +257,8 @@ namespace OLLMrpcTests
 						GLib.Path.build_filename(cert_dir, "ollmrpc-ca.pem"),
 						GLib.FileTest.EXISTS),
 					"pair after remove wrote no CA");
-				code = phone.try_connection("127.0.0.1", 1, "159264", false, "ollmchat");
+				code = phone.try_connection("127.0.0.1", 1,
+					"159264" + fourth_armed.retval.get_string(), false, "ollmchat");
 				this.check(command_line,
 					code == (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 					"dead desktop code " + code.to_string());

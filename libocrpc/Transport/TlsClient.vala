@@ -34,9 +34,11 @@ namespace OLLMrpc.Transport
 	 *
 	 * Set {@link accept_any} to accept any server certificate.
 	 * {@link tls_certificate} is still presented when it is
-	 * set. Registration leaves it unset. Argus download and
-	 * the identity post set both. Leave {@link accept_any}
-	 * false to require a peer certificate and ignore only
+	 * set. Registration leaves it unset and checks
+	 * {@link peer_certificate} against the pairing code before
+	 * it writes anything. Argus download and the identity post
+	 * set both. Leave {@link accept_any} false to require a peer
+	 * certificate and ignore only
 	 * {@link GLib.TlsCertificateFlags.BAD_IDENTITY}, the same
 	 * rule as {@link OLLMrpc.Client.connect}.
 	 *
@@ -75,7 +77,8 @@ namespace OLLMrpc.Transport
 		 *
 		 * {@link tls_certificate} is still presented when it is set.
 		 * Registration leaves the certificate unset. Argus download
-		 * and the identity post set both.
+		 * and the identity post set both. The caller must check
+		 * {@link peer_certificate} before it sends a secret.
 		 */
 		public bool accept_any = false;
 
@@ -97,6 +100,14 @@ namespace OLLMrpc.Transport
 		 * {@link HttpClient.tls_database}.
 		 */
 		public GLib.TlsDatabase? tls_database { get; set; default = null; }
+
+		/**
+		 * Certificate the server presented in the {@link open}
+		 * handshake. Null until {@link open} succeeds.
+		 *
+		 * Later {@link call} writes go to that same TLS session.
+		 */
+		public GLib.TlsCertificate? peer_certificate { get; private set; default = null; }
 
 		/**
 		 * A notification parsed on this stream.
@@ -177,6 +188,7 @@ namespace OLLMrpc.Transport
 				});
 			}
 			tls.handshake();
+			this.peer_certificate = tls.get_peer_certificate();
 			this.bin.in_stream = new GLib.DataInputStream(tls.get_input_stream());
 			this.bin.in_stream.set_byte_order(GLib.DataStreamByteOrder.BIG_ENDIAN);
 			this.bin.out_stream = new GLib.DataOutputStream(tls.get_output_stream());

@@ -24,7 +24,8 @@ namespace OLLMapp.SettingsDialog
 	/**
 	 * Phone dialog for the outbound file-server connection.
 	 *
-	 * Listens for the pairing service, then asks for the six digits.
+	 * Listens for the pairing service, then asks for the twelve digits
+	 * the desktop shows: the PIN, then its certificate check digits.
 	 * UI follows the Argus ''Register'' phase model: one phase drives layout.
 	 */
 	public class FileConnectionAdd : Adw.PreferencesDialog
@@ -84,14 +85,14 @@ namespace OLLMapp.SettingsDialog
 
 			var page = new Adw.PreferencesPage();
 			this.group = new Adw.PreferencesGroup();
-			var pin_label = new Gtk.Label("Enter the six-digit PIN") {
+			var pin_label = new Gtk.Label("Enter the twelve-digit code") {
 				xalign = 0.5f,
 				justify = Gtk.Justification.CENTER,
 				css_classes = {"dim-label"}
 			};
 			this.pin_entry = new Gtk.Entry() {
-				placeholder_text = "000000",
-				max_length = 6,
+				placeholder_text = "000000000000",
+				max_length = 12,
 				input_purpose = Gtk.InputPurpose.DIGITS,
 				input_hints = Gtk.InputHints.NO_EMOJI | Gtk.InputHints.NO_SPELLCHECK,
 				enable_emoji_completion = false,
@@ -145,7 +146,7 @@ namespace OLLMapp.SettingsDialog
 					return;
 				}
 				var pin = this.pin_entry.text.strip();
-				if (pin.length != 6) {
+				if (pin.length != 12) {
 					this.request_button.sensitive = false;
 					this.request_button.remove_css_class("suggested-action");
 					return;
@@ -166,7 +167,7 @@ namespace OLLMapp.SettingsDialog
 						return false;
 					}
 					var current = this.pin_entry.text.strip();
-					if (current.length != 6) {
+					if (current.length != 12) {
 						return false;
 					}
 					for (var j = 0; j < current.length; j++) {
@@ -364,7 +365,7 @@ namespace OLLMapp.SettingsDialog
 					this.phase = Phase.AWAITING_PIN;
 					this.status_detail =
 						"Desktop at " + this.found +
-						". Enter the six-digit PIN.";
+						". Enter the twelve-digit code.";
 					this.apply_layout();
 					return false;
 				});
@@ -434,19 +435,19 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 			var pin = this.pin_entry.text.strip();
-			if (pin.length != 6) {
+			if (pin.length != 12) {
 				this.phase = Phase.FAILED_PIN;
-				this.status_detail = "Enter the six digits";
+				this.status_detail = "Enter the twelve digits";
 				this.apply_layout();
-				this.error_occurred("Enter the six digits");
+				this.error_occurred("Enter the twelve digits");
 				return;
 			}
 			for (var i = 0; i < pin.length; i++) {
 				if (pin[i] < '0' || pin[i] > '9') {
 					this.phase = Phase.FAILED_PIN;
-					this.status_detail = "Enter the six digits";
+					this.status_detail = "Enter the twelve digits";
 					this.apply_layout();
-					this.error_occurred("Enter the six digits");
+					this.error_occurred("Enter the twelve digits");
 					return;
 				}
 			}

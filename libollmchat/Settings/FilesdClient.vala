@@ -118,9 +118,16 @@ namespace OLLMchat.Settings
 		 * can sign a new certificate with the PIN. Success stores
 		 * {@link url} and {@link addresses}.
 		 *
+		 * Discovery and the address are not trusted. Registration
+		 * recomputes the check digits from ''ClientCert.pair'' over
+		 * the certificate the handshake received. It sends the PIN and
+		 * CSR on that same TLS session only when they match, and only
+		 * then replaces the stored CA.
+		 *
 		 * @param host desktop address from discovery
 		 * @param port desktop port
-		 * @param pin six digits from the pairing window
+		 * @param pin twelve digits from the pairing window: the
+		 *   six-digit PIN, then the six check digits
 		 * @param force_register true to ignore a stored CA and sign again
 		 * @param requester device string stored as the desktop row title
 		 * @return zero when hello succeeds, otherwise an
@@ -133,14 +140,11 @@ namespace OLLMchat.Settings
 			bool force_register,
 			string requester
 		) {
+			if (pin.length != 12) {
+				return (int) OLLMrpc.RpcErrorCode.INVALID_REQUEST;
+			}
 			var dir = GLib.Path.build_filename(
 				GLib.Environment.get_user_data_dir(), "ollmchat", this.server_id);
-			if (force_register) {
-				var ca_path = GLib.Path.build_filename(dir, "ollmrpc-ca.pem");
-				if (GLib.FileUtils.test(ca_path, GLib.FileTest.EXISTS)) {
-					GLib.FileUtils.remove(ca_path);
-				}
-			}
 			var tls_files = new OLLMrpc.Transport.Cert() {
 				dir = dir,
 				cert_pem = "client.pem",
@@ -158,14 +162,27 @@ namespace OLLMchat.Settings
 					GLib.warning("%s", e.message);
 					return (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR;
 				}
+				var link = new OLLMrpc.Transport.TlsClient(host, port) {
+					accept_any = true
+				};
+				try {
+					link.open();
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					return (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR;
+				}
+				var mac = GLib.Hmac.compute_for_data(GLib.ChecksumType.SHA256,
+					pin.substring(0, 6).data, link.peer_certificate.certificate.data);
+				if ("%06u".printf((uint) (uint64.parse(mac.substring(0, 8), 16) % 1000000)) !=
+					pin.substring(6)) {
+					GLib.warning("desktop certificate does not match the pairing code");
+					return (int) OLLMrpc.RpcErrorCode.INVALID_REQUEST;
+				}
 				OLLMrpc.Response response;
 				try {
-					var link = new OLLMrpc.Transport.TlsClient(host, port) {
-						accept_any = true
-					};
 					response = link.call(new OLLMrpc.Request() {
 						method = "ClientCert.request_registration",
-						args = OLLMrpc.args("sss", pin, csr, requester)
+						args = OLLMrpc.args("sss", pin.substring(0, 6), csr, requester)
 					});
 				} catch (GLib.Error e) {
 					GLib.warning("%s", e.message);
@@ -220,7 +237,7 @@ namespace OLLMchat.Settings
 				tls_database = tls_files.trust
 			};
 			if (has_credentials) {
-				var pair_code = this.complete_pairing(authed, pin);
+				var pair_code = this.complete_pairing(authed, pin.substring(0, 6));
 				if (pair_code != 0) {
 					return pair_code;
 				}

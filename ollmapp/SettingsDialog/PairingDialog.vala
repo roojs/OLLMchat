@@ -22,8 +22,10 @@ namespace OLLMapp.SettingsDialog
 	 * One-minute window that shows a PIN while a device pairs.
 	 *
 	 * {@link open} draws a new six-digit PIN and a line that counts
-	 * down from sixty seconds. {@link result} toasts
-	 * ''number rejected'' or closes after one device pairs.
+	 * down from sixty seconds. The daemon's six check digits for its
+	 * server certificate follow the PIN, so the phone can refuse a
+	 * server that only took the desktop's address. {@link result}
+	 * toasts ''number rejected'' or closes after one device pairs.
 	 * The title bar closes the dialog. {@link pairing} is true
 	 * only while the dialog is open.
 	 *
@@ -48,7 +50,10 @@ namespace OLLMapp.SettingsDialog
 		private OLLMrpc.Transport.PairPublish publish;
 
 		/**
-		 * Six digits the phone must type. Empty until {@link open}.
+		 * Six-digit PIN sent to the daemon. Empty until {@link open}.
+		 *
+		 * The label shows it followed by the six check digits from
+		 * the ''ClientCert.pair'' reply. The phone types all twelve.
 		 */
 		public string pin { get; private set; default = ""; }
 
@@ -122,7 +127,7 @@ namespace OLLMapp.SettingsDialog
 			}
 			var n = GLib.Random.int_range(0, 1000000);
 			this.pin = "%06d".printf(n);
-			this.pin_label.label = this.pin;
+			this.pin_label.label = "";
 			this.remaining = 60;
 			this.line.fraction = 1;
 			this.pairing = true;
@@ -194,7 +199,9 @@ namespace OLLMapp.SettingsDialog
 		 * Send ''pin'' to {@link OLLMfilesd.ClientCert.pair}.
 		 *
 		 * Empty clears the window. A failed arm while a PIN is
-		 * showing toasts ''Could not start pairing''.
+		 * showing toasts ''Could not start pairing''. When the reply
+		 * is for the current {@link pin}, the label shows the PIN and
+		 * the check digits from that reply.
 		 *
 		 * @param pin six digits, or empty
 		 */
@@ -212,15 +219,21 @@ namespace OLLMapp.SettingsDialog
 				method = "ClientCert.pair",
 				args = OLLMrpc.args("s", pin)
 			}, (obj, res) => {
+				OLLMrpc.Response response;
 				try {
-					mgr.rpc.call.end(res);
+					response = mgr.rpc.call.end(res);
 				} catch (GLib.Error e) {
 					if (pin == "") {
 						return;
 					}
 					this.page.toast_overlay.add_toast(
 						new Adw.Toast("Could not start pairing"));
+					return;
 				}
+				if (pin != this.pin) {
+					return;
+				}
+				this.pin_label.label = pin + " " + response.retval.get_string();
 			});
 		}
 	}

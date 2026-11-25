@@ -49,6 +49,15 @@ namespace OLLMfilesd
 		 */
 		public string pin { get; set; default = ""; }
 
+		/**
+		 * Server certificate presented on every accepted connection.
+		 *
+		 * Set by {@link listen}. {@link ClientCert.pair} keys the
+		 * pairing check digits on its DER bytes, so the phone can
+		 * tell this server from one that only took its address.
+		 */
+		public GLib.TlsCertificate certificate { get; private set; }
+
 		public Gee.ArrayList<string> banned_ips {
 			get; set; default = new Gee.ArrayList<string>();
 		}
@@ -130,7 +139,7 @@ namespace OLLMfilesd
 				server_san = true,
 			};
 			cert.ensure();
-			var server_cert = cert.certificate;
+			this.certificate = cert.certificate;
 			var parsed = new GLib.InetSocketAddress.from_string(host, (uint16) port);
 			if (parsed == null) {
 				return false;
@@ -169,7 +178,7 @@ namespace OLLMfilesd
 				}
 				GLib.TlsServerConnection tls;
 				try {
-					tls = GLib.TlsServerConnection.@new(conn, server_cert);
+					tls = GLib.TlsServerConnection.@new(conn, this.certificate);
 				} catch (GLib.Error e) {
 					GLib.warning("ssl accept failed: %s", e.message);
 					return true;
