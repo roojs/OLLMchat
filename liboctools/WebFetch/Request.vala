@@ -48,10 +48,42 @@ namespace OLLMtools.WebFetch
 			return this.url;
 		}
 		
+		/**
+		 * Asks before every fetch, keyed by the URL origin.
+		 *
+		 * Hostnames use a READ permission that may be remembered per
+		 * origin; execute_request() then refuses a connection to a
+		 * loopback, link-local or private address. IP literals and
+		 * localhost skip that check, so they need a one-time EXECUTE
+		 * approval that is never remembered.
+		 *
+		 * @return false when the URL is not an http(s) URL with a host
+		 */
 		public override bool build_perm_question()
 		{
-			// Permission check removed - web fetch does not require user approval to fetch a URL
-			return false;
+			GLib.Uri uri;
+			try {
+				uri = GLib.Uri.parse(this.url, (GLib.UriFlags) Soup.HTTP_URI_FLAGS);
+			} catch (GLib.Error e) {
+				return false;
+			}
+			if ((uri.get_scheme() != "http" && uri.get_scheme() != "https") ||
+					uri.get_host() == null || uri.get_host() == "") {
+				return false;
+			}
+			this.permission_target_path = GLib.Uri.join(GLib.UriFlags.NONE,
+				uri.get_scheme(), null, uri.get_host(), uri.get_port(), "/", null, null);
+			if (uri.get_host().down() != "localhost" && new GLib.InetAddress.from_string(uri.get_host()) == null) {
+				this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
+				this.permission_question = "Fetch URL from " + this.permission_target_path + ": " + this.url + "?";
+				return true;
+			}
+			this.one_time_only = true;
+			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
+			this.permission_question = "Fetch URL from " + this.permission_target_path +
+				" (an IP address or localhost; this can reach services on this computer " +
+				"or your local network): " + this.url + "?";
+			return true;
 		}
 		
 		protected override async string execute_request() throws Error
@@ -61,11 +93,15 @@ namespace OLLMtools.WebFetch
 				throw new GLib.IOError.INVALID_ARGUMENT("URL parameter is required");
 			}
 			
-			// Validate that we can extract domain (URL must be valid)
-			if (this.extract_domain(this.url) == "") {
-				throw new GLib.IOError.INVALID_ARGUMENT(
-					"Invalid URL: unable to extract domain from '" + this.url + "'"
-				);
+			if (this.permission_target_path == "") {
+				throw new GLib.IOError.INVALID_ARGUMENT("Invalid URL: '" + this.url + "' is not an http or https URL with a host");
+			}
+			
+			// Fetch exactly the origin that build_perm_question() put to the user
+			var uri = GLib.Uri.parse(this.url, (GLib.UriFlags) Soup.HTTP_URI_FLAGS);
+			if (GLib.Uri.join(GLib.UriFlags.NONE, uri.get_scheme(), null, uri.get_host(),
+					uri.get_port(), "/", null, null) != this.permission_target_path) {
+				throw new GLib.IOError.PERMISSION_DENIED("URL changed after permission was granted: " + this.url);
 			}
 			
 			// Validate format
@@ -77,26 +113,65 @@ namespace OLLMtools.WebFetch
 			this.agent.add_message(new OLLMchat.Message("ui", 
 				OLLMchat.Message.fenced("text.oc-frame-info.collapsed request", this.to_summary ())));
 			
-			// Fetch URL with redirects disabled (redirects require approval)
+			// Redirects are not followed: a redirect target has not been approved,
+			// so it is reported below and the model must fetch it as a new request.
+			var refused = "";
+			var message = new Soup.Message.from_uri("GET", uri);
+			message.add_flags(Soup.MessageFlags.NO_REDIRECT);
+			message.request_headers.replace("User-Agent", USER_AGENT);
+			// Checked on the connected socket, before TLS or any request bytes,
+			// so a second DNS answer cannot swap in a different address.
+			message.network_event.connect((event, connection) => {
+				if (event != GLib.SocketClientEvent.CONNECTED ||
+						this.permission_operation == OLLMchat.ChatPermission.Operation.EXECUTE) {
+					return;
+				}
+				GLib.SocketAddress peer;
+				try {
+					peer = ((GLib.SocketConnection) connection).get_remote_address();
+				} catch (GLib.Error e) {
+					// Unknown peer is refused as the unspecified address
+					GLib.warning("Could not read the address of %s: %s", uri.get_host(), e.message);
+					peer = new GLib.InetSocketAddress(new GLib.InetAddress.any(GLib.SocketFamily.IPV4), 0);
+				}
+				// A proxy resolves the host itself; this address is the proxy's
+				if (peer is GLib.ProxyAddress) {
+					return;
+				}
+				var addr = ((GLib.InetSocketAddress) peer).address;
+				// IPv4-mapped (::ffff:a.b.c.d) and compatible forms reach the IPv4 host
+				if (addr.family == GLib.SocketFamily.IPV6 && addr.to_string().contains(".")) {
+					addr = new GLib.InetAddress.from_string(
+						addr.to_string().substring(addr.to_string().last_index_of(":") + 1));
+				}
+				unowned var b = addr.to_bytes();
+				if (!addr.is_any && !addr.is_loopback && !addr.is_link_local &&
+						!addr.is_site_local && !addr.is_multicast &&
+						(addr.family != GLib.SocketFamily.IPV4 ||
+							(b[0] != 0 && (b[0] != 100 || (b[1] & 0xc0) != 64))) &&
+						(addr.family != GLib.SocketFamily.IPV6 || (b[0] & 0xfe) != 0xfc)) {
+					return;
+				}
+				refused = "Refused to fetch " + this.url + ": " + uri.get_host() +
+					" is a loopback, link-local or private network address. " +
+					"Fetch the IP address or localhost directly so the user is asked.";
+				try {
+					connection.close();
+				} catch (GLib.Error e) {
+					GLib.warning("Could not close refused connection: %s", e.message);
+				}
+			});
 			Bytes content;
-			Soup.Message? message = null;
 			try {
-				// Note: libsoup 3.0 handles redirects automatically, but we check status codes
-				// and handle redirects manually below to require approval
-				message = new Soup.Message("GET", this.url);
-				message.request_headers.replace("User-Agent", USER_AGENT);
 				content = yield ((Tool) this.tool).soup.send_and_read_async(
 					message, GLib.Priority.DEFAULT, null);
 			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to fetch URL: " + e.message);
+				throw new GLib.IOError.FAILED("Failed to fetch URL: " + (refused != "" ? refused : e.message));
+			}
+			if (refused != "") {
+				throw new GLib.IOError.PERMISSION_DENIED(refused);
 			}
 			
-			// Ensure message is valid before accessing properties
-			if (message == null) {
-				throw new GLib.IOError.FAILED("Failed to create HTTP message");
-			}
-			
-			// Handle non-redirect cases (redirects are handled below)
 			// Check HTTP status for errors
 			if (message.status_code < 200 || message.status_code >= 400) {
 				throw new GLib.IOError.FAILED("HTTP error: " + message.status_code.to_string());
@@ -176,53 +251,6 @@ namespace OLLMtools.WebFetch
 				"Redirect detected: " + this.url + " redirects to " + redirect_url + 
 				". Please fetch the redirected URL directly if you want to access it."
 			);
-		}
-		
-		/**
-		 * Core HTTP fetching logic (GET only).
-		 * 
-		 * @param url The URL to fetch
-		 * @return The response body as Bytes
-		 */
-		protected async Bytes fetch_url(string url) throws Error
-		{
-			var message = new Soup.Message("GET", url);
-			message.request_headers.replace("User-Agent", USER_AGENT);
-			var bytes = yield ((Tool) this.tool).soup.send_and_read_async(
-				message, GLib.Priority.DEFAULT, null);
-			
-			if (message.status_code < 200 || message.status_code >= 300) {
-				throw new GLib.IOError.FAILED("HTTP error: " + message.status_code.to_string());
-			}
-			
-			return bytes;
-		}
-		
-		/**
-		 * Extract domain from URL and normalize to [[https://domain/]] format.
-		 *
-		 * @param url The URL to extract domain from
-		 * @return Normalized domain string (e.g., "[[https://example.com/]]") or empty string on error
-		 */
-		protected string extract_domain(string url)
-		{
-			try {
-				var uri = GLib.Uri.parse(url, GLib.UriFlags.NONE);
-				if (uri == null) {
-					return "";
-				}
-				
-				var host = uri.get_host();
-				
-				if (host == null || host == "") {
-					return "";
-				}
-				
-				// Normalize to https://{domain}/ format (even if original was http)
-				return "https://" + host + "/";
-			} catch (GLib.Error e) {
-				return "";
-			}
 		}
 		
 		/**

@@ -352,7 +352,7 @@ namespace Soup {
 		public signal void got_headers ();
 		public signal void got_informational ();
 		public signal void hsts_enforced ();
-		public signal void network_event (GLib.SocketClientEvent event, GLib.IOStream connection);
+		public signal void network_event (GLib.SocketClientEvent event, GLib.IOStream? connection);
 		public signal bool request_certificate (GLib.TlsClientConnection tls_connection);
 		public signal bool request_certificate_password (GLib.TlsPassword tls_password);
 		public signal void restarted ();
