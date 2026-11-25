@@ -695,3 +695,52 @@ test('check-back-token-test',
   ],
   depends: [oc_test_loop_exe],
   suite: 'libollmchat')
+
+# web_fetch must not retrieve loopback, private, or redirect-to-loopback URLs
+# without permission. The binary exits 1 while that bug is present.
+web_fetch_ssrf_rpath = ':'.join([
+  meson.current_build_dir() / '..' / 'libocrpc',
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocfiles',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollamaweb',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libochf',
+  meson.current_build_dir() / '..' / 'libocbwrap',
+  meson.current_build_dir() / '..' / 'liboctools',
+])
+test_web_fetch_ssrf = executable('test-web-fetch-ssrf',
+  'web-fetch-ssrf-test.vala',
+  dependencies: [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+    ocsqlite_vapi_dep,
+    ocmarkdown_vapi_dep,
+    octools_vapi_dep,
+  ],
+  link_with: [ollmchat_base_lib],
+  include_directories: [include_directories('../libollmchat')],
+  build_rpath: web_fetch_ssrf_rpath,
+  vala_args: [
+    '--pkg=posix',
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=ocmarkdown',
+    '--pkg=octools',
+    '--pkg=libsoup-3.0',
+    '--pkg=json-glib-1.0',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_source_dir() / '../vapi',
+  ],
+)
+test('test-web-fetch-ssrf',
+  test_web_fetch_ssrf,
+  suite: 'ssrf',
+  timeout: 120,
+)
