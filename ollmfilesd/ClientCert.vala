@@ -146,7 +146,9 @@ namespace OLLMfilesd
 		 * The reply ''retval'' is a string array. Index 0 is the new
 		 * client certificate PEM. Index 1 is the CA certificate PEM.
 		 * Each later entry is a ''host:port'' for the listen choice.
-		 * A wrong PIN leaves the window up and writes no row.
+		 * A wrong PIN writes no row. The fifth wrong PIN in a window
+		 * locks it: every later PIN, right or wrong, is refused until
+		 * the desktop arms a new one.
 		 *
 		 * @param request inbound RPC on the TLS bin socket
 		 * @param pin six digits from the desktop dialog
@@ -173,13 +175,18 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			if (pin != listen.pin) {
+			if (listen.pin == "" || listen.failures >= 5) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error.INVALID_REQUEST("pairing closed")
+				});
+				return;
+			}
+			/* Digests stop compare time tracking matching digits. */
+			if (GLib.Checksum.compute_for_string(GLib.ChecksumType.SHA256, pin) !=
+				GLib.Checksum.compute_for_string(GLib.ChecksumType.SHA256, listen.pin)) {
+				listen.failures++;
 				request.reply(new OLLMrpc.Response() {
 					error = new OLLMrpc.Error.INVALID_REQUEST("number rejected")
-				});
-				this.app.broadcast(new OLLMrpc.Notification() {
-					method = "event.pair",
-					action = "rejected"
 				});
 				return;
 			}
@@ -315,7 +322,10 @@ namespace OLLMfilesd
 		 * Set {@link OLLMfilesd.SslListen.pin} from the desktop dialog.
 		 *
 		 * Empty ''pin'' means the handshake requires a client
-		 * certificate. Unix socket only.
+		 * certificate. Arming from the Unix socket resets
+		 * {@link OLLMfilesd.SslListen.failures}. An approved TLS client
+		 * sending the PIN closes the window. A wrong PIN counts toward
+		 * the same limit as {@link request_registration}.
 		 *
 		 * @param request inbound RPC from the GTK app
 		 * @param pin six digits, or empty to close the window
@@ -331,18 +341,23 @@ namespace OLLMfilesd
 			}
 			if (!(request.connection is SslConnection)) {
 				listen.pin = pin;
+				listen.failures = 0;
 				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
 				});
 				return;
 			}
-			if (pin != listen.pin) {
+			if (listen.pin == "" || listen.failures >= 5) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error.INVALID_REQUEST("pairing closed")
+				});
+				return;
+			}
+			if (GLib.Checksum.compute_for_string(GLib.ChecksumType.SHA256, pin) !=
+				GLib.Checksum.compute_for_string(GLib.ChecksumType.SHA256, listen.pin)) {
+				listen.failures++;
 				request.reply(new OLLMrpc.Response() {
 					error = new OLLMrpc.Error.INVALID_REQUEST("number rejected")
-				});
-				this.app.broadcast(new OLLMrpc.Notification() {
-					method = "event.pair",
-					action = "rejected"
 				});
 				return;
 			}

@@ -46,8 +46,18 @@ namespace OLLMfilesd
 		 * Empty when the window is closed. The handshake then
 		 * requires a client certificate. While this is set, a
 		 * phone with no certificate can connect and send the PIN.
+		 * After five wrong PINs ({@link failures}) it never matches.
 		 */
 		public string pin { get; set; default = ""; }
+
+		/**
+		 * Wrong PINs sent since the window was last armed or closed.
+		 *
+		 * Counted across every TLS connection. At five, every PIN is
+		 * refused until {@link ClientCert.pair} on the Unix socket
+		 * arms or closes the window, which resets it.
+		 */
+		public int failures = 0;
 
 		public Gee.ArrayList<string> banned_ips {
 			get; set; default = new Gee.ArrayList<string>();

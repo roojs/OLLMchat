@@ -22,9 +22,8 @@ namespace OLLMapp.SettingsDialog
 	 * One-minute window that shows a PIN while a device pairs.
 	 *
 	 * {@link open} draws a new six-digit PIN and a line that counts
-	 * down from sixty seconds. {@link result} toasts
-	 * ''number rejected'' or closes after one device pairs.
-	 * The title bar closes the dialog. {@link pairing} is true
+	 * down from sixty seconds. {@link result} closes after one device
+	 * pairs. The title bar closes the dialog. {@link pairing} is true
 	 * only while the dialog is open.
 	 *
 	 * == Example ==
@@ -32,7 +31,7 @@ namespace OLLMapp.SettingsDialog
 	 * {{{
 	 * var pair = new OLLMapp.SettingsDialog.PairingDialog(page);
 	 * pair.open();
-	 * pair.result("rejected");
+	 * pair.result("done");
 	 * }}}
 	 */
 	public class PairingDialog : Adw.Dialog
@@ -163,18 +162,15 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Apply one ''event.pair'' result.
 		 *
-		 * ''rejected'' toasts ''number rejected'' and leaves the PIN
-		 * up. ''done'' clears the daemon PIN, withdraws mDNS, and
-		 * closes.
+		 * ''done'' clears the daemon PIN, withdraws mDNS, and closes.
+		 * The daemon does not report wrong PINs; the phone gets that
+		 * error directly.
 		 *
-		 * @param action ''rejected'' or ''done''
+		 * @param action ''done''
 		 */
 		public void result(string action)
 		{
 			switch (action) {
-				case "rejected":
-					this.page.toast_overlay.add_toast(new Adw.Toast("number rejected"));
-					return;
 				case "done":
 					this.arm("");
 					this.publish.stop();
