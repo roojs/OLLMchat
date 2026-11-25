@@ -393,6 +393,9 @@ namespace OLLMrpc.Bin
 					var children = new GLib.Variant[count];
 					for (var i = 0; i < count; i++) {
 						var blob_len = ctx.in_stream.read_uint32();
+						if (blob_len > 16 * 1024 * 1024) {
+							throw new StreamError.PROTOCOL("blob length %u over 16 MiB", blob_len);
+						}
 						var blob_buf = new uint8[blob_len];
 						if (blob_len > 0) {
 							size_t blob_read;
@@ -404,6 +407,9 @@ namespace OLLMrpc.Bin
 					return new GLib.Variant.array(new GLib.VariantType("ay"), children);
 				}
 				var blob_len = ctx.in_stream.read_uint32();
+				if (blob_len > 16 * 1024 * 1024) {
+					throw new StreamError.PROTOCOL("blob length %u over 16 MiB", blob_len);
+				}
 				var blob_buf = new uint8[blob_len];
 				if (blob_len > 0) {
 					size_t blob_read;
@@ -604,6 +610,9 @@ namespace OLLMrpc.Bin
 						var boxed_val = GLib.Value(wire_gtype);
 						if (blob_len == 0) {
 							return boxed_val;
+						}
+						if (blob_len > 16 * 1024 * 1024) {
+							throw new StreamError.PROTOCOL("blob length %u over 16 MiB", blob_len);
 						}
 						var blob_buf = new uint8[blob_len + 1];
 						size_t boxed_read;
