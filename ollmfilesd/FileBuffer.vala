@@ -395,11 +395,13 @@ namespace OLLMfilesd
 		 * to sync it to the file. Unlike write(), this does not update the buffer contents.
 		 * 
 		 * @param contents file bytes, length included, zeros kept
+		 * @param fd descriptor from {@link ProjectManager.open_in_project},
+		 *    or -1 to write by path
 		 * @throws Error if file cannot be written
 		 */
-		public async void write_real(uint8[] contents) throws Error
+		public async void write_real(uint8[] contents, int fd = -1) throws Error
 		{
-			yield this.write_to_disk(contents);
+			yield this.write_to_disk(contents, fd);
 			if (this.file.id == -1) {
 				return;
 			}
@@ -410,10 +412,23 @@ namespace OLLMfilesd
 		 * Internal method: Write contents to file on disk.
 		 * 
 		 * @param contents file bytes, length included, zeros kept
+		 * @param fd open descriptor to truncate and write (left open),
+		 *    or -1 to replace the file at its path
 		 * @throws Error if file cannot be written
 		 */
-		protected async void write_to_disk(uint8[] contents) throws Error
+		protected async void write_to_disk(uint8[] contents, int fd = -1) throws Error
 		{
+#if !G_OS_WIN32
+			if (fd >= 0) {
+				if (Posix.ftruncate(fd, 0) != 0) {
+					throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
+				}
+				size_t written;
+				yield new GLib.UnixOutputStream(fd, false).write_all_async(
+					contents, GLib.Priority.DEFAULT, null, out written);
+				return;
+			}
+#endif
 			var dirname = GLib.Path.get_dirname(this.file.path);
 			var dir_file = GLib.File.new_for_path(dirname);
 			if (!GLib.FileUtils.test(dir_file.get_path(), GLib.FileTest.EXISTS)) {

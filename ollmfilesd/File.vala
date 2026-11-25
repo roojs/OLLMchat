@@ -68,14 +68,29 @@ namespace OLLMfilesd
 
 		public void read(OLLMrpc.Request request, string path)
 		{
-			uint8[] data;
+			var data = new uint8[0];
 			string etag;
 			try {
-				GLib.File.new_for_path(path).load_contents(
-					null,
-					out data,
-					out etag
-				);
+				var fd = this.manager.open_in_project(path, false);
+#if !G_OS_WIN32
+				if (fd >= 0) {
+					var contents = new GLib.MemoryOutputStream.resizable();
+					contents.splice(new GLib.UnixInputStream(fd, true),
+						GLib.OutputStreamSpliceFlags.CLOSE_SOURCE);
+					// load_contents() NUL-terminates; the reply below relies on it.
+					contents.write({0});
+					contents.close();
+					data = contents.steal_data();
+					data.length = (int) contents.get_data_size() - 1;
+				}
+#endif
+				if (fd < 0) {
+					GLib.File.new_for_path(path).load_contents(
+						null,
+						out data,
+						out etag
+					);
+				}
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -397,7 +412,14 @@ namespace OLLMfilesd
 			var unix_mode_val = GLib.Value(typeof(uint));
 			request.args.get(4).transform(ref unix_mode_val);
 			var unix_mode = unix_mode_val.get_uint();
+			var in_parent = base_type == "fa" ||
+				(base_type == "d" && !GLib.FileUtils.test(path, GLib.FileTest.EXISTS));
+			var fd = -1;
 			try {
+				// New folders and symlinks are made in their parent; files are
+				// written through this descriptor, never by path.
+				fd = this.manager.open_in_project(in_parent ? GLib.Path.get_dirname(path) : path,
+					base_type != "d" && base_type != "fa");
 				switch (base_type) {
 					case "d": {
 						var folder = this.manager.get_folder_at_path(path);
@@ -463,7 +485,7 @@ namespace OLLMfilesd
 							yield file_history.commit();
 							file.saveToDB(this.manager.db, null, false);
 						}
-						yield file.realize(content.data, unix_mode);
+						yield file.realize(content.data, unix_mode, fd);
 						if (change_type == "modified") {
 							this.manager.notification(new OLLMrpc.Notification() {
 								method = "event.project.invalidate_cache",
@@ -480,6 +502,10 @@ namespace OLLMfilesd
 					error = new OLLMrpc.Error.INTERNAL_ERROR(e.message)
 				});
 				return;
+			} finally {
+				if (fd >= 0) {
+					Posix.close(fd);
+				}
 			}
 			request.reply(new OLLMrpc.Response() { msg = "ok" });
 		}
@@ -810,16 +836,26 @@ namespace OLLMfilesd
 		 *
 		 * @param content file bytes, length included, zeros kept
 		 * @param unix_mode optional rwx bits (''0'' skips chmod)
+		 * @param fd descriptor from {@link ProjectManager.open_in_project};
+		 *    when set, bytes and mode go to it instead of the path
 		 */
-		public async void realize(uint8[] content, uint unix_mode) throws Error
+		public async void realize(uint8[] content, uint unix_mode, int fd = -1) throws Error
 		{
 			if (this.buffer == null) {
 				this.manager.buffer_provider.create_buffer(this);
 			}
-			yield this.buffer.write_real(content);
+			yield this.buffer.write_real(content, fd);
 			if (unix_mode == 0) {
 				return;
 			}
+#if !G_OS_WIN32
+			if (fd >= 0) {
+				if (Posix.fchmod(fd, (Posix.mode_t) (unix_mode & 0777)) != 0) {
+					throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
+				}
+				return;
+			}
+#endif
 			if (Posix.chmod(this.path, (Posix.mode_t) (unix_mode & 0777)) != 0) {
 				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
 			}

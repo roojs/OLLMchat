@@ -567,6 +567,105 @@ namespace OLLMfilesd
 			return (project_file == null) ? null : project_file.file;
 			
 		}
+
+		/**
+		 * Open a file under a project root without following symlinks.
+		 *
+		 * A path that no project root claims returns -1 and the caller
+		 * uses it as given; clients ask the user before they send a path
+		 * outside the project. A claimed path is resolved once with
+		 * realpath(), must stay inside the innermost claiming root, and is
+		 * then opened one component at a time from that root with
+		 * O_NOFOLLOW, so a symlink swapped in after the check fails the
+		 * open instead of being followed. Read or write through the
+		 * returned descriptor, not the path.
+		 *
+		 * Windows has neither realpath() nor openat(): a claimed path that
+		 * passes through any symlink is refused, and -1 is returned.
+		 *
+		 * @param path absolute path sent by the RPC caller
+		 * @param create true to create missing folders and open for writing
+		 * @return descriptor the caller closes, or -1 when unclaimed
+		 * @throws GLib.IOError.PERMISSION_DENIED for dot segments or a path
+		 *    resolving outside its project
+		 */
+		public int open_in_project(string path, bool create) throws GLib.Error
+		{
+			if (!GLib.Path.is_absolute(path) ||
+				GLib.Regex.match_simple("(^|[/\\\\])\\.\\.?([/\\\\]|$)", path)) {
+				throw new GLib.IOError.PERMISSION_DENIED("Path must be absolute with no . or .. segments: %s",
+					path);
+			}
+#if G_OS_WIN32
+			// No realpath() or openat() here: refuse any symlink below a
+			// claiming root and let the caller act on the path.
+			foreach (var project_path in this.projects.path_map.keys) {
+				if (!path.has_prefix(project_path + "/") && !path.has_prefix(project_path + "\\")) {
+					continue;
+				}
+				for (var walk = path; walk.length > project_path.length; walk = GLib.Path.get_dirname(walk)) {
+					if (GLib.FileUtils.test(walk, GLib.FileTest.IS_SYMLINK)) {
+						throw new GLib.IOError.PERMISSION_DENIED("Path goes through a symlink: %s", path);
+					}
+				}
+			}
+			return -1;
+#else
+			var root = "";
+			foreach (var project_path in this.projects.path_map.keys) {
+				var real_root = Posix.realpath(project_path);
+				if (real_root == null || real_root.length <= root.length) {
+					continue;
+				}
+				if (path == project_path || path.has_prefix(project_path + "/") ||
+					path == real_root || path.has_prefix(real_root + "/")) {
+					root = real_root;
+				}
+			}
+			if (root == "") {
+				return -1;
+			}
+			var existing = path;
+			var tail = "";
+			var real = Posix.realpath(existing);
+			while (real == null) {
+				if (GLib.FileUtils.test(existing, GLib.FileTest.IS_SYMLINK)) {
+					throw new GLib.IOError.PERMISSION_DENIED("Path goes through a dangling symlink: %s",
+						path);
+				}
+				tail = "/" + GLib.Path.get_basename(existing) + tail;
+				existing = GLib.Path.get_dirname(existing);
+				real = Posix.realpath(existing);
+			}
+			real += tail;
+			if (real != root && !real.has_prefix(root + "/")) {
+				throw new GLib.IOError.PERMISSION_DENIED("Path resolves outside the project: %s", path);
+			}
+			var parts = (real == root ? "." : real.substring(root.length + 1)).split("/");
+			var dir = Posix.open(root, Posix.O_RDONLY | Posix.O_DIRECTORY | Posix.O_CLOEXEC);
+			for (var i = 0; dir >= 0 && i < parts.length - 1; i++) {
+				if (create) {
+					Posix.mkdirat(dir, parts[i], 0777);
+				}
+				var next = Posix.openat(dir, parts[i],
+					Posix.O_RDONLY | Posix.O_DIRECTORY | Posix.O_NOFOLLOW | Posix.O_CLOEXEC);
+				Posix.close(dir);
+				dir = next;
+			}
+			var fd = dir < 0 ? -1 : Posix.openat(dir, parts[parts.length - 1],
+				(create ? Posix.O_WRONLY | Posix.O_CREAT : Posix.O_RDONLY) |
+					Posix.O_NOFOLLOW | Posix.O_CLOEXEC,
+				0666);
+			var err = Posix.errno;
+			if (dir >= 0) {
+				Posix.close(dir);
+			}
+			if (fd < 0) {
+				throw new GLib.IOError.FAILED("Cannot open %s: %s", path, GLib.strerror(err));
+			}
+			return fd;
+#endif
+		}
 		
 		/**
 		 * Get or create a Tree instance for the given file.

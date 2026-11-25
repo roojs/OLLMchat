@@ -399,8 +399,9 @@ namespace OLLMfiles
 		 * ''1'' = base64 otherwise. Populates {@link buffer} from decoded
 		 * ''msg'' — **🚫** no local disk read on thin client.
 		 *
-		 * Whether the path may be read (project vs permission-granted) is a
-		 * tool/client decision; the daemon reads ''params.path'' on disk.
+		 * Whether a path outside the project may be read is a tool/client
+		 * decision. The daemon refuses paths with ''.'' / ''..'' segments
+		 * and paths under a project root that resolve outside that root.
 		 *
 		 * @throws GLib.Error if the RPC fails
 		 */
