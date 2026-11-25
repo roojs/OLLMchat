@@ -76,9 +76,6 @@ namespace OLLMrpc.Bin
 				if (prop.name == "g-type-instance" || prop.name == "ref-count") {
 					continue;
 				}
-				if ((prop.flags & GLib.ParamFlags.WRITABLE) == 0) {
-					continue;
-				}
 				this.bin_write_prop(ctx, prop);
 			}
 			ctx.out_stream.put_uint16(Stream.TOKEN_END);
@@ -106,6 +103,11 @@ namespace OLLMrpc.Bin
 			GLib.ParamSpec prop
 		) throws GLib.Error
 		{
+			if ((prop.flags & GLib.ParamFlags.WRITABLE) == 0) {
+				/* Omit in bin_write_prop instead of calling bin_default_write_prop. */
+				GLib.warning("read-only bin property '%s' on %s", prop.name, this.get_type().name());
+				return;
+			}
 			var val = GLib.Value(prop.value_type);
 			this.get_property(prop.name, ref val);
 			var tag = prop.name;
@@ -321,6 +323,8 @@ namespace OLLMrpc.Bin
 		) throws GLib.Error
 		{
 			if ((prop.flags & GLib.ParamFlags.WRITABLE) == 0) {
+				/* Sender should omit this in bin_write_prop; hide inbound in bin_read_prop. */
+				GLib.warning("read-only bin property '%s' on %s", prop.name, this.get_type().name());
 				StreamValue.read(ctx, type_byte);
 				return;
 			}

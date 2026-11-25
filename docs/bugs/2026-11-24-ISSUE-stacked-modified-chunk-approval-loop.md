@@ -39,14 +39,25 @@ None. — Target approved: last visible Accept → full approve in DB; tab + bar
 
 ## Run demo (phase 1)
 
+**Headless (CI):**
+
 ```bash
 ninja -C build tests/test-stacked-review-scenario
 ./tests/run-stacked-review-demo.sh
 ```
 
-- Prints: open file → Accept 3 hunks → checks from **Desired behavior**.
-- **Today:** fails on `file still on needs-review list` and/or `second diff wave` (stub mimics stacked server).
-- Tab + bar stay-open: `meson test test-stacked-review-widget`.
+- Auto Accept 3 hunks; asserts queue clear, no second wave.
+- Tab + bar: `meson test test-stacked-review-widget`.
+
+**Visual sign-off (Tier C):**
+
+```bash
+ninja -C build tests/test-stacked-review-scenario
+./tests/run-stacked-review-visual-demo.sh
+```
+
+- Same stub as headless demo; opens a window — **you** click Accept on each hunk, confirm **Changes accepted** / empty queue, close window.
+- Needs `DISPLAY`. Real `ollmfilesd` + gtktest1 optional after rebuild daemon for live DB stack.
 
 ## Current behavior
 

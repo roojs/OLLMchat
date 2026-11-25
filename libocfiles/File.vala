@@ -788,6 +788,7 @@ namespace OLLMfiles
 		{
 			switch (prop.name) {
 				case "buffer":
+				case "is-open":
 				case "display-with-path":
 				case "display-basename":
 				case "display-size":
@@ -807,10 +808,12 @@ namespace OLLMfiles
 		{
 			switch (prop.name) {
 				case "buffer":
+				case "is-open":
 				case "display-with-path":
 				case "display-basename":
 				case "display-size":
 				case "display-modified":
+					OLLMrpc.Bin.StreamValue.read(ctx, type_byte);
 					return;
 				default:
 					base.bin_read_prop(ctx, prop, type_byte);
