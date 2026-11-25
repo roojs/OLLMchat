@@ -69,7 +69,8 @@ namespace OLLMtools.ReadFile
 			// If path is still relative, try to prepend project path
 			var project_manager = ((Tool) this.tool).project_manager;
 			if (project_manager != null && project_manager.active_project != null) {
-				path = GLib.Path.build_filename(project_manager.active_project.path, path);
+				path = GLib.Filename.canonicalize(
+					GLib.Path.build_filename(project_manager.active_project.path, path));
 			}
 			
 			return path;

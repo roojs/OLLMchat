@@ -179,9 +179,7 @@ public class ValidateLink : GLib.Object
 			resolved_path;
 		var under_project = GLib.File.new_for_path (resolved_path);
 		var project_root = GLib.File.new_for_path (project.path);
-		if (link.is_relative &&
-				!under_project.has_prefix (project_root) &&
-				!under_project.equal (project_root)) {
+		if (!under_project.has_prefix (project_root) && !under_project.equal (project_root)) {
 			this.issues += "\n" + "Invalid reference target \"" + link.href +
 				"\": path is outside project folder.";
 			return;

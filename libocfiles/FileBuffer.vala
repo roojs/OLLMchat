@@ -389,35 +389,19 @@ namespace OLLMfiles
 		);
 		
 		/**
-		 * Write contents to file on disk (sync buffer to file).
+		 * Write contents to file (sync buffer to file).
 		 *
-		 * Writes to disk only. Unlike write(), this does not update the buffer contents.
-		 * Client persistence (db, scan) is via {@link File.rpc_write} RPC on the daemon.
+		 * Sends the contents with {@link File.rpc_write}; the client does
+		 * not write local disk, so the daemon's project path checks apply
+		 * to every write. Unlike write(), this does not update the buffer
+		 * contents.
 		 *
 		 * @param contents Contents to write
 		 * @throws Error if file cannot be written
 		 */
 		public async void write_real(string contents) throws Error
 		{
-			var dirname = GLib.Path.get_dirname(this.file.path);
-			var dir_file = GLib.File.new_for_path(dirname);
-			if (!GLib.FileUtils.test(dir_file.get_path(), GLib.FileTest.EXISTS)) {
-				dir_file.make_directory_with_parents(null);
-			}
-
-			var file_obj = GLib.File.new_for_path(this.file.path);
-			var output_stream = yield file_obj.replace_async(
-				null,
-				false,
-				GLib.FileCreateFlags.NONE,
-				GLib.Priority.DEFAULT,
-				null
-			);
-
-			uint8[] data = contents.data;
-			size_t bytes_written;
-			yield output_stream.write_all_async(data, GLib.Priority.DEFAULT, null, out bytes_written);
-			yield output_stream.close_async(GLib.Priority.DEFAULT, null);
+			yield this.file.rpc_write(contents);
 		}
 	}
 }

@@ -163,7 +163,8 @@ Edit mode is on for this path. In this same assistant message only:
 				// If path is relative, normalize it using the project path directly
 				// This ensures project files get auto-approved
 				if (!GLib.Path.is_absolute(in_path)) {
-					return GLib.Path.build_filename(project_manager.active_project.path, in_path);
+					return GLib.Filename.canonicalize(
+						GLib.Path.build_filename(project_manager.active_project.path, in_path));
 				}
 			}
 			
@@ -187,15 +188,6 @@ Edit mode is on for this path. In this same assistant message only:
 			this.permission_question = "Write to file '" + this.normalized_path + "'?";
 			
 			var project_manager = ((Tool) this.tool).project_manager;
-			
-			// Check if file is in active project (skip permission prompt if so)
-			if (project_manager.file_cache.has_key(this.normalized_path)) {
-				// File is in active project - skip permission prompt
-				// Clear permission question to indicate auto-approved
-				this.permission_question = "";
-				// Return false to skip permission check (auto-approved for project files)
-				return false;
-			}
 			
 			// Check if file path is within project folder (even if file doesn't exist yet)
 			// This allows new files inside the project folder to be created without permission checks
@@ -225,8 +217,8 @@ Edit mode is on for this path. In this same assistant message only:
 			var norm = this.normalize_file_path (this.file_path);
 			var project_manager = ((Tool) this.tool).project_manager;
 			var in_index = project_manager.file_cache.has_key(norm);
-			var is_in_project = in_index;
-			if (!is_in_project && project_manager.active_project != null) {
+			var is_in_project = false;
+			if (project_manager.active_project != null) {
 				var dir_path = GLib.Path.get_dirname(norm);
 				if (dir_path == project_manager.active_project.path
 					|| dir_path.has_prefix(project_manager.active_project.path + "/")) {

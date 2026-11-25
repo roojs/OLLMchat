@@ -179,8 +179,8 @@ public class ResolveLink : GLib.Object
 	}
 
 	/**
-	 * Resolve path, create the buffer if needed, and read_async so [[resolve]] / [[file]]
-	 * can read full file or line ranges from the buffer.
+	 * Resolve path and load the buffer from the file daemon so
+	 * [[resolve]] / [[file]] can read full file or line ranges from it.
 	 */
 	public async void preload_file(Markdown.Document.Format link)
 	{
@@ -195,9 +195,8 @@ public class ResolveLink : GLib.Object
 		if (found == null) {
 			found = new OLLMfiles.File.new_fake(this.project_manager, resolved_path);
 		}
-		this.project_manager.buffer_provider.create_buffer(found);
 		try {
-			yield found.buffer.read_async();
+			yield found.read();
 		} catch (GLib.Error e) {
 			GLib.debug("%s: %s", found.path, e.message);
 		}

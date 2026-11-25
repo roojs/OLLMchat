@@ -528,6 +528,9 @@ namespace OLLMtools.EditMode
 			
 			if (this.request.edit_mode == "complete_file") {
 				yield valid_changes.get(0).apply_change(true);
+				if (valid_changes.get(0).result != "applied") {
+					return;
+				}
 			} else {
 				// Apply in reverse order for line-based changes
 				// apply_change() updates result and completed
@@ -659,7 +662,11 @@ namespace OLLMtools.EditMode
 			this.file.last_change_type = change_type;
 			
 			try {
-				yield this.file.rpc_write();
+				// apply_change() already wrote complete_file; a second write
+				// would record a second history entry for the same change.
+				if (this.request.edit_mode != "complete_file") {
+					yield this.file.rpc_write();
+				}
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED (
 					"Failed to write file via RPC: "

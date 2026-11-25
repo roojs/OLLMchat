@@ -43,7 +43,8 @@ namespace OLLMtools.WriteFile
 			var project_manager = ((Tool) this.tool).project_manager;
 			if (project_manager != null && project_manager.active_project != null) {
 				if (!GLib.Path.is_absolute(in_path)) {
-					return GLib.Path.build_filename(project_manager.active_project.path, in_path);
+					return GLib.Filename.canonicalize(
+						GLib.Path.build_filename(project_manager.active_project.path, in_path));
 				}
 			}
 			return base.normalize_file_path(in_path);
@@ -82,11 +83,6 @@ namespace OLLMtools.WriteFile
 			this.permission_operation = OLLMchat.ChatPermission.Operation.WRITE;
 			this.permission_question = "Write to file '" + this.normalized_path + "'?";
 			var project_manager = ((Tool) this.tool).project_manager;
-			// Check if file is already in the project index (skip permission prompt if so)
-			if (project_manager.file_cache.has_key(this.normalized_path)) {
-				this.permission_question = "";
-				return false;
-			}
 			// Check if file path is within project folder (even if file doesn't exist yet)
 			if (project_manager.active_project != null) {
 				var project_path = project_manager.active_project.path;
@@ -396,7 +392,9 @@ namespace OLLMtools.WriteFile
 			// For added files: write to disk first, then register (index)
 			this.file.is_need_approval = true;
 			this.file.last_change_type = change_type;
-			if (!(yield this.file.rpc_write())) {
+			// apply_change() already wrote complete_file; a second write
+			// would record a second history entry for the same change.
+			if (!this.complete_file && !(yield this.file.rpc_write())) {
 				throw new GLib.IOError.FAILED(
 					"Failed to write file via RPC: " + this.normalized_path);
 			}

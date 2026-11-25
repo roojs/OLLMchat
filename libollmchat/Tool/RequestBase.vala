@@ -155,6 +155,9 @@ namespace OLLMchat.Tool
 		/**
 		 * Normalizes a file path using the permission provider's normalization logic.
 		 *
+		 * Absolute results have ''.'' and ''..'' segments removed, so a
+		 * project-prefix check sees the folder the path really names.
+		 *
 		 * @param path The path to normalize
 		 * @return The normalized path
 		 */
@@ -169,10 +172,9 @@ namespace OLLMchat.Tool
 			if (!GLib.Path.is_absolute(path) && permission_provider.relative_path != "") {
 				path = GLib.Path.build_filename(permission_provider.relative_path, path);
 			}
-			// if it's still absolute - return it we might have to fail at this point..
-			// llm should send valid paths, we should not try and solve it.
-			 
-			return path;
+			// Lexical only: symlinks live on the file daemon's host, which
+			// refuses project paths that resolve outside the project.
+			return GLib.Path.is_absolute(path) ? GLib.Filename.canonicalize(path) : path;
 		}
 		
 		/**
