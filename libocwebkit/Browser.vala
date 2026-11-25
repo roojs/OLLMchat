@@ -249,8 +249,29 @@ public class OLLMwebkit.Browser : Gtk.Box
 		this.pending_load_uri = "";
 #if LINUX
 		this.web_view.decide_policy.connect((decision, type) => {
-			if (type != PolicyDecisionType.RESPONSE) {
-				return false;
+			switch (type) {
+				case PolicyDecisionType.NAVIGATION_ACTION:
+				case PolicyDecisionType.NEW_WINDOW_ACTION:
+					// Keep pages and redirects off local files.
+					var nav_uri = ((NavigationPolicyDecision) decision).navigation_action.get_request().uri;
+					switch (GLib.Uri.peek_scheme(nav_uri)) {
+						case "http":
+						case "https":
+						case "about":
+						case "data":
+						case "blob":
+							return false;
+
+						default:
+							decision.ignore();
+							return true;
+					}
+
+				case PolicyDecisionType.RESPONSE:
+					break;
+
+				default:
+					return false;
 			}
 			var response_decision = decision as ResponsePolicyDecision;
 			if (response_decision == null) {
@@ -271,14 +292,24 @@ public class OLLMwebkit.Browser : Gtk.Box
 	 *
 	 * Ends with an extra 2000 ms quiet delay for tool dump stability.
 	 *
-	 * @param uri page URL
+	 * @param uri page URL; only http and https are loaded
 	 * @param timeout_seconds max wait before timed out
-	 * @throws GLib.Error on unreachable host, cancel, timeout, or load failure
+	 * @throws GLib.Error on a non-http(s) URL, unreachable host, cancel,
+	 *   timeout, or load failure
 	 */
 	public async void load(string uri, uint timeout_seconds = 120) throws GLib.Error
 	{
-		var load_uri = this.normalize_uri(uri);
-		GLib.Uri.parse(load_uri, GLib.UriFlags.NONE);
+		var parsed = GLib.Uri.parse(this.normalize_uri(uri), GLib.UriFlags.ENCODED);
+		switch (parsed.get_scheme()) {
+			case "http":
+			case "https":
+				break;
+
+			default:
+				throw new GLib.IOError.PERMISSION_DENIED("Only http and https URLs can be loaded");
+		}
+		// Load the checked URI's own string, not the raw argument.
+		var load_uri = parsed.to_string();
 		yield this.apply_site_cookies(load_uri);
 		if (this.load_wait_active
 				&& load_uri != this.normalize_uri(this.pending_load_uri)) {
@@ -926,14 +957,24 @@ public class OLLMwebkit.Browser : Gtk.Box
 	 *
 	 * @param url absolute http(s) URL
 	 * @return destination path, or status if already in flight
-	 * @throws GLib.Error when permission denied or start fails
+	 * @throws GLib.Error when the URL is not http(s), permission is
+	 *   denied, or start fails
 	 */
 	public async string download(string url) throws GLib.Error
 	{
-		var trimmed = url.strip();
-		if (trimmed == "") {
+		if (url.strip() == "") {
 			throw new GLib.IOError.INVALID_ARGUMENT("url is required for download");
 		}
+		var parsed = GLib.Uri.parse(url.strip(), GLib.UriFlags.ENCODED);
+		switch (parsed.get_scheme()) {
+			case "http":
+			case "https":
+				break;
+
+			default:
+				throw new GLib.IOError.PERMISSION_DENIED("Only http and https URLs can be downloaded");
+		}
+		var trimmed = parsed.to_string();
 		if (this.downloads_inflight.has_key(trimmed)
 				&& this.downloads_inflight.get(trimmed) != "") {
 			return "Already downloading: " + this.downloads_inflight.get(trimmed);
