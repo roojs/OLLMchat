@@ -372,6 +372,9 @@ namespace OLLMfilesd
 		/**
 		 * ''File.rpc_write'' — write path contents on the daemon.
 		 *
+		 * A path inside a project folder is refused when its dot-dot
+		 * segments or symlinks lead outside that folder.
+		 *
 		 * @param request inbound RPC
 		 * @param path file path
 		 * @param content file contents
@@ -498,6 +501,12 @@ namespace OLLMfilesd
 							};
 						}
 						var change_type = file.id < 0 ? "added" : "modified";
+						if (file.id < 0 &&
+							!GLib.FileUtils.test(GLib.Path.get_dirname(path), GLib.FileTest.IS_DIR)) {
+							// to_real indexes parent folders from disk; realize
+							// creates them, only inside the checked project folder.
+							yield file.realize(content.data, unix_mode);
+						}
 						if (file.id < 0) {
 							yield file.to_real();
 						}

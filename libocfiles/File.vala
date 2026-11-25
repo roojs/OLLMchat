@@ -400,7 +400,9 @@ namespace OLLMfiles
 		 * ''msg'' — **🚫** no local disk read on thin client.
 		 *
 		 * Whether the path may be read (project vs permission-granted) is a
-		 * tool/client decision; the daemon reads ''params.path'' on disk.
+		 * tool/client decision; the daemon reads ''params.path'' on disk,
+		 * but refuses a path inside a project folder whose real location
+		 * is outside it.
 		 *
 		 * @throws GLib.Error if the RPC fails
 		 */

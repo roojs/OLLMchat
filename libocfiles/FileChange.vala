@@ -262,7 +262,8 @@ namespace OLLMfiles
 		 * This method handles buffer creation, loading, and applying the edit.
 		 * Does NOT throw errors - sets result and completed on success or failure.
 		 * 
-		 * @param write_complete_file Whether to write the complete file (replacement content)
+		 * @param write_complete_file Whether replacement is the whole new file
+		 *   content; the buffer is replaced and nothing is written to disk
 		 */
 		public async void apply_change(bool write_complete_file)
 		{
@@ -273,13 +274,16 @@ namespace OLLMfiles
 			// Project manager is available via file.manager
 			this.file.manager.buffer_provider.create_buffer(this.file);
 			
-			/* New file + full replacement: there is nothing to read from disk; write creates it.
-			 * Use FileUtils.test(EXISTS), not IS_REGULAR: directories are not regular files but exist — we
-			 * must not treat them as "create new file" (overwrite=false only applies when a file exists). */
-			if (write_complete_file
-				&& !GLib.FileUtils.test(this.file.path, GLib.FileTest.EXISTS)) {
+			// Buffer only: callers save with File.rpc_write, so the daemon
+			// is the one process that decides where the bytes land.
+			if (write_complete_file) {
 				try {
-					yield this.file.buffer.write(this.replacement);
+					yield this.file.buffer.clear();
+					yield this.file.buffer.apply_edit(new FileChange(this.file) {
+						start = 1,
+						end = 1,
+						replacement = this.replacement
+					});
 				} catch (GLib.Error e) {
 					this.result = "Error writing file: " + e.message;
 					this.completed = true;
@@ -304,20 +308,6 @@ namespace OLLMfiles
 			// - The file is already in memory since we had to run the tree on it to start with
 			// - AST path resolution requires the file to be parsed, so buffer should already be loaded
 			// - This check can be optimized for AST mode to skip the reload
-			
-			// Handle complete file write
-			if (write_complete_file) {
-				try {
-					yield this.file.buffer.write(this.replacement);
-				} catch (GLib.Error e) {
-					this.result = "Error writing file: " + e.message;
-					this.completed = true;
-					return;
-				}
-				this.result = "applied";
-				this.completed = true;
-				return;
-			}
 			
 			// Apply single edit using apply_edit (singular)
 			// apply_edit() throws errors - catch and set result/completed
