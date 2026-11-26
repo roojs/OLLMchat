@@ -107,6 +107,23 @@ test('test-rpc-bin',
   suite: 'rpc',
   timeout: 10,
 )
+test_cross_user_client = executable('test-cross-user-daemon-client',
+  'rpc/cross-user-daemon-client.vala',
+  dependencies: rpc_test_deps + [dependency('gio-unix-2.0')],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  vala_args: rpc_test_vala_args + ['--pkg=gio-unix-2.0'],
+)
+test('test-cross-user-socket',
+  find_program('bash'),
+  args: [
+    files('test-cross-user-socket.sh'),
+    meson.current_build_dir() / '..'
+  ],
+  depends: [ollmfilesd_bin, test_cross_user_client],
+  timeout: 180,
+  suite: 'rpc',
+)
 test_rpc_live = executable('test-rpc-live-handles',
   'rpc/live-handles-test.vala',
   dependencies: rpc_test_deps + [rpc_test_app_dep],
