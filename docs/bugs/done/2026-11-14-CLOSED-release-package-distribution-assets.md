@@ -1,10 +1,12 @@
 # Release assets belong on the packages GitHub Release
 
-**Status:** ⏳ open — packaging / release layout. Android tag APK naming + dual Gradle build in progress.
+**Status:** ✅
+
+- ✅ Closed 2026-11-26. The GitHub release these assets belong on is done.
 
 **Pointer:** `docs/bug-fix-process.md`
 
-ℹ️ Related: [`done/2026-11-07-CLOSED-windows-redistributable-libraries.md`](done/2026-11-07-CLOSED-windows-redistributable-libraries.md) (Windows `.pkg.tar.zst` exist; this log is **where** they ship).
+ℹ️ Related: [`2026-11-07-CLOSED-windows-redistributable-libraries.md`](2026-11-07-CLOSED-windows-redistributable-libraries.md) (Windows `.pkg.tar.zst` exist; this log is **where** they ship).
 
 ## Problem
 

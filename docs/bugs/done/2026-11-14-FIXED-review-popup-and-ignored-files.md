@@ -1,6 +1,8 @@
 # ReviewBar file popup layout/icons and ignored files still in review list
 
-**Status:** ✔️ applied 2026-11-14 — awaiting a check in the app and the file daemon
+**Status:** ✅
+
+- ✅ Closed 2026-11-26. Already finished, so it does not stay in the open list.
 
 ## Problem
 
@@ -25,7 +27,7 @@
   - ✔️ In `argusrm`: `filebase` id `112979` (`/home/alan/gitlive/argusrm/.git`, `is_ignored=0`) and 7 rows `112980`–`112986` (`/home/alan/gitlive/argusrm/.git/index`, `is_ignored=0`, `is_need_approval=1`).
   - ✔️ `/home/alan/gitlive/OLLMchat/.gitignore` (`id=40`) has `is_ignored=0`, `is_need_approval=0`, and no `file_history` rows (it is a tracked git file, not ignored, and not in the review list).
   - ✔️ Running `FileWithHistory.pending`'s SQL query against `files.sqlite` for `/home/alan/gitlive/OLLMchat` returns `112505` (`/home/alan/gitlive/OLLMchat/.git/index`) among the 5 pending files.
-  - ✔️ [`2026-11-13-FIXED-ignored-git-index-in-review.md`](done/2026-11-13-FIXED-ignored-git-index-in-review.md) (`e711f928`) noted that restarting `ollmfilesd` would leave the pre-existing `112505` row as `is_ignored=0` because `Folder.read_dir` skips ignored directories (`if (child.delete_id != 0 || child.is_ignored) continue;`) and `Folder.load_files_from_db` filters `AND delete_id = 0`. Restarting `ollmfilesd` today (`12:05:51`) did not clear `112505`, so `FileWithHistory.pending` still returns it.
+  - ✔️ [`2026-11-13-FIXED-ignored-git-index-in-review.md`](2026-11-13-FIXED-ignored-git-index-in-review.md) (`e711f928`) noted that restarting `ollmfilesd` would leave the pre-existing `112505` row as `is_ignored=0` because `Folder.read_dir` skips ignored directories (`if (child.delete_id != 0 || child.is_ignored) continue;`) and `Folder.load_files_from_db` filters `AND delete_id = 0`. Restarting `ollmfilesd` today (`12:05:51`) did not clear `112505`, so `FileWithHistory.pending` still returns it.
   - ✔️ `ollmfilesd/FileVerification.vala` (`created` lines 150–156 and `modified` lines 254–260) still writes `FileHistory` and sets `is_need_approval = true` on `modified` without checking `check_path_ignored` or `!file.is_ignored` (unlike `ollmfilesd/File.vala:443-451`).
   - ✔️ `Folder.make_children` (`ollmfilesd/Folder.vala:1635`) and `File.to_real` (`ollmfilesd/File.vala:775`) call `check_path_ignored` on `this` / `found_base_folder`, which returns `false` if `discover_repository` has not yet populated `"repo"` on that folder (e.g. a folder loaded from DB before `read_dir` visits it, or a newly created subfolder from `make_children`).
 

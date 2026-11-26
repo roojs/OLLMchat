@@ -1,6 +1,6 @@
 # Android chat POC aborts during boot in g_thread_new
 
-**Status:** ⏳ OPEN — app hacks removed. Next APK waits on a pixie GLib built with the gtk-android-builder pthread patch.
+**Status:** ✅
 
 **Started:** 2026-11-19
 
@@ -31,6 +31,8 @@
 
 - 🚫 2026-11-19 — patching `gthread-posix.c`, and rewriting that symbol from the app, are not an acceptable fix. Both are removed. `glib.wrap` lists only `hack.patch`. `android-sched.c` is gone. Leftover `libandroid-sched.so` files under `.pixiewood` are deleted.
 - 🔷 The published pixie GLib (`1.261109`, 2.90.1) was built without the gtk-android-builder pthread patch. Argus on this phone runs a 2.90.1 built with that patch and starts. Rebuild that pixie package. `scripts/android/fetch-pixie-deps.sh` now compares the published pin list with `share/pixiewood/pixie.pins` and downloads again when it differs.
+
+- ✅ User closed this on 2026-11-26. The boot abort is fixed.
 
 ## Next
 

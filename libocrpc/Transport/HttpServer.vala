@@ -97,6 +97,7 @@ namespace OLLMrpc.Transport
 
 		private Soup.Server soup { get; set; default = new Soup.Server("server-header", null); }
 		private bool listening = false;
+		private bool routed = false;
 		private Bin.Json json { get; set; default = new Bin.Json(Bin.Mode.AUTO); }
 		private GLib.SocketService? proxy_service = null;
 
@@ -111,8 +112,11 @@ namespace OLLMrpc.Transport
 			if (this.listening) {
 				return true;
 			}
-			this.soup.add_handler(this.rpc_path, this.on_rpc);
-			this.soup.add_handler(null, this.on_route);
+			if (!this.routed) {
+				this.soup.add_handler(this.rpc_path, this.on_rpc);
+				this.soup.add_handler(null, this.on_route);
+				this.routed = true;
+			}
 			var opts = (Soup.ServerListenOptions) 0;
 			if (this.tls_certificate != null) {
 				this.soup.set_tls_certificate(this.tls_certificate);
@@ -248,6 +252,49 @@ namespace OLLMrpc.Transport
 			return true;
 		}
 
+		/**
+		 * Answer one accepted connection, then return.
+		 *
+		 * The caller already accepted ''connection''. This call does not
+		 * listen. A paused message stays inside this call until it finishes
+		 * or aborts.
+		 *
+		 * @param connection the accepted socket
+		 * @param local this end of the socket, or null when unknown
+		 * @param remote the peer, or null when unknown
+		 * @return false when Soup rejects the socket
+		 */
+		public bool take(
+			GLib.IOStream connection,
+			GLib.SocketAddress? local,
+			GLib.SocketAddress? remote
+		) {
+			if (!this.routed) {
+				this.soup.add_handler(this.rpc_path, this.on_rpc);
+				this.soup.add_handler(null, this.on_route);
+				this.routed = true;
+			}
+			var loop = new GLib.MainLoop();
+			var finished = this.soup.request_finished.connect((msg) => {
+				loop.quit();
+			});
+			var aborted = this.soup.request_aborted.connect((msg) => {
+				loop.quit();
+			});
+			try {
+				this.soup.accept_iostream(connection, local, remote);
+			} catch (GLib.Error e) {
+				GLib.warning("accept failed: %s", e.message);
+				GLib.SignalHandler.disconnect(this.soup, finished);
+				GLib.SignalHandler.disconnect(this.soup, aborted);
+				return false;
+			}
+			loop.run();
+			GLib.SignalHandler.disconnect(this.soup, finished);
+			GLib.SignalHandler.disconnect(this.soup, aborted);
+			return true;
+		}
+
 		public override void stop()
 		{
 			if (!this.listening) {
@@ -260,6 +307,7 @@ namespace OLLMrpc.Transport
 			}
 			this.soup.disconnect();
 			this.soup = new Soup.Server("server-header", null);
+			this.routed = false;
 		}
 
 		private void on_route(

@@ -1,8 +1,10 @@
 # Deletion bands scroll past the buffer, and white rows sit in the red span
 
-**Status:** ⏳ glyph highlight removed; blank rows still use the same pale line wash, not yet looked at on screen
+**Status:** ✅
 
-**Pointer:** `docs/bug-fix-process.md` · [`done/2026-11-16-FIXED-diff-preview-open-and-map.md`](done/2026-11-16-FIXED-diff-preview-open-and-map.md)
+**Pointer:** `docs/bug-fix-process.md` · [`2026-11-16-FIXED-diff-preview-open-and-map.md`](2026-11-16-FIXED-diff-preview-open-and-map.md)
+
+- ✅ Closed 2026-11-26. A general ticket covers this. Not relevant at present.
 
 ## Problem
 
