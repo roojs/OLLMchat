@@ -65,7 +65,8 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 				request.reply(new OLLMrpc.Response() {
 					retval = OLLMrpc.val("o", new OLLMrpc.Daemon() {
 						ready = true,
-						server = "stacked-review-scenario"
+						server = "stacked-review-scenario",
+						version = OLLMchat.VERSION
 					})
 				});
 				break;

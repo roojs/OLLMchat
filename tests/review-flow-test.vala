@@ -56,7 +56,8 @@ public class ReviewFlowTest : RpcTestAppBase, OLLMrpc.MockDispatch
 				request.reply(new OLLMrpc.Response() {
 					retval = OLLMrpc.val("o", new OLLMrpc.Daemon() {
 						ready = true,
-						server = "review-flow"
+						server = "review-flow",
+						version = OLLMchat.VERSION
 					})
 				});
 				break;
