@@ -14,8 +14,8 @@ Use **Debian 13** (`trixie`) or **Ubuntu 25.04+** (`plucky` / `questing` /
 suite.
 
 Add that APT source from [the repos page](https://roojs.github.io/repos/) so
-`libllama-dev` and tree-sitter language parsers resolve (`libfaiss-dev` is
-already in Debian 13 / Ubuntu 25.04+). GitHub Actions uses
+`libwebkitgtk-6.0-webdriver-dev` and tree-sitter language parsers resolve
+(`libfaiss-dev` is already in Debian 13 / Ubuntu 25.04+). GitHub Actions uses
 `scripts/ci/enable-roojs-apt.sh` for the same step.
 
 ```bash
@@ -48,7 +48,6 @@ sudo apt install \
   liblapack-dev \
   libopenblas-dev \
   libfaiss-dev \
-  libllama-dev \
   libtree-sitter-dev \
   desktop-file-utils \
   humanity-icon-theme \
@@ -70,8 +69,7 @@ sudo apt install \
   were found instead.
 
 On Fedora 44, after adding the DNF repo from that page, install matching
-`-devel` packages. `faiss-devel` is in the repo; `llama-cpp-devel` is already
-in Fedora.
+`-devel` packages. `faiss-devel` is in the repo.
 
 ## Optional: tree-sitter parsers (code search)
 
@@ -107,8 +105,11 @@ meson setup build --prefix=/usr
 ninja -C build
 ```
 
-Default `local_gguf` is `auto` (builds the GGUF backend when libllama is found).
-Remote-only: `-Dlocal_gguf=disabled`. Force GGUF: `-Dlocal_gguf=enabled`.
+The local GGUF / `libllama` proof-of-concept lives under `tests/local-gguf/`.
+Default `local_gguf` is `auto` (built with `tests=true` when `libllama` is
+found; skipped for package builds where `-Dtests=false -Dlocal_gguf=disabled`).
+Disable explicitly with `-Dlocal_gguf=disabled` or require it with
+`-Dlocal_gguf=enabled`.
 
 After code changes:
 

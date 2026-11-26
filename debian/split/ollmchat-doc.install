@@ -1,5 +1,3 @@
-usr/bin/oc-local-gguf-chat
-usr/bin/oc-local-gguf-embed
 usr/bin/oc-vala-ternary-bug
 usr/bin/oc-vector-index
 usr/bin/oc-vector-search

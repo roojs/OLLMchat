@@ -80,7 +80,7 @@ jobs:
             humanity-icon-theme \
             libwebkitgtk-6.0-dev libwebkitgtk-6.0-webdriver-dev libatspi2.0-dev \
             libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev libavahi-gobject-dev \
-            libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
+            libopenblas-dev liblapack-dev libfaiss-dev
           if [[ -n "${GI_MIN:-}" ]]; then
             pkg-config --atleast-version="${GI_MIN}" girepository-2.0
           fi
@@ -200,7 +200,7 @@ jobs:
             hicolor-icon-theme \
             libwebkitgtk-6.0-dev libwebkitgtk-6.0-webdriver-dev libatspi2.0-dev \
             libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev libavahi-gobject-dev \
-            libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
+            libopenblas-dev liblapack-dev libfaiss-dev
           curl -fsSL -o /tmp/humanity-icon-theme.deb \
             http://archive.ubuntu.com/ubuntu/pool/universe/h/humanity-icon-theme/humanity-icon-theme_0.6.16build1_all.deb
           apt-get install -y /tmp/humanity-icon-theme.deb

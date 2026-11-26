@@ -3,10 +3,8 @@
 export DH_VERBOSE = 1
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
-# debian/local-gguf is written by the packaging switch scripts:
-#   enabled  — ollmchat (requires libllama at build time)
-#   disabled — ollmchat-remote-only (no local GGUF backend)
-LOCAL_GGUF := $(shell grep -E '^(enabled|disabled)$$' debian/local-gguf 2>/dev/null || echo enabled)
+# Local GGUF / libllama PoC lives under tests/local-gguf and is disabled for packages.
+LOCAL_GGUF := disabled
 
 # Optional. Set WEBKIT_WEBDRIVER=disabled to link stock webkitgtk-6.0.
 # Package builds leave this empty and link libwebkitgtk-6.0-webdriver.

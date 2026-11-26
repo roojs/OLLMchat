@@ -81,7 +81,7 @@ sudo lxc-attach -n lxc-reference-trixie -- bash -lc '
     libgtksourceview-5-dev libadwaita-1-dev libsecret-1-dev humanity-icon-theme \
     libwebkitgtk-6.0-dev libwebkitgtk-6.0-webdriver-dev libatspi2.0-dev \
     libavahi-gobject-dev libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
-    libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
+    libopenblas-dev liblapack-dev libfaiss-dev
   sed -i "1s/(\([^)]*\))/(\1+trixie)/" debian/changelog
   dpkg-buildpackage -us -uc -b
 '

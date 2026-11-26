@@ -30,8 +30,7 @@ Build-Depends: debhelper-compat (= 13),
                libgit2-glib-1.0-dev,
                libopenblas-dev,
                liblapack-dev,
-               libfaiss-dev,
-               libllama-dev
+               libfaiss-dev
 Standards-Version: 4.6.0
 Homepage: https://github.com/roojs/OLLMchat
 Vcs-Browser: https://github.com/roojs/OLLMchat
@@ -272,8 +271,7 @@ Description: Base library for Ollama/OpenAI API access
  OLLMchat is a GTK chat application with LLM access, tool integration,
  and embeddable libraries for other applications.
  .
- This package contains libollmchat.so, built with optional local GGUF
- support via libllama.
+ This package contains libollmchat.so.
 
 Package: libollmchat-dev
 Section: libdevel

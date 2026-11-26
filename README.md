@@ -10,7 +10,7 @@ OLLMchat is an AI application for interacting with LLMs (Large Language Models) 
 
 The application is split in two. **`ollmfilesd`** is the file server: it handles file operations, file monitoring, and running applications, and it can run on another machine. The desktop and mobile clients talk to that server. A client can run on the same machine as the server, or on a separate desktop, tablet, or phone.
 
-**Development status:** The chat client, tools, and file server are in everyday use. The **skills / task-runner** pipeline in `liboccoder` is mostly working and still early — useful for multi-step agent work, with rough edges. Local **GGUF inference** via `CallLocal` is optional at build time.
+**Development status:** The chat client, tools, and file server are in everyday use. The **skills / task-runner** pipeline in `liboccoder` is mostly working and still early — useful for multi-step agent work, with rough edges. Local **GGUF inference** via `libllama` is a test-only proof of concept under `tests/local-gguf/` (disabled for packages).
 
 - **Main Application (`ollmchat`)** - A complete AI chat client with:
   - Full-featured chat interface for interacting with LLMs (Ollama/OpenAI)
@@ -21,7 +21,7 @@ The application is split in two. **`ollmfilesd`** is the file server: it handles
   - Project management and file tracking
   - Support for multiple agent types (Just Ask, Code Assistant)
 - **Core libraries** - Chat, files, editor, markdown, and the file server
-  - `libollmchat.so` - Ollama/OpenAI API access, agents, and optional local GGUF backend
+  - `libollmchat.so` - Ollama/OpenAI API access and agents
   - `libollmchatgtk.so` - GTK chat widgets
   - `libocmarkdown.so` - Markdown parsing and rendering
   - `libocmarkdowngtk.so` - Markdown rendering widgets

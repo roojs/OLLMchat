@@ -16,7 +16,6 @@ tools, and examples. This is the layout other applications use to depend on
 `libocrpc-dev` (and the other libraries) without installing the whole app.
 
 ```bash
-# libllama-dev from https://roojs.github.io/repos/ (CI: scripts/ci/enable-roojs-apt.sh)
 ./debian/use-split-packages.sh   # already the default in git
 dpkg-buildpackage -us -uc -b
 ```
@@ -24,7 +23,7 @@ dpkg-buildpackage -us -uc -b
 ### Monolithic (optional all-in-one)
 
 Single `ollmchat` `.deb` that bundles the application, shared libraries, GIR
-data, and command-line tools (local GGUF via libllama).
+data, and command-line tools.
 
 ```bash
 ./debian/use-monolithic-package.sh
@@ -101,7 +100,7 @@ packages. The VAPI is `/usr/share/vala/vapi/ocrpc.vapi`.
 Building packages
 -----------------
 
-1. Build on the suite that will install the `.deb`. This host is Ubuntu 25.04, so a native `dpkg-buildpackage` is the plucky set (`+plucky` in `debian/changelog`). Trixie is Debian 13 (GitHub: `debian:trixie`; this machine: `lxc-attach -n lxc-reference-trixie`). Questing and resolute are their own containers and use `libgirepository-2.0-dev`. See `docs/build-rules.md`. Add the [roojs APT source](https://roojs.github.io/repos/) so `libllama-dev` resolves (`scripts/ci/enable-roojs-apt.sh`). The list below is girepository 1.0:
+1. Build on the suite that will install the `.deb`. This host is Ubuntu 25.04, so a native `dpkg-buildpackage` is the plucky set (`+plucky` in `debian/changelog`). Trixie is Debian 13 (GitHub: `debian:trixie`; this machine: `lxc-attach -n lxc-reference-trixie`). Questing and resolute are their own containers and use `libgirepository-2.0-dev`. See `docs/build-rules.md`. Add the [roojs APT source](https://roojs.github.io/repos/) so `libwebkitgtk-6.0-webdriver-dev` resolves (`scripts/ci/enable-roojs-apt.sh`). The list below is girepository 1.0:
    ```bash
    sudo apt-get install build-essential devscripts debhelper meson ninja-build \
      pkg-config valac libgee-0.8-dev libglib2.0-dev libjson-glib-dev \
@@ -109,7 +108,7 @@ Building packages
      libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev libsecret-1-dev humanity-icon-theme \
      libwebkitgtk-6.0-dev libwebkitgtk-6.0-webdriver-dev libatspi2.0-dev gobject-introspection \
      libgirepository1.0-dev libavahi-gobject-dev libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
-     libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
+     libopenblas-dev liblapack-dev libfaiss-dev
    ```
 
 2. Build the packages:

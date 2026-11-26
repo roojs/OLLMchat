@@ -70,7 +70,6 @@ pkgconfig_deps=(
   'pkgconfig(libgit2-glib-1.0)'
   'pkgconfig(avahi-gobject)'
   'pkgconfig(lapack)'
-  'pkgconfig(llama)'
 )
 
 case "${ID}" in
@@ -105,15 +104,12 @@ case "${ID}" in
     run_root zypper --non-interactive install --force-resolution \
       --no-recommends gawk
     pkgconfig_deps+=('pkgconfig(openblas)')
-    # ggml-devel / llamacpp-devel ship dangling .so → .so.0 symlinks;
-    # the real SONAME libs are libllama1 / libggml1 / libggml-base1 (Tumbleweed 2026-11+).
     run_root zypper --non-interactive install --force-resolution \
       --no-recommends \
       rpm-build rpmdevtools \
       meson ninja gcc gcc-c++ vala desktop-file-utils \
       gobject-introspection gobject-introspection-devel \
-      faiss-devel bubblewrap humanity-icon-theme ggml-devel \
-      libllama1 libggml1 libggml-base1 \
+      faiss-devel bubblewrap humanity-icon-theme \
       "${pkgconfig_deps[@]}"
     # Repos publish openSUSE packages under rpm/tumbleweed/; omit %{dist}
     # so the filename has no .fc tag (see scripts/fetch-upstream.sh).

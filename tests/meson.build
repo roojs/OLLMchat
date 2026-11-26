@@ -695,3 +695,5 @@ test('check-back-token-test',
   ],
   depends: [oc_test_loop_exe],
   suite: 'libollmchat')
+
+subdir('local-gguf')

@@ -30,7 +30,7 @@ housekeeping.
 
 CI then:
 
-1. Builds **Debian** packages in four jobs, using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev`. Each job produces split runtime/`-dev` libraries plus `ollmchat`, then a second **ollmchat-remote-only** all-in-one `.deb`.
+1. Builds **Debian** packages in four jobs, using the [roojs APT repo](https://roojs.github.io/repos/) for `libwebkitgtk-6.0-webdriver-dev`. Each job produces split runtime/`-dev` libraries plus `ollmchat`, then a second **ollmchat-remote-only** all-in-one `.deb`.
    - **Plucky packages** is Ubuntu 25.04 (girepository 1.0). Versions end in `+plucky`. Artifact `ollmchat-debian-plucky`.
    - **Questing packages** is Ubuntu 25.10 (girepository 2.0). Versions end in `+questing`. Artifact `ollmchat-debian-questing`.
    - **Resolute packages** is Ubuntu 26.04 (girepository 2.0). Plain revision (`1.4.6-1`). Artifact `ollmchat-debian`.
@@ -47,15 +47,15 @@ Fedora 44 is the RPM base. openSUSE uses the same spec; CI does **not** share on
 
 ### Debian vs RPM vs AppImage / Windows / Android
 
-| Format | Architectures | libllama | Notes |
-|--------|---------------|----------|-------|
-| APT / `.deb` | amd64 | **split `ollmchat`**: yes · **ollmchat-remote-only**: no | Users: `apt-get update && apt-get install ollmchat` (or `libocrpc-dev`) after adding [the repo](https://roojs.github.io/repos/) |
-| RPM | x86_64 | same split + remote-only | Fedora 44 and openSUSE Tumbleweed; FAISS on Fedora comes from the roojs repo (nicked from Tumbleweed) |
-| AppImage | x86_64 and aarch64 | No | Self-contained; remote backends only. Both files go on `${tag}-packages`. |
-| Windows `.exe` | x86_64 | No | Native MSYS2 NSIS: **`OLLMchat-<version>-Setup.exe`** on the version tag. The UCRT64 library archives are on `${tag}-packages`. |
-| Android `.apk` | arm64-v8a | No | Android client; sideload from GitHub Releases |
+| Format | Architectures | Notes |
+|--------|---------------|-------|
+| APT / `.deb` | amd64 | Split `ollmchat` + `liboc*` plus `ollmchat-remote-only`. Users: `apt-get update && apt-get install ollmchat` (or `libocrpc-dev`) after adding [the repo](https://roojs.github.io/repos/) |
+| RPM | x86_64 | Same split + `ollmchat-remote-only` on Fedora 44 and openSUSE Tumbleweed; FAISS on Fedora comes from the roojs repo (nicked from Tumbleweed) |
+| AppImage | x86_64 and aarch64 | Self-contained; remote backends only. Both files go on `${tag}-packages`. |
+| Windows `.exe` | x86_64 | Native MSYS2 NSIS: **`OLLMchat-<version>-Setup.exe`** on the version tag. The UCRT64 library archives are on `${tag}-packages`. |
+| Android `.apk` | arm64-v8a | Android client; sideload from GitHub Releases |
 
-Release `.deb` files use the **split** Debian layout (runtime libraries, `-dev` packages, `ollmchat`, `ollmchat-tools`, `ollmchat-doc`) plus a conflicting **ollmchat-remote-only** all-in-one package. See [`debian/README`](../debian/README). The RPM spec ships the same split (`libocrpc`, `libocrpc-devel`, …) for the GGUF build and a single `ollmchat-remote-only` RPM without libllama.
+Release `.deb` files use the **split** Debian layout (runtime libraries, `-dev` packages, `ollmchat`, `ollmchat-tools`, `ollmchat-doc`) plus a conflicting **ollmchat-remote-only** all-in-one package. See [`debian/README`](../debian/README). The RPM spec ships the same split (`libocrpc`, `libocrpc-devel`, …) and a single `ollmchat-remote-only` RPM. Packages are built with `-Dtests=false -Dlocal_gguf=disabled` (no `libllama` dependency).
 
 ### Changelog (single source of truth)
 
@@ -191,7 +191,7 @@ End users need the [WebView2 Runtime](https://developer.microsoft.com/en-us/micr
 
 ### Debian packages
 
-Build each `.deb` on its own suite. On GitHub that is the container named in [`docs/build-rules.md`](build-rules.md) (Debian packages). On this Ubuntu 25.04 machine, `dpkg-buildpackage` builds the plucky set. A Trixie package is `lxc-attach` into `lxc-reference-trixie`. Add the [roojs APT source](https://roojs.github.io/repos/) inside that root so `libllama-dev` resolves. CI uses `scripts/ci/enable-roojs-apt.sh` for the roojs APT step. The package list below is the plucky / Trixie girepository 1.0 set. Questing and resolute install `libgirepository-2.0-dev` instead of `libgirepository1.0-dev`. Trixie installs `libwebkitgtk-6.0-webdriver-dev` from the roojs trixie suite, the same package name as the Ubuntu jobs.
+Build each `.deb` on its own suite. On GitHub that is the container named in [`docs/build-rules.md`](build-rules.md) (Debian packages). On this Ubuntu 25.04 machine, `dpkg-buildpackage` builds the plucky set. A Trixie package is `lxc-attach` into `lxc-reference-trixie`. Add the [roojs APT source](https://roojs.github.io/repos/) inside that root so `libwebkitgtk-6.0-webdriver-dev` resolves. CI uses `scripts/ci/enable-roojs-apt.sh` for the roojs APT step. The package list below is the plucky / Trixie girepository 1.0 set. Questing and resolute install `libgirepository-2.0-dev` instead of `libgirepository1.0-dev`. Trixie installs `libwebkitgtk-6.0-webdriver-dev` from the roojs trixie suite, the same package name as the Ubuntu jobs.
 
 ```bash
 sudo apt-get install build-essential devscripts debhelper meson ninja-build \
@@ -200,7 +200,7 @@ sudo apt-get install build-essential devscripts debhelper meson ninja-build \
   libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev libsecret-1-dev humanity-icon-theme gobject-introspection \
   libgirepository1.0-dev libavahi-gobject-dev libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
   libwebkitgtk-6.0-dev libwebkitgtk-6.0-webdriver-dev libatspi2.0-dev \
-  libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
+  libopenblas-dev liblapack-dev libfaiss-dev
 
 dpkg-buildpackage -us -uc -b
 ```

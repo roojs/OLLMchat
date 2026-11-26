@@ -11,7 +11,7 @@ option(
   'local_gguf',
   type: 'feature',
   value: 'auto',
-  description: 'Build the local GGUF/libllama phase-1 embedding probe'
+  description: 'Build the local GGUF/libllama PoC test executables under tests/local-gguf'
 )
 option(
   'android_shell_poc',

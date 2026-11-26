@@ -1,7 +1,7 @@
-# Split library RPMs when built with local GGUF (default).
-# --without local_gguf produces a single ollmchat-remote-only package that
-# conflicts with the split libraries. Same spec on Fedora 44 and openSUSE
-# Tumbleweed. Fedora CI produces *.fc44.*.rpm; openSUSE CI omits %{dist}.
+# Split library RPMs by default (local GGUF / libllama is test-only and disabled
+# for packages). --without local_gguf produces a single ollmchat-remote-only
+# package that conflicts with the split libraries. Same spec on Fedora 44 and
+# openSUSE Tumbleweed. Fedora CI produces *.fc44.*.rpm; openSUSE CI omits %{dist}.
 #
 # Build with:
 #   rpmbuild -bb --define "ollmchat_version 1.4.0" packaging/rpm/ollmchat.spec
@@ -56,16 +56,6 @@ BuildRequires: pkgconfig(flexiblas)
 BuildRequires: pkgconfig(openblas)
 %endif
 BuildRequires: pkgconfig(lapack)
-%if %{with local_gguf}
-BuildRequires: pkgconfig(llama)
-%if 0%{?suse_version}
-BuildRequires: ggml-devel
-# devel packages only ship .so → .so.0 symlinks; runtime SONAMEs required to link
-BuildRequires: libllama1
-BuildRequires: libggml1
-BuildRequires: libggml-base1
-%endif
-%endif
 
 %if %{with local_gguf}
 Requires: bubblewrap
@@ -567,11 +557,7 @@ oc-vector-index, and similar).
   -Ddocs=false \
   -Dexamples=true \
   -Dtests=false \
-%if %{with local_gguf}
-  -Dlocal_gguf=enabled
-%else
   -Dlocal_gguf=disabled
-%endif
 %meson_build
 
 %install
@@ -580,8 +566,6 @@ rm -f %{buildroot}%{_datadir}/vala/vapi/*-meson.vapi
 rm -f %{buildroot}%{_datadir}/vala/vapi/*-meson.deps
 %if %{without local_gguf}
 rm -f %{buildroot}%{_bindir}/oc-diff
-rm -f %{buildroot}%{_bindir}/oc-local-gguf-chat
-rm -f %{buildroot}%{_bindir}/oc-local-gguf-embed
 rm -f %{buildroot}%{_bindir}/oc-vala-ternary-bug
 rm -f %{buildroot}%{_bindir}/oc-vector-index
 rm -f %{buildroot}%{_bindir}/oc-vector-search
@@ -715,8 +699,6 @@ rm -rf %{buildroot}%{_datadir}/doc/ollmchat
 %{_bindir}/oc-html2md
 
 %files doc
-%{_bindir}/oc-local-gguf-chat
-%{_bindir}/oc-local-gguf-embed
 %{_bindir}/oc-vala-ternary-bug
 %{_bindir}/oc-vector-index
 %{_bindir}/oc-vector-search

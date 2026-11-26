@@ -6,5 +6,5 @@ rm -f ./*.install not-installed
 cp split/control ./control
 cp split/*.install ./
 cp split/not-installed ./not-installed
-printf '%s\n' enabled > ./local-gguf
+printf '%s\n' disabled > ./local-gguf
 echo "Active packaging: split ($(ls -1 ./*.install | wc -l) install files)"
