@@ -703,7 +703,8 @@ namespace OLLMcoder
 					this.change_view.parts.clear();
 					this.change_view.empty = true;
 				}
-				(this.source_view.buffer as GtkSource.Buffer).language = gtk_buffer.language;
+				this.source_view.set_buffer(gtk_buffer);
+				this.change_view = new ChangeView(gtk_buffer);
 				this.current_file = file;
 				this.file_changed(file);
 			
@@ -950,6 +951,22 @@ namespace OLLMcoder
 				}
 				if (this.diff_active) {
 					this.clear_diff();
+				}
+				var repaint = this.change_view.parts.size > 0;
+				this.change_view.parts.clear();
+				this.change_view.empty = true;
+				if (repaint) {
+					try {
+						yield file.read();
+					} catch (GLib.Error e) {
+						GLib.warning(
+							"Failed to reload file for diff repaint %s: %s",
+							file.path, e.message);
+						return;
+					}
+					if (this.current_file != file) {
+						return;
+					}
 				}
 				var proposal = this.change_view.proposal(file, parts);
 				this.change_view.apply(proposal);

@@ -306,7 +306,6 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 			for (var step = 0; step < 3; step++) {
 				command_line.print("step accept hunk %d of 3\n", step + 1);
 				yield this.accept_via_review_bar();
-				yield this.wait_parts_repaint(command_line);
 				this.check_after_accept_step(command_line, step + 1);
 			}
 		}
@@ -547,9 +546,22 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 		throw new GLib.IOError.FAILED("no pending hunk to accept");
 	}
 
-	private async void wait_parts_repaint(
-		ApplicationCommandLine command_line
-	) throws Error
+	private async void wait_accept_done(int accepted_before) throws Error
+	{
+		var deadline = GLib.get_monotonic_time() + 5 * 1000000;
+		while (GLib.get_monotonic_time() < deadline) {
+			if (this.accepted_part_count() <= accepted_before) {
+				yield this.settle();
+				continue;
+			}
+			yield this.settle();
+			yield this.wait_parts_repaint_quiet();
+			return;
+		}
+		throw new GLib.IOError.FAILED("accept did not finish");
+	}
+
+	private async void wait_parts_repaint_quiet() throws Error
 	{
 		var deadline = GLib.get_monotonic_time() + 3 * 1000000;
 		while (GLib.get_monotonic_time() < deadline) {
@@ -559,8 +571,7 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 				if (part.accepted == 0) {
 					continue;
 				}
-				var line = part.new_line_start - 1;
-				if (this.line_has_diff_chrome(line)) {
+				if (this.line_has_diff_chrome(part.new_line_start - 1)) {
 					ok = false;
 					break;
 				}
@@ -570,22 +581,7 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 			}
 			yield this.settle();
 		}
-		this.print_highlight_audit(command_line, "repaint timeout");
-		throw new GLib.IOError.FAILED(
-			"accepted hunks still highlighted (see audit above)");
-	}
-
-	private async void wait_accept_done(int accepted_before) throws Error
-	{
-		var deadline = GLib.get_monotonic_time() + 5 * 1000000;
-		while (GLib.get_monotonic_time() < deadline) {
-			if (this.accepted_part_count() > accepted_before) {
-				yield this.settle();
-				return;
-			}
-			yield this.settle();
-		}
-		throw new GLib.IOError.FAILED("accept did not finish");
+		throw new GLib.IOError.FAILED("accepted hunks still highlighted after repaint");
 	}
 
 	private async void accept_via_rpc(int64 part_id) throws Error
