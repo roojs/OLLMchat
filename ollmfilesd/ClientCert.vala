@@ -146,7 +146,9 @@ namespace OLLMfilesd
 		 * The reply ''retval'' is a string array. Index 0 is the new
 		 * client certificate PEM. Index 1 is the CA certificate PEM.
 		 * Each later entry is a ''host:port'' for the listen choice.
-		 * A wrong PIN leaves the window up and writes no row.
+		 * A wrong PIN leaves the window up and writes no row. With the
+		 * window closed (empty listen PIN) every request is refused, so
+		 * a removed certificate cannot mint a replacement.
 		 *
 		 * @param request inbound RPC on the TLS bin socket
 		 * @param pin six digits from the desktop dialog
@@ -170,6 +172,12 @@ namespace OLLMfilesd
 			if (listen == null) {
 				request.reply(new OLLMrpc.Response() {
 					error = new OLLMrpc.Error.INVALID_REQUEST("SSL listener is off")
+				});
+				return;
+			}
+			if (listen.pin == "") {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error.INVALID_REQUEST("pairing window closed")
 				});
 				return;
 			}
@@ -315,7 +323,9 @@ namespace OLLMfilesd
 		 * Set {@link OLLMfilesd.SslListen.pin} from the desktop dialog.
 		 *
 		 * Empty ''pin'' means the handshake requires a client
-		 * certificate. Unix socket only.
+		 * certificate. Only the Unix socket sets the PIN. Over TLS an
+		 * approved client may close an open window with its PIN; with
+		 * the window closed the TLS call is refused.
 		 *
 		 * @param request inbound RPC from the GTK app
 		 * @param pin six digits, or empty to close the window
@@ -333,6 +343,12 @@ namespace OLLMfilesd
 				listen.pin = pin;
 				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
+				});
+				return;
+			}
+			if (listen.pin == "") {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error.INVALID_REQUEST("pairing window closed")
 				});
 				return;
 			}
