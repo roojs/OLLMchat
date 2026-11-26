@@ -109,6 +109,13 @@ namespace OLLMbwrap
 					file_info.get_name()
 				);
 				var actual_real_path = this.to_real_path(item_overlay_path);
+				// Git runs hooks and config from any .git (also the NTFS
+				// aliases .git. and git~1), so nothing there is copied back.
+				if (GLib.Regex.match_simple("(^|[/\\\\])(\\.git|git~\\d)[. ]*([/\\\\]|$)",
+						actual_real_path, GLib.RegexCompileFlags.CASELESS)) {
+					GLib.warning("Skipping overlay change inside .git: %s", actual_real_path);
+					continue;
+				}
 				GLib.FileType indexed;
 				try {
 					indexed = yield this.verification.has_file(

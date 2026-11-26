@@ -474,6 +474,7 @@ namespace OLLMbwrap
 		 * - Read-only root filesystem bind (--ro-bind / /)
 		 * - Device filesystem mount (--ro-bind /dev /dev) with /dev/null override (--dev-bind) for output redirection
 		 * - Read-write binds for overlay mount point at each project root location
+		 * - Read-only bind (--ro-bind) of each overlay root's .git
 		 * - Playground directory mount (--bind) at $HOME/playground
 		 * - Temporary directory mount (--tmpfs /tmp)
 		 * - Network isolation flag (--unshare-net) if network is not allowed
@@ -561,6 +562,12 @@ namespace OLLMbwrap
 					args += GLib.Path.build_filename(upper_dir, overlay_name);
 					args += GLib.Path.build_filename(work_dir, work_name);
 					args += entry.value;
+					var git_dir = GLib.Path.build_filename(entry.value, ".git");
+					if (GLib.FileUtils.test(git_dir, GLib.FileTest.EXISTS)) {
+						args += "--ro-bind";
+						args += git_dir;
+						args += git_dir;
+					}
 				}
 			}
 
@@ -626,7 +633,8 @@ namespace OLLMbwrap
 				foreach (var e in this.overlay.overlay_map.entries) {
 					var lower = e.value;
 					if (path == lower || path.has_prefix(lower + "/")) {
-						return true;
+						return !GLib.Regex.match_simple("(^|[/\\\\])(\\.git|git~\\d)[. ]*([/\\\\]|$)",
+							path, GLib.RegexCompileFlags.CASELESS);
 					}
 				}
 			}

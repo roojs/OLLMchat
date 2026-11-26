@@ -248,6 +248,10 @@ Edit mode is on for this path. In this same assistant message only:
 			if (this.file_path == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT("file_path parameter is required");
 			}
+			if (GLib.Regex.match_simple("(^|[/\\\\])(\\.git|git~\\d)[. ]*([/\\\\]|$)",
+					this.normalized_path, GLib.RegexCompileFlags.CASELESS)) {
+				throw new GLib.IOError.PERMISSION_DENIED("writing inside .git is not allowed");
+			}
 
 			if (this.edit_mode != "ast_path"
 				&& this.edit_mode != "line_numbers"

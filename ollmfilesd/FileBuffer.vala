@@ -410,10 +410,33 @@ namespace OLLMfilesd
 		 * Internal method: Write contents to file on disk.
 		 * 
 		 * @param contents file bytes, length included, zeros kept
-		 * @throws Error if file cannot be written
+		 * @throws Error if file cannot be written, the path resolves into
+		 *   a .git directory, or the file is a git HEAD naming a ref
 		 */
 		protected async void write_to_disk(uint8[] contents) throws Error
 		{
+			// Resolve the deepest existing part so a symlink cannot
+			// redirect the write into a .git directory.
+			var existing = this.file.path;
+			while (!GLib.FileUtils.test(existing, GLib.FileTest.EXISTS | GLib.FileTest.IS_SYMLINK)) {
+				existing = GLib.Path.get_dirname(existing);
+			}
+#if !G_OS_WIN32
+			var resolved = Posix.realpath(existing);
+#else
+			var resolved = GLib.Filename.canonicalize(existing);
+#endif
+			if (resolved == null || GLib.Regex.match_simple("(^|[/\\\\])(\\.git|git~\\d)[. ]*([/\\\\]|$)",
+					this.file.path + "/" + resolved, GLib.RegexCompileFlags.CASELESS)) {
+				throw new GLib.IOError.PERMISSION_DENIED("Writes inside .git are not allowed: " + this.file.path);
+			}
+			// A HEAD naming a ref makes its folder a bare repository that
+			// git loads config and hooks from.
+			if (GLib.Path.get_basename(this.file.path).down() == "head" &&
+					GLib.Regex.match_simple("^(ref:\\s*refs/|[0-9a-f]{40})",
+					((string) contents).ndup(contents.length), GLib.RegexCompileFlags.CASELESS)) {
+				throw new GLib.IOError.PERMISSION_DENIED("Writing a git HEAD file is not allowed: " + this.file.path);
+			}
 			var dirname = GLib.Path.get_dirname(this.file.path);
 			var dir_file = GLib.File.new_for_path(dirname);
 			if (!GLib.FileUtils.test(dir_file.get_path(), GLib.FileTest.EXISTS)) {

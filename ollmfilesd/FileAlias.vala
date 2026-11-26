@@ -268,11 +268,37 @@ namespace OLLMfilesd
 		 *
 		 * @param target symlink destination path
 		 * @param unix_mode optional rwx bits (''0'' skips chmod)
+		 * @throws Error if the link's folder or its target resolves into a
+		 *   .git directory, the link is a git HEAD naming a ref, or the
+		 *   symlink / chmod fails
 		 */
 		public async void realize(string target, uint unix_mode) throws Error
 		{
 			if (target == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT("Symlink target is empty");
+			}
+			// chmod below and later writes follow the link, so neither the
+			// link's folder nor what the target resolves to may be in .git.
+			var link_dir = GLib.Path.get_dirname(this.path);
+			var existing = GLib.Path.is_absolute(target) ? target : GLib.Path.build_filename(link_dir, target);
+			while (!GLib.FileUtils.test(existing, GLib.FileTest.EXISTS | GLib.FileTest.IS_SYMLINK)) {
+				existing = GLib.Path.get_dirname(existing);
+			}
+#if !G_OS_WIN32
+			var resolved = Posix.realpath(existing);
+			var resolved_dir = Posix.realpath(link_dir);
+#else
+			var resolved = GLib.Filename.canonicalize(existing);
+			var resolved_dir = GLib.Filename.canonicalize(link_dir);
+#endif
+			if (resolved == null || resolved_dir == null ||
+					GLib.Regex.match_simple("(^|[/\\\\])(\\.git|git~\\d)[. ]*([/\\\\]|$)",
+					this.path + "/" + target + "/" + resolved + "/" + resolved_dir,
+					GLib.RegexCompileFlags.CASELESS)) {
+				throw new GLib.IOError.PERMISSION_DENIED("Symlinks into .git are not allowed: " + this.path);
+			}
+			if (GLib.Path.get_basename(this.path).down() == "head" && target.has_prefix("refs/")) {
+				throw new GLib.IOError.PERMISSION_DENIED("Writing a git HEAD symlink is not allowed: " + this.path);
 			}
 			if (GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
 				GLib.FileUtils.unlink(this.path);

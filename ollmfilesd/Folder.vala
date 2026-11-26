@@ -1810,9 +1810,26 @@ GROUP BY
 		 * Apply mkdir and mode on disk.
 		 *
 		 * @param unix_mode optional rwx bits (''0'' skips chmod)
+		 * @throws Error if the path resolves into a .git directory, or
+		 *   mkdir / chmod fails
 		 */
 		public async void realize(uint unix_mode) throws Error
 		{
+			// Resolve the deepest existing part so a symlink cannot
+			// redirect mkdir or chmod into a .git directory.
+			var existing = this.path;
+			while (!GLib.FileUtils.test(existing, GLib.FileTest.EXISTS | GLib.FileTest.IS_SYMLINK)) {
+				existing = GLib.Path.get_dirname(existing);
+			}
+#if !G_OS_WIN32
+			var resolved = Posix.realpath(existing);
+#else
+			var resolved = GLib.Filename.canonicalize(existing);
+#endif
+			if (resolved == null || GLib.Regex.match_simple("(^|[/\\\\])(\\.git|git~\\d)[. ]*([/\\\\]|$)",
+					this.path + "/" + resolved, GLib.RegexCompileFlags.CASELESS)) {
+				throw new GLib.IOError.PERMISSION_DENIED("Writes inside .git are not allowed: " + this.path);
+			}
 			if (!GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
 				GLib.File.new_for_path(this.path).make_directory(null);
 			}

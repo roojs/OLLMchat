@@ -397,6 +397,14 @@ namespace OLLMfilesd
 			var unix_mode_val = GLib.Value(typeof(uint));
 			request.args.get(4).transform(ref unix_mode_val);
 			var unix_mode = unix_mode_val.get_uint();
+			if (GLib.Regex.match_simple("(^|[/\\\\])(\\.git|git~\\d)[. ]*([/\\\\]|$)",
+					path, GLib.RegexCompileFlags.CASELESS)) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error.INVALID_PARAMS("Writes inside .git are not allowed: " + path)
+				});
+				return;
+			}
 			try {
 				switch (base_type) {
 					case "d": {
@@ -687,6 +695,22 @@ namespace OLLMfilesd
 			// Copy backup file back to original path
 			var backup_file = GLib.File.new_for_path(history.backup_path);
 			var target_file = GLib.File.new_for_path(history.path);
+
+			// Resolve the deepest existing part so a symlink cannot
+			// redirect the copy into a .git directory.
+			var existing = history.path;
+			while (!GLib.FileUtils.test(existing, GLib.FileTest.EXISTS | GLib.FileTest.IS_SYMLINK)) {
+				existing = GLib.Path.get_dirname(existing);
+			}
+#if !G_OS_WIN32
+			var resolved = Posix.realpath(existing);
+#else
+			var resolved = GLib.Filename.canonicalize(existing);
+#endif
+			if (resolved == null || GLib.Regex.match_simple("(^|[/\\\\])(\\.git|git~\\d)[. ]*([/\\\\]|$)",
+					history.path + "/" + resolved, GLib.RegexCompileFlags.CASELESS)) {
+				throw new GLib.IOError.PERMISSION_DENIED("Writes inside .git are not allowed: " + history.path);
+			}
 			
 			// Create parent directory if it doesn't exist (for deleted files)
 			var parent_dir = target_file.get_parent();

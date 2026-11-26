@@ -113,6 +113,10 @@ namespace OLLMtools.WriteFile
 			if (this.file_path.strip() == "") {
 				return "file_path is required";
 			}
+			if (GLib.Regex.match_simple("(^|[/\\\\])(\\.git|git~\\d)[. ]*([/\\\\]|$)",
+					this.normalize_file_path(this.file_path), GLib.RegexCompileFlags.CASELESS)) {
+				return "writing inside .git is not allowed";
+			}
 			var has_ast = (this.ast_path.strip() != "");
 			var has_lines = (this.start_line >= 1 && this.end_line >= this.start_line);
 			var has_search = (this.search_text.strip() != "");
