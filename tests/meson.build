@@ -344,6 +344,26 @@ test('test-rpc-filesd-pair-flow',
     'OLLMFILESD': meson.current_build_dir() / '..' / 'ollmfilesd' / 'ollmfilesd',
   },
 )
+test_rpc_filesd_revocation = executable('test-rpc-filesd-revocation',
+  'rpc/filesd-revocation-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+    dependency('gio-unix-2.0'),
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  export_dynamic: true,
+  vala_args: rpc_test_vala_args + ['--pkg=gio-unix-2.0'],
+)
+test('test-rpc-filesd-revocation',
+  test_rpc_filesd_revocation,
+  suite: 'rpc',
+  timeout: 90,
+  depends: [ollmfilesd_bin],
+  env: {
+    'OLLMFILESD': meson.current_build_dir() / '..' / 'ollmfilesd' / 'ollmfilesd',
+  },
+)
 test_rpc_gi = executable('test-rpc-gi',
   'rpc/gi-test.vala',
   dependencies: rpc_test_deps + [
