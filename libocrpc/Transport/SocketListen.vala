@@ -67,7 +67,25 @@ namespace OLLMrpc.Transport
 					this.socket_path, e.message);
 				return false;
 			}
+			if (GLib.FileUtils.chmod(this.socket_path, 0600) != 0) {
+				GLib.warning("could not restrict socket %s: %s",
+					this.socket_path, GLib.strerror(GLib.errno));
+				return false;
+			}
 			this.service.incoming.connect((conn) => {
+				// The socket mode is set after bind, so a peer may have
+				// connected in between; the peer uid is the authority.
+				var peer_uid = (uint) 0;
+				try {
+					peer_uid = conn.get_socket().get_credentials().get_unix_user();
+				} catch (GLib.Error e) {
+					GLib.warning("refused socket client, no peer credentials: %s", e.message);
+					return true;
+				}
+				if (peer_uid != (uint) Posix.getuid()) {
+					GLib.warning("refused socket client uid %u", peer_uid);
+					return true;
+				}
 				var connection = new Connection(conn) {
 					live_handles = this.live_handles
 				};

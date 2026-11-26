@@ -71,7 +71,25 @@ namespace OLLMrpc.Live
 					this.fd_path, e.message);
 				return false;
 			}
+			if (GLib.FileUtils.chmod(this.fd_path, 0600) != 0) {
+				GLib.warning("could not restrict fd socket %s: %s",
+					this.fd_path, GLib.strerror(GLib.errno));
+				return false;
+			}
 			this.service.incoming.connect((conn) => {
+				// The socket mode is set after bind, so a peer may have
+				// connected in between; the peer uid is the authority.
+				var peer_uid = (uint) 0;
+				try {
+					peer_uid = conn.get_socket().get_credentials().get_unix_user();
+				} catch (GLib.Error e) {
+					GLib.warning("refused fd socket client, no peer credentials: %s", e.message);
+					return true;
+				}
+				if (peer_uid != (uint) Posix.getuid()) {
+					GLib.warning("refused fd socket client uid %u", peer_uid);
+					return true;
+				}
 				this.on_fd_accept(conn.get_socket());
 				return true;
 			});

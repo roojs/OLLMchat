@@ -609,8 +609,9 @@ Examples:
 				Posix._exit(0);
 			}
 
+			// No umask(0): files and sockets created by the daemon must
+			// keep the user's umask.
 			Posix.chdir("/");
-			Posix.umask(0);
 
 			var null_fd = Posix.open("/dev/null", Posix.O_RDWR);
 			if (null_fd < 0) {
