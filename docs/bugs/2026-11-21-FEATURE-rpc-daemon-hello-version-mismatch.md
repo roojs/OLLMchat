@@ -5,6 +5,7 @@
 ## User decisions required
 
 💩 Approve applying **Proposed fix** Topics 1–5 in order (Topic 6 at release cut).
+💩 The full-string compare in Topics 2 and 3 is replaced by [`2026-11-26-FEATURE-hello-api-version.md`](2026-11-26-FEATURE-hello-api-version.md). Do not apply those two compare blocks.
 
 ## User reported
 
@@ -551,4 +552,5 @@ Same **Remove** / **Replace with** as Topic 3 Part 3 (`my-app` name).
 
 ### Related
 
+- ℹ️ 2026-11-26 — First-two-number compare lives on `OLLMrpc.Daemon` in [`2026-11-26-FEATURE-hello-api-version.md`](2026-11-26-FEATURE-hello-api-version.md). Topics 2 and 3 here must call that, not `strverscmp` on the whole version.
 - 🚫 Using hello version mismatch work as the explanation for desktop startup hang after file nav — separate issue (`docs/bugs/done/2026-11-21-FIXED-desktop-startup-hang-after-file-nav.md`).

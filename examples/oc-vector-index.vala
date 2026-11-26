@@ -149,7 +149,7 @@ Examples:
 
 		if (!yield this.rpc.connect(new OLLMrpc.Request() {
 			method = "RPC-Daemon.hello",
-			args = OLLMrpc.args("is", 1, "oc-vector-index")
+			args = OLLMrpc.args("iss", 1, "oc-vector-index", OLLMchat.VERSION)
 		}, new OLLMrpc.ClientBoot())) {
 			var msg = this.rpc.connect_error;
 			if (msg == "") {

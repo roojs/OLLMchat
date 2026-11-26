@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Pack every OLLMchat library as an MSYS2 UCRT64 pacman package.
+# Pack the exported UCRT64 libraries: libocrpc and libocsqlite.
+# The installer still ships the other DLLs. Debian and RPM keep the full set.
 #
 # Expects scripts/ci/windows-msys2-build.sh to have compiled BUILD_DIR.
 # The library list is packaging/msys2/PKGBUILD _libs.
@@ -67,13 +68,7 @@ fi
 gir_for() {
 	case "$1" in
 		ocsqlite) printf '%s\n' OCSqlite-1.0.gir ;;
-		ocmarkdown) printf '%s\n' OCMarkdown-1.0.gir ;;
-		ocmarkdowngtk) printf '%s\n' OCMarkdownGtk-1.0.gir ;;
-		ollmchat) printf '%s\n' OLLMchat-1.0.gir ;;
-		octools) printf '%s\n' OLLMtools-1.0.gir ;;
-		occoder) printf '%s\n' OLLMcoder-1.0.gir ;;
-		ollmchatgtk) printf '%s\n' OLLMchatGtk-1.0.gir ;;
-		ocrpc|ollamaweb|ochf|ocfiles|ocwebkit|ocvector2|ocbwrap|ocmcp) printf '\n' ;;
+		ocrpc) printf '\n' ;;
 		*)
 			echo "windows-package-libs: no gir decision for $1" >&2
 			return 1

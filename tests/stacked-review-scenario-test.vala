@@ -245,7 +245,7 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 		this.manager.buffer_provider = new OLLMcoder.BufferProvider();
 		var connected = yield rpc.connect(new OLLMrpc.Request() {
 			method = "RPC-Daemon.hello",
-			args = OLLMrpc.args("is", 1, "stacked-review-scenario")
+			args = OLLMrpc.args("iss", 1, "stacked-review-scenario", OLLMchat.VERSION)
 		});
 		this.check(command_line, connected, "connect failed " + rpc.connect_error);
 		this.editor = new OLLMcoder.SourceView(this.manager);

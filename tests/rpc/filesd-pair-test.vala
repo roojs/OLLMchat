@@ -196,7 +196,7 @@ writes the signed cert and CA back, then RPC-Daemon.hello.
 			);
 			bin2.write(new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
-				args = OLLMrpc.args("is", 1, "ollmchat")
+				args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 			});
 			var hello = bin2.parse() as OLLMrpc.Response;
 			this.check(command_line, hello != null, "hello was not a response");

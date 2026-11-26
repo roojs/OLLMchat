@@ -513,7 +513,7 @@ namespace OLLMapp.SettingsDialog
 			);
 			var hello = new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
-				args = OLLMrpc.args("is", 1, "ollmchat")
+				args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 			};
 			yield this.win.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot());
 			this.rebooting = false;

@@ -59,7 +59,7 @@ namespace OLLMrpc
 	 * );
 	 * if (!yield rpc.connect(new OLLMrpc.Request() {
 	 *     method = "RPC-Daemon.hello",
-	 *     args = OLLMrpc.args("is", 1, "my-app")
+	 *     args = OLLMrpc.args("iss", 1, "my-app", OLLMchat.VERSION)
 	 * }, new OLLMrpc.ClientBoot())) {
 	 *     GLib.error("%s", rpc.connect_error);
 	 * }
@@ -98,7 +98,7 @@ namespace OLLMrpc
 	 * };
 	 * if (!yield rpc.connect(new OLLMrpc.Request() {
 	 *     method = "RPC-Daemon.hello",
-	 *     args = OLLMrpc.args("is", 1, "ollmchat")
+	 *     args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 	 * })) {
 	 *     GLib.error("%s", rpc.connect_error);
 	 * }
@@ -506,6 +506,29 @@ namespace OLLMrpc
 				);
 				this.disconnect();
 				return false;
+			}
+
+			var client_version = "0.0.0";
+			if (hello_request.args.size >= 3 &&
+				hello_request.args.get(2).holds(typeof(string)) &&
+				hello_request.args.get(2).get_string() != "") {
+				client_version = hello_request.args.get(2).get_string();
+			}
+			var daemon = new OLLMrpc.Daemon();
+			if (hello.retval.holds(typeof(OLLMrpc.Daemon))) {
+				daemon = (OLLMrpc.Daemon) hello.retval.get_object();
+			}
+			if (hello.retval.holds(typeof(string)) && hello.retval.get_string() != "") {
+				daemon.version = hello.retval.get_string();
+			}
+			if (daemon.compare(client_version, 2) < 0) {
+				this.connect_error = "The server is " + daemon.version + ". This client is " + client_version + ".";
+				GLib.critical("hello version id=%d: %s", hello_request.id, this.connect_error);
+				this.disconnect();
+				return false;
+			}
+			if (daemon.compare(client_version, 2) > 0) {
+				GLib.warning("This client is %s. The server is %s.", client_version, daemon.version);
 			}
 
 			GLib.debug("connect ok hello id=%d", hello_request.id);

@@ -161,7 +161,7 @@ public class ReviewFlowTest : RpcTestAppBase, OLLMrpc.MockDispatch
 		this.manager.buffer_provider = new OLLMcoder.BufferProvider();
 		var connected = yield rpc.connect(new OLLMrpc.Request() {
 			method = "RPC-Daemon.hello",
-			args = OLLMrpc.args("is", 1, "review-flow")
+			args = OLLMrpc.args("iss", 1, "review-flow", OLLMchat.VERSION)
 		});
 		this.check(command_line, connected, "connect failed " + rpc.connect_error);
 		this.editor = new OLLMcoder.SourceView(this.manager);

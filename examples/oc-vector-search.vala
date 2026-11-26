@@ -198,7 +198,7 @@ Examples:
 
 		if (!yield this.rpc.connect(new OLLMrpc.Request() {
 			method = "RPC-Daemon.hello",
-			args = OLLMrpc.args("is", 1, "oc-vector-search")
+			args = OLLMrpc.args("iss", 1, "oc-vector-search", OLLMchat.VERSION)
 		}, new OLLMrpc.ClientBoot())) {
 			var msg = this.rpc.connect_error;
 			if (msg == "") {

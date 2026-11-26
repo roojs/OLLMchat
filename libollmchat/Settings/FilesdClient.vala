@@ -229,7 +229,7 @@ namespace OLLMchat.Settings
 			try {
 				hello = authed.call(new OLLMrpc.Request() {
 					method = "RPC-Daemon.hello",
-					args = OLLMrpc.args("is", 1, "ollmchat")
+					args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 				});
 			} catch (GLib.Error e) {
 				GLib.warning("%s", e.message);

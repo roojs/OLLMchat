@@ -11,7 +11,38 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.17] - Unreleased
+## [1.4.18] - Unreleased
+
+Work since **1.4.17** (2026-11-24).
+
+### Added
+
+#### libocrpc
+
+- `HttpServer.take` answers one already-accepted socket on the existing RPC and route handlers, and stays in that call until the message finishes or aborts, including a paused SSE watch
+- `Daemon.compare` compares this version to another for a depth of 1, 2, or 3 leading numbers. Hello uses depth 2, so `0.1.60` and `0.1.59` are the same API
+
+### Changed
+
+#### Packaging
+
+- Android `.pixie` uploads and Windows UCRT64 library packages are only `libocrpc` and `libocsqlite`. Debian and RPM still ship every library the app packages depend on
+
+### Fixed
+
+#### Chat
+
+- Opening a reviewed file uses that file's buffer, and applying a diff reloads the file first when the change view still has parts
+
+#### libocrpc
+
+- Read-only bin properties are left off the wire. The default reader and writer warn and skip the value
+
+#### ollmfilesd
+
+- A closed pairing window refuses every PIN request, including over TLS, so a removed certificate cannot mint a replacement
+
+## [1.4.17] - 2026-11-24
 
 Work since **1.4.16**.
 

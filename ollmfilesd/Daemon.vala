@@ -14,14 +14,14 @@
 namespace OLLMfilesd
 {
 	/** Server {@code Daemon.*} — {@code hello} and {@code shutdown}. */
-	public class Daemon : GLib.Object, OLLMrpc.Bin.Serializable
+	public class Daemon : OLLMrpc.Daemon, OLLMrpc.Bin.Serializable
 	{
-		public static void rpc_register()
+		public static new void rpc_register()
 		{
 			OLLMrpc.Bin.register("Daemon", typeof(Daemon));
 			OLLMrpc.Request.add_class(
 				"RPC-Daemon", typeof(Daemon),
-				"hello", "is",
+				"hello", "iss",
 				"shutdown", ""
 			);
 		}
@@ -31,18 +31,32 @@ namespace OLLMfilesd
 		public Daemon(OllmfilesdApplication app)
 		{
 			GLib.Object(app: app);
+			this.server = "ollmfilesd";
+			this.ready = true;
 		}
 
-		public int protocol { get; set; default = 1; }
-		public string server { get; set; default = "ollmfilesd"; }
-		public bool ready { get; set; default = true; }
-
-		public void hello(OLLMrpc.Request request, int protocol, string client)
+		public void hello(OLLMrpc.Request request, int protocol, string client, string? version = null)
 		{
 			if (protocol > 0) {
 				this.protocol = protocol;
 			}
+			var theirs = (version == null || version == "") ? "0.0.0" : version;
+			GLib.debug("hello %s %d %s", client, protocol, theirs);
+			this.version = OLLMchat.VERSION;
+			if (this.compare(theirs, 2) < 0) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error.INVALID_PARAMS("The server is " + this.version +
+						". This client is " + theirs + ".")
+				});
+				return;
+			}
+			var notice = "ok";
+			if (this.compare(theirs, 2) > 0) {
+				notice = "This client is " + theirs + ". The server is " + this.version + ".";
+				GLib.warning("%s", notice);
+			}
 			request.reply(new OLLMrpc.Response() {
+				msg = notice,
 				retval = OLLMrpc.val("o", this)
 			});
 		}

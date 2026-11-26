@@ -37,7 +37,7 @@ CI then:
    - **Trixie packages** is Debian 13 (`debian:trixie`, girepository 1.0). Versions end in `+trixie` (`libocrpc1_1.4.6-1+trixie_amd64.deb`). A Trixie failure does not drop the Ubuntu artifacts.
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
 3. Builds **AppImages** (sqgipkg) for x86_64 and aarch64 at the same time. Each arch has its own Debian sysroot, Faiss, and Meson cache. **Release - AppImage** runs the same jobs without publishing. Leave **Rebuild sqgipkg and Meson caches from scratch** off unless the caches should be ignored.
-4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**, plus one MSYS2 package per library: **`mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst`**.
+4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**, plus MSYS2 packages for **`libocrpc`** and **`libocsqlite`**: **`mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst`**.
 5. Builds **Android** APKs on the version tag: `ollmchat-v*.apk` (Gradle release) and `ollmchat-v*-debug.apk` (Gradle debug), from one native compile. An Android failure fails the Release workflow. Publish does not run, so neither GitHub Release is created.
 6. On a tag push, publishes **two** GitHub Releases only after Android, Debian, RPM, Windows, and AppImage have all succeeded. An AppImage failure skips Publish. `scripts/release.sh` pushes the git tag `${tag}-packages` to git.roojs.com with the version tag. The GitHub mirror copies it. This workflow ignores `v*-packages`, so that push does not rebuild. Publish refuses to create the packages release when that tag is not already on GitHub. A packages tag created only on GitHub is deleted on the next mirror sync, and GitHub turns the release back into a draft. `.deb`, `.rpm`, `.pixie`, Windows library archives, and the AppImage go on `${tag}-packages` (not marked Latest). The Windows installer and the APKs go on the version tag, so that tag appears above packages on the Releases page. Publish deletes a leftover draft for either tag before creating it, and refuses to publish when the APK or either AppImage is missing.
 
@@ -126,8 +126,9 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    | same names without `.fc` | openSUSE Tumbleweed |
    | `OLLMchat-remote-only-x86_64.AppImage` | Linux x86_64; remote backends only |
    | `OLLMchat-remote-only-aarch64.AppImage` | Linux aarch64; remote backends only |
-   | `mingw-w64-ucrt-x86_64-lib<name>-<version>-1-any.pkg.tar.zst` | Windows UCRT64 library (DLL, import library, header, VAPI; GIR when the build emits one). One file per library: `libocsqlite`, `libocrpc`, `libocmarkdown`, `libollamaweb`, `libochf`, `libocmarkdowngtk`, `libocfiles`, `libollmchat`, `libocwebkit`, `libocvector2`, `libocbwrap`, `libocmcp`, `liboctools`, `liboccoder`, `libollmchatgtk`. `libocvector2` also contains `libfaiss.dll`. |
-   | `<name>-arm-v31-<version>.pixie` | Android library (one file per library the APK build installed). `release.pins` on `main` points at these files. The Valadoc Pages workflow publishes it at `https://roojs.github.io/OLLMchat/release.pins`. The pin file is not attached to the release. |
+   | `mingw-w64-ucrt-x86_64-libocrpc-<version>-1-any.pkg.tar.zst` | Windows UCRT64 `libocrpc` (DLL, import library, header, VAPI). |
+   | `mingw-w64-ucrt-x86_64-libocsqlite-<version>-1-any.pkg.tar.zst` | Windows UCRT64 `libocsqlite` (DLL, import library, header, VAPI, GIR). |
+   | `ocrpc-arm-v31-<version>.pixie`, `ocsqlite-arm-v31-<version>.pixie` | Android libraries other projects can depend on. `release.pins` on `main` points at these files. The Valadoc Pages workflow publishes it at `https://roojs.github.io/OLLMchat/release.pins`. The pin file is not attached to the release. |
 
 ### Installing from the package repositories
 
@@ -174,7 +175,7 @@ Release CI builds on **`windows-latest`** + MSYS2 UCRT64 ([`x-windows.yml`](../.
 
 1. `scripts/ci/windows-msys2-build.sh` — FAISS + pinned webview2gtk pacman + meson compile
 2. `scripts/ci/windows-package-nsis.sh` — stages `dist-windows/OLLMchat/` (exe + DLLs; intermediate only), then NSIS → **`OLLMchat-<version>-Setup.exe`**
-3. `scripts/ci/windows-package-libs.sh` — packs every library in `packaging/msys2/PKGBUILD` `_libs` from that compile
+3. `scripts/ci/windows-package-libs.sh` — packs `libocrpc` and `libocsqlite` from `packaging/msys2/PKGBUILD` `_libs`
 
 The version tag gets the Setup.exe. The `.pkg.tar.zst` files go on `${tag}-packages`. Manual: **Release - Windows**. Compile-only smoke: **X - Native Windows MSYS2 compile** (no packages).
 

@@ -531,7 +531,7 @@ namespace OLLMapp
 				this.project_manager.replace_rpc(rpc);
 				var hello = new OLLMrpc.Request() {
 					method = "RPC-Daemon.hello",
-					args = OLLMrpc.args("is", 1, "ollmchat")
+					args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 				};
 				is_desktop_available = yield rpc.connect(hello);
 				if (is_desktop_available) {
@@ -733,7 +733,7 @@ namespace OLLMapp
 				try {
 					hello = link.call(new OLLMrpc.Request() {
 						method = "RPC-Daemon.hello",
-						args = OLLMrpc.args("is", 1, "ollmchat")
+						args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 					});
 				} catch (GLib.Error e) {
 					GLib.warning("%s", e.message);
@@ -801,7 +801,7 @@ namespace OLLMapp
 				this.project_manager.replace_rpc(rpc);
 				var hello = new OLLMrpc.Request() {
 					method = "RPC-Daemon.hello",
-					args = OLLMrpc.args("is", 1, "ollmchat")
+					args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 				};
 				if (!yield rpc.connect(hello)) {
 					continue;

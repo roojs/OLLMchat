@@ -556,7 +556,7 @@ namespace OLLMapp
 
 			var hello = new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
-				args = OLLMrpc.args("is", 1, "ollmchat")
+				args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 			};
 			if (!yield this.project_manager.rpc.connect(hello,
 				config.filesd_client.url == ""

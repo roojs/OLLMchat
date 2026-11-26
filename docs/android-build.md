@@ -69,8 +69,8 @@ that list differs from the last download. `PIXIEWOOD_REFRESH_SUBPROJECTS=1`
 downloads again even when the list matches.
 
 `release.pins` in the repository root is the pin list for the Android libraries
-this project publishes. A version tag uploads one `.pixie` per library that the
-Android build installed, commits `release.pins` on `main`, and starts the
+this project publishes: `ocrpc` and `ocsqlite`. A version tag uploads those
+two `.pixie` files, commits `release.pins` on `main`, and starts the
 Valadoc GitHub Pages workflow. That workflow copies `release.pins` and
 `snapshot.pins` into the documentation site, so the list is at
 `https://roojs.github.io/OLLMchat/release.pins`. pixie-pkg reads pin lists from

@@ -185,7 +185,7 @@ namespace OLLMapp.SettingsDialog
 			this.check_button.sensitive = false;
 			if (!yield rpc.connect(new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
-				args = OLLMrpc.args("is", 1, "ollmchat")
+				args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 			})) {
 				GLib.debug("file connection check: %s", rpc.connect_error);
 				this.check_button.sensitive = true;
@@ -239,7 +239,7 @@ namespace OLLMapp.SettingsDialog
 			this.win.project_manager.replace_rpc(rpc);
 			var hello = new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
-				args = OLLMrpc.args("is", 1, "ollmchat")
+				args = OLLMrpc.args("iss", 1, "ollmchat", OLLMchat.VERSION)
 			};
 			var connected = false;
 			if (remote) {

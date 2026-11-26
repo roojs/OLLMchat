@@ -265,7 +265,7 @@ namespace OLLMrpc
 		 *
 		 * {{{
 		 * OLLMrpc.Request.add_class(
-		 *     "RPC-Daemon", typeof(Daemon), "hello", "is"
+		 *     "RPC-Daemon", typeof(Daemon), "hello", "iss"
 		 * );
 		 * OLLMrpc.Request.register("RPC-Daemon", this.daemon);
 		 * }}}

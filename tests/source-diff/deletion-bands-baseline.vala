@@ -727,7 +727,7 @@ namespace OLLMapp
 							try {
 								bin.write(new OLLMrpc.Request() {
 									method = "RPC-Daemon.hello",
-									args = OLLMrpc.args("is", 1, "oc-test-source-diff")
+									args = OLLMrpc.args("iss", 1, "oc-test-source-diff", OLLMchat.VERSION)
 								});
 							} catch (GLib.Error e) {
 								GLib.warning("%s", e.message);
@@ -766,7 +766,7 @@ namespace OLLMapp
 							manager.replace_rpc(rpc);
 							connected = yield rpc.connect(new OLLMrpc.Request() {
 								method = "RPC-Daemon.hello",
-								args = OLLMrpc.args("is", 1, "oc-test-source-diff")
+								args = OLLMrpc.args("iss", 1, "oc-test-source-diff", OLLMchat.VERSION)
 							});
 							if (!connected) {
 								continue;
@@ -786,7 +786,7 @@ namespace OLLMapp
 				if (!connected) {
 					connected = yield manager.rpc.connect(new OLLMrpc.Request() {
 						method = "RPC-Daemon.hello",
-						args = OLLMrpc.args("is", 1, "oc-test-source-diff")
+						args = OLLMrpc.args("iss", 1, "oc-test-source-diff", OLLMchat.VERSION)
 					}, new OLLMrpc.ClientBoot());
 				}
 	#endif
@@ -920,7 +920,7 @@ namespace OLLMapp
 					this.project_manager.replace_rpc(rpc);
 					var hello = new OLLMrpc.Request() {
 						method = "RPC-Daemon.hello",
-						args = OLLMrpc.args("is", 1, "oc-test-source-diff")
+						args = OLLMrpc.args("iss", 1, "oc-test-source-diff", OLLMchat.VERSION)
 					};
 					rpc.connect.begin(hello, null, (obj, res) => {
 						if (!rpc.connect.end(res)) {

@@ -52,7 +52,7 @@
  * );
  * if (!yield rpc.connect(new OLLMrpc.Request() {
  *     method = "RPC-Daemon.hello",
- *     args = OLLMrpc.args("is", 1, "my-app")
+ *     args = OLLMrpc.args("iss", 1, "my-app", OLLMchat.VERSION)
  * }, new OLLMrpc.ClientBoot())) {
  *     GLib.error("%s", rpc.connect_error);
  * }

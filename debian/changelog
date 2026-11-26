@@ -1,8 +1,20 @@
+ollmchat (1.4.18-1) unstable; urgency=medium
+
+  * `HttpServer.take` answers one already-accepted socket on the existing RPC and route handlers, and stays in that call until the message finishes or aborts, including a paused SSE watch
+  * `Daemon.compare` compares this version to another for a depth of 1, 2, or 3 leading numbers. Hello uses depth 2, so `0.1.60` and `0.1.59` are the same API
+  * Android `.pixie` uploads and Windows UCRT64 library packages are only `libocrpc` and `libocsqlite`. Debian and RPM still ship every library the app packages depend on
+  * Opening a reviewed file uses that file's buffer, and applying a diff reloads the file first when the change view still has parts
+  * Read-only bin properties are left off the wire. The default reader and writer warn and skip the value
+  * A closed pairing window refuses every PIN request, including over TLS, so a removed certificate cannot mint a replacement
+
+ -- Alan Knowles <alan@roojs.com>  Thu, 26 Nov 2026 00:00:00 +0000
+
 ollmchat (1.4.17-1) unstable; urgency=medium
 
   * Disk backup writes `filename.new`, then copies over `filename` and deletes `.new` instead of `rename`, so Windows in-place upgrades do not leave an orphaned `.new` and an empty on-disk store
+  * Debian builds no longer compile ``oc-test-webkit`` by default (``-Doc_test_webkit=false``); enables Trixie ``dpkg-buildpackage`` when the webdriver ``.so`` link line is incomplete
 
- -- Alan Knowles <alan@roojs.com>  Mon, 23 Nov 2026 00:00:00 +0000
+ -- Alan Knowles <alan@roojs.com>  Tue, 24 Nov 2026 00:00:00 +0000
 
 ollmchat (1.4.16-1) unstable; urgency=medium
 

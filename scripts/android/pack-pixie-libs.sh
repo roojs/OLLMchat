@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Pack each Android library this build installed into a .pixie file and
-# write release.pins for that set. Publish uploads the .pixie files.
-# release.pins is committed on main and published on GitHub Pages.
+# Pack the Android libraries other projects can depend on: ocrpc and
+# ocsqlite. The APK still links the rest. Publish uploads these .pixie
+# files. release.pins is committed on main and published on GitHub Pages.
 # It is not a release asset.
 set -euo pipefail
 
@@ -39,17 +39,6 @@ requires_of() {
   case "$1" in
     ocsqlite) printf '%s\n' gee-0.8 gio-2.0 glib-2.0 gobject-2.0 sqlite3 ;;
     ocrpc) printf '%s\n' gee-0.8 gio-2.0 glib-2.0 gobject-2.0 gio-unix-2.0 gmodule-2.0 json-glib-1.0 libsoup-3.0 libffi openssl ;;
-    ocmarkdown) printf '%s\n' gee-0.8 gio-2.0 glib-2.0 gobject-2.0 json-glib-1.0 libsoup-3.0 libxml-2.0 ;;
-    ollamaweb) printf '%s\n' gee-0.8 gio-2.0 glib-2.0 gobject-2.0 json-glib-1.0 libsoup-3.0 libxml-2.0 ;;
-    ochf) printf '%s\n' gee-0.8 gio-2.0 glib-2.0 gobject-2.0 json-glib-1.0 libsoup-3.0 ;;
-    ocmarkdowngtk) printf '%s\n' gtk4 gtksourceview-5 gee-0.8 gio-2.0 glib-2.0 gobject-2.0 json-glib-1.0 libsoup-3.0 libxml-2.0 ocmarkdown ;;
-    ocfiles) printf '%s\n' gee-0.8 gio-2.0 glib-2.0 gobject-2.0 json-glib-1.0 libsoup-3.0 sqlite3 ocrpc ocsqlite ;;
-    ollmchat) printf '%s\n' gee-0.8 gio-2.0 glib-2.0 gobject-2.0 json-glib-1.0 libsoup-3.0 ocrpc ;;
-    ocwebkit) printf '%s\n' gee-0.8 gio-2.0 glib-2.0 gobject-2.0 json-glib-1.0 gtk4 libsoup-3.0 webkitgtk-android-1 ollmchat ;;
-    ocmcp) printf '%s\n' gee-0.8 gio-2.0 glib-2.0 gobject-2.0 gmodule-2.0 json-glib-1.0 libsoup-3.0 ;;
-    octools) printf '%s\n' gee-0.8 gio-2.0 glib-2.0 gobject-2.0 json-glib-1.0 libsoup-3.0 ;;
-    occoder) printf '%s\n' gtk4 libadwaita-1 gtksourceview-5 gee-0.8 gio-2.0 glib-2.0 gobject-2.0 json-glib-1.0 libsoup-3.0 sqlite3 ollmchat ;;
-    ollmchatgtk) printf '%s\n' gtk4 libadwaita-1 gtksourceview-5 gee-0.8 gio-2.0 glib-2.0 gobject-2.0 json-glib-1.0 libsoup-3.0 sqlite3 ollmchat ocmarkdown ocmarkdowngtk ocsqlite ;;
     *) return 1 ;;
   esac
 }
@@ -71,10 +60,11 @@ pins="$stage/packages.json"
 printf '%s\n' '{"packages":[]}' > "$pins"
 
 found=0
-for name in ocsqlite ocrpc ocmarkdown ollamaweb ochf ocmarkdowngtk ocfiles ollmchat ocwebkit ocmcp octools occoder ollmchatgtk; do
+for name in ocsqlite ocrpc; do
   so="$(find "$libdir" -maxdepth 1 -name "lib${name}.so" -print -quit)"
   if [ -z "$so" ]; then
-    continue
+    echo "Android library lib${name}.so was not installed" >&2
+    exit 1
   fi
   one="$stage/one"
   rm -rf "$one"

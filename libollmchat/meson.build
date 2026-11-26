@@ -162,7 +162,12 @@ ollmchat_resources = [ollmchat_resources_c, ollmchat_resources_h]
 
 # Source files for OLLMchat namespace (needed by CodeAssistant)
 # Settings files must come first as they are used by other files
-ollmchat_ollama_src = files([
+version_vala = configure_file(
+  input: 'version.vala.in',
+  output: 'version.vala',
+  configuration: { 'VERSION': meson.project_version() }
+)
+ollmchat_ollama_src = [version_vala] + files([
   'ApplicationInterface.vala',
   'ChatDesktopInterface.vala',
   'Settings/Connection.vala',
