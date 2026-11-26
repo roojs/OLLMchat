@@ -6,6 +6,12 @@
 
 None. — Target approved: last visible Accept → full approve in DB; tab + bar stay open; sync must not close or hide. — Tests: build **A + B + C** together (headless DB, widget stub, visual), not pick-one.
 
+## Client repaint constraints
+
+- 🚫 **2026-11-26 — user:** A client fix that **fully reloads** the file and **re-renders the whole document** — delete/clear the editor buffer and **reinsert the entire text** from scratch (e.g. wholesale `set_text`, “open the file again” repaint, or `File.read` solely to nuke the view before painting) — is **not acceptable** and will be **rejected**.
+- 🔷 Partial accept / stacked hunks must stay **surgical**: incremental `ChangeView` / `apply_parts`, drop stale tags and GtkSource marks on accepted spans, and feed `proposal` from **plain** file text **without** replacing the whole buffer. See [source view diff tags after accept](done/2026-11-15-FIXED-source-view-diff-tags-after-accept.md) for the intended incremental story.
+- 🔷 **Review timing (2026-11-26):** User reviews **once**, when Phase 1b is **finished** (surgical code in tree, `test-stacked-review-scenario` green, **Proposed fix** updated to match). **Not** for in-progress turns, abandoned drafts, or “stop and approve” mid-implementation.
+
 ## User reported
 
 - 🔷 On desktop, open a file that needs approval with **three** visible diff hunks that do not line up cleanly with the buffer.
@@ -129,6 +135,83 @@ None.
 - Client
   - No `SourceView` change required if queue clears on refresh (Tier B already expects empty pending + bar visible).
 
+### Phase 1b — Client partial-accept paint (proposed, **not applied** — 2026-11-26)
+
+- Status
+  - **⏳** Not started in tree (agent to implement surgical direction, then mark **✔️** here and point user at one **Proposed fix** pass — no review until then).
+- Why
+  - Headless `test-stacked-review-scenario` fails after 1st Accept: accepted hunk line still has `diff-*` GtkSource marks (tags can clear; marks linger).
+  - `ChangeView.proposal` uses `file.buffer.get_text()` while the editor buffer holds **diff-expanded** text (remove/add lines), so accepted runs and gaps use wrong line slices after repaint.
+  - Incremental `apply_parts` can **skip** spans (`compare` + `unchanged` match) and leave stale source marks on accepted lines.
+  - After last hunk: `send_part` refreshes queue; `review_files.refreshed` can run **sync** `proposal`/`apply` on the same stale buffer → ghost lines (e.g. `three|THREE|four`).
+- Surgical direction (implement this; **final** Remove/Replace blocks appear below only when complete)
+  - **Plain text for `proposal`:** pass disk/project text into `proposal` (e.g. field set on read, or RPC `msg` from last `File.read`), not the painted `GtkSource.Buffer` text.
+  - **`apply_parts`:** when a hunk flips to decided (`unchanged` + `accepted != 0`), **replace** buffer span and strip `diff-add` / `diff-remove` tags and marks on that span; extend existing [source view diff tags after accept](done/2026-11-15-FIXED-source-view-diff-tags-after-accept.md) rules (`unchanged` compare, `accepted` on proposed parts).
+  - **Chunk close:** paint decided parts once (incremental or final `apply_parts` pass), then refresh; avoid second sync paint in `refreshed` on a stale buffer (async hand-off or skip if `part_sending` / chunk just closed).
+  - **Verify:** `./build/tests/test-stacked-review-scenario` headless three Accepts; per-step audit: accepted lines clean, pending lines still red/green; final buffer `one|two|three|four`.
+- ~~Abandoned agent draft (reference only — do not review)~~ — [`liboccoder/ChangeView.vala`](../../liboccoder/ChangeView.vala)
+  - **Add** `accepted = inc.accepted` when building decided `unchanged` part in `proposal` (so `apply` can detect decided hunks).
+  - **Replace** `apply` entry guard:
+
+```vala
+// Remove
+			if (this.parts.size > 0) {
+				this.apply_parts(next);
+				return;
+			}
+
+// Replace with (still uses full set_text when any decided hunk — violates constraint)
+			var full_repaint = false;
+			foreach (var part in next.parts) {
+				if (part.accepted != 0) {
+					full_repaint = true;
+					break;
+				}
+			}
+			if (this.parts.size > 0 && !full_repaint) {
+				this.apply_parts(next);
+				return;
+			}
+```
+
+  - **Add** before `set_text` in full-apply path (wipe before full insert — **violates constraint**):
+
+```vala
+			Gtk.TextIter wipe_start;
+			Gtk.TextIter wipe_end;
+			this.buffer.get_bounds(out wipe_start, out wipe_end);
+			this.buffer.remove_all_tags(wipe_start, wipe_end);
+			this.buffer.remove_source_marks(wipe_start, wipe_end, null);
+```
+
+- WIP draft — [`liboccoder/SourceView.vala`](../../liboccoder/SourceView.vala)
+  - **`show_pending_diff`:** **Add** `yield file.read()` before `proposal` when `parts.size > 0` — **violates constraint**; replace with plain-text source for `proposal` instead.
+  - **Add** method `repaint_review_parts` (same read + proposal + apply) — **violates constraint**; chunk-close path should call incremental paint only.
+  - **`review_files.refreshed`:** **Replace** sync `proposal`/`apply` on chunk closed with `repaint_review_parts.begin(...)` — direction OK, implementation must not use `File.read` nuke.
+
+```vala
+// Remove (chunk_closed branch)
+							var proposal = this.change_view.proposal(
+								this.current_file, this.review_bar.parts);
+							this.change_view.apply(proposal);
+							(this.source_view.buffer as GtkSource.Buffer).set_modified(false);
+							this.review_bar.update_diff(
+								this.review_bar.parts, this.review_bar.file_index);
+
+// Replace with
+							this.repaint_review_parts.begin(
+								this.current_file, this.review_bar.parts);
+```
+
+- WIP draft — [`liboccoder/Diff/ReviewBar.vala`](../../liboccoder/Diff/ReviewBar.vala) — **Add** before `refresh` when chunk closed:
+
+```vala
+			if (file != null && !chunk_open && this.parts.size > 0) {
+				yield this.source_view.repaint_review_parts(file, this.parts);
+				this.update_diff(this.parts, this.file_index);
+			}
+```
+
 ### Phase 2 — Cumulative diff display (optional, not done)
 
 - Why
@@ -202,3 +285,5 @@ Goal: replay **disk file + backup cache + SQLite rows** and assert queue / `revi
 - ✔️ Phase 1 product fix in [`FileDiffPart.commit`](../../ollmfilesd/FileDiffPart.vala) (2026-11-24).
 - ⏳ Tier A: checked-in `tests/rpc-fixtures/stacked-review/` SQLite seed (history was not persisting from write-only RPC setup).
 - ℹ️ Report shape: **Desired behavior** is the spec (action → expect; ✅ = works today). Repro symptoms → **User reported** + **LLM**.
+- 🚫 **2026-11-26** — User constraint: **Client repaint constraints** — no full-buffer wipe + full reinsert; any agent proposal that depends on that should be reworked before review.
+- ℹ️ **2026-11-26** — User asked to **revert** in-progress client WIP from tree (parallel commits); user reviews **Phase 1b only when complete**, not mid-flight.
