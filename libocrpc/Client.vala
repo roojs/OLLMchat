@@ -237,6 +237,7 @@ namespace OLLMrpc
 		private Gee.ArrayList<PendingWrite> pending {
 			get; private set; default = new Gee.ArrayList<PendingWrite>();
 		}
+		private bool closing = false;
 		private bool sending { get; set; default = false; }
 		private GLib.IOChannel? read_channel;
 		private uint read_watch_id = 0;
@@ -538,15 +539,18 @@ namespace OLLMrpc
 
 		public void disconnect()
 		{
+			if (this.closing) {
+				return;
+			}
 			if (!this.connected &&
 				this.socket == null &&
 				this.read_watch_id == 0 &&
 				this.bin == null) {
 				return;
 			}
+			this.closing = true;
 			GLib.debug("disconnect socket_path=%s pending=%u",
-				this.socket_path,this.pending.size);
-				
+				this.socket_path, this.pending.size);
 			this.sending = false;
 			this.connected = false;
 			if (this.read_watch_id != 0) {
@@ -554,15 +558,8 @@ namespace OLLMrpc
 				this.read_watch_id = 0;
 			}
 			this.read_channel = null;
-			foreach (var entry in this.pending) {
-				GLib.warning("disconnect abort %s id=%d socket_path=%s",
-					entry.request.method, entry.request.id, this.socket_path);
-				entry.done_response = new Response() {
-					id = entry.request.id,
-					error = new Error.INTERNAL_ERROR("Client: disconnected")
-				};
-				entry.promise.set_value(entry.done_response);
-			}
+			var aborted = new Gee.ArrayList<PendingWrite>();
+			aborted.add_all(this.pending);
 			this.pending.clear();
 			this.proxies.clear();
 			this.bin = null;
@@ -580,6 +577,19 @@ namespace OLLMrpc
 				}
 				this.socket = null;
 			}
+			foreach (var entry in aborted) {
+				GLib.warning("disconnect abort %s id=%d socket_path=%s",
+					entry.request.method, entry.request.id, this.socket_path);
+				entry.done_response = new Response() {
+					id = entry.request.id,
+					error = new Error.INTERNAL_ERROR("Client: disconnected")
+				};
+				entry.promise.set_value(entry.done_response);
+			}
+			if (this.sync_loop != null) {
+				this.sync_loop.quit();
+			}
+			this.closing = false;
 		}
 
 		private async void send_http(PendingWrite head) throws GLib.Error

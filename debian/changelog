@@ -1,3 +1,9 @@
+ollmchat (1.4.20-1) unstable; urgency=medium
+
+  * Disconnect closes the client and clears pending calls before waking them, so a waiter that disconnects again does not set the same promise twice, and a blocked `call_sync` leaves its loop
+
+ -- Alan Knowles <alan@roojs.com>  Fri, 27 Nov 2026 00:00:00 +0000
+
 ollmchat (1.4.19-1) unstable; urgency=medium
 
   * `HttpStream` async HTTP binary stream client reading 4-byte big-endian length-framed `Bin.Stream` values with `headers`, `tls_database`, `received` / `closed` signals, and `close()`

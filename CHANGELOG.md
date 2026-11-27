@@ -11,6 +11,16 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
+## [1.4.20] - Unreleased
+
+Work since **1.4.19** (2026-11-27).
+
+### Fixed
+
+#### libocrpc
+
+- Disconnect closes the client and clears pending calls before waking them, so a waiter that disconnects again does not set the same promise twice, and a blocked `call_sync` leaves its loop
+
 ## [1.4.19] - Unreleased
 
 Work since **1.4.18** (2026-11-26).
