@@ -196,6 +196,7 @@ namespace OLLMrpc.Transport
 				GLib.SocketAddress? remote = null;
 				if (src_ip != "") {
 					remote = new GLib.InetSocketAddress.from_string(src_ip, src_port);
+					remote.set_data("ollmrpc-peer-socket", connection.socket);
 				}
 				GLib.SocketAddress? local = null;
 				try {
@@ -281,6 +282,9 @@ namespace OLLMrpc.Transport
 			var aborted = this.soup.request_aborted.connect((msg) => {
 				loop.quit();
 			});
+			if (remote != null && connection is GLib.SocketConnection) {
+				remote.set_data("ollmrpc-peer-socket", ((GLib.SocketConnection) connection).socket);
+			}
 			try {
 				this.soup.accept_iostream(connection, local, remote);
 			} catch (GLib.Error e) {

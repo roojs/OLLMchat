@@ -137,6 +137,7 @@ ocrpc_core_src = namespace_src + files([
   'Transport/HttpReply.vala',
   'Transport/HttpServer.vala',
   'Transport/HttpClient.vala',
+  'Transport/HttpStream.vala',
   'Transport/TlsClient.vala',
   'Http/Route.vala',
   'Daemon.vala',

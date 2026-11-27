@@ -11,7 +11,33 @@ Debian and RPM packaging notes are generated from this file at release time
 
 **AI agents:** Read that document before editing this file.
 
-## [1.4.18] - Unreleased
+## [1.4.19] - Unreleased
+
+Work since **1.4.18** (2026-11-26).
+
+### Added
+
+#### libocrpc
+
+- `HttpStream` async HTTP binary stream client reading 4-byte big-endian length-framed `Bin.Stream` values with `headers`, `tls_database`, `received` / `closed` signals, and `close()`
+- `HttpReply` binary streaming (`application/octet-stream` chunked responses with 4-byte big-endian length-prefixed `Bin.Stream` frames) and `closed` signal on peer disconnect or `end()` (including over `HttpServer.take`)
+- `HttpClient.headers` map for attaching extra HTTP request headers (such as `Authorization` or `Cookie`) to outgoing calls
+
+#### CLI
+
+- `ollmchat-cli` `--system-file` and `--user-file` raw prompt mode for one-shot `chat/completions` requests without an agent or tools
+
+### Changed
+
+#### Chat
+
+- Edit-mode write tool instructions use `<write>…</write>` tags instead of standalone markdown fences
+
+#### Android
+
+- Removed the `adw-spinner.vapi` shim from the Android POC build
+
+## [1.4.18] - 2026-11-26
 
 Work since **1.4.17** (2026-11-24).
 

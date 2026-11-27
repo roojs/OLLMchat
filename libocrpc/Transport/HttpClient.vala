@@ -105,6 +105,14 @@ namespace OLLMrpc.Transport
 		public GLib.TlsCertificate? tls_certificate { get; set; default = null; }
 
 		/**
+		 * Extra HTTP request headers sent on every {@link call} (e.g.
+		 * ''Authorization'' or ''Cookie'').
+		 */
+		public Gee.HashMap<string, string> headers {
+			get; set; default = new Gee.HashMap<string, string>();
+		}
+
+		/**
 		 * Soup session used by {@link call}.
 		 *
 		 * Startup sets {@link Soup.Session.timeout} to 15 for the
@@ -156,6 +164,9 @@ namespace OLLMrpc.Transport
 				});
 			}
 			var req_headers = message.get_request_headers();
+			foreach (var key in this.headers.keys) {
+				req_headers.replace(key, this.headers.get(key));
+			}
 			if (this.session_id != "") {
 				req_headers.replace("X-rpc-session", this.session_id);
 			}
