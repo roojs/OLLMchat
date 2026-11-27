@@ -1,10 +1,11 @@
 # Phone Agent Pi mid-file `write` re-activates edit mode instead of applying fences
 
-**Status:** ✔️
+**Status:** ⏳ — copy-only fix **insufficient**; desktop re-test **2026-11-27** same failure class (ornith-1.5:35b).
 
 ## User decisions required
 
-None.
+- 💩 Strategy first: [`EDIT-2.16`](../plans/EDIT-2.16-edit-output-format-strategy.md) (always-on `<write>` vs gated `write` + tags) — see [2026-11-27 activation plan not viable](2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md).
+- 💩 If staying on fence path temporarily: escape hatches still on table — [`EDIT-2.15-active-edit-tool`](../plans/EDIT-2.15-active-edit-tool.md), **body in `write` args**, or **error on repeat `write`** while active.
 
 ## User reported
 
@@ -196,6 +197,15 @@ Shared assembly order in `execute_request()`:
 ### Test
 
 - Phone: repeat “10 lines in the middle” on `gtktest1/test-file.txt`; session should show one `write`, then fenced body, not a chain of empty `write` calls.
+- Desktop (**2026-11-27**): Agent Pi, `gtktest1`, create `sample.txt` ~50 lines — same loop after merged tool copy; see **Current behavior** (desktop re-test).
+
+### Re-test 2026-11-27 (desktop, copy fix **in tree**)
+
+- Harness shows new lead copy (`INSTRUCTIONS_WRITE_STREAMING` in tool result — verified in session JSON).
+- Model still ends post-`write` turns with **`content_total=0`** and another **`write` tool call** instead of a fence; then **`bash`** fallback. Same pattern as gtktest1 Nov 20 / phone Nov 22.
+- Saved sessions: `~/.local/share/ollmchat/history/2026/11/27/08-12-21.json` (3× `write`, 2× `bash`); earlier same morning `08-10-56.json` (1× `write`, 1× `bash` on `test-file.txt`).
+- No-fence **`send_append`** user lines **not** present in those JSON transcripts (either not emitted or not persisted before the next `write` — worth harness audit; phone Nov 22 had the same gap).
+- **Conclusion:** Reordering tool-result text alone does **not** meet the success scenario for this model.
 
 ## LLM
 
@@ -210,6 +220,8 @@ Shared assembly order in `execute_request()`:
   - **`gtk_text_buffer_emit_insert: g_utf8_validate` failed** (**11:24:31**) while review bar loaded diff — likely bad on-disk bytes from sandbox/`bash` rewrites, not the phone chat path; confirm with `file` / `hexdump` on `test-file.txt` if it reproduces after copy fix.
   - **Review queue `files=1` → `3`** — stacked pending rows from overlay writes during fallback; related baseline [`done/2026-11-21-FIXED-test-file-stacked-add-diff-baseline.md`](done/2026-11-21-FIXED-test-file-stacked-add-diff-baseline.md).
 - ℹ️ Desktop criticals (GValue, UTF-8, review queue): [gtktest1 review criticals](done/2026-11-24-FIXED-gtktest1-review-criticals-overlay-run.md) (**✅** UTF-8 fixed + daemon restart).
-- ⏳ Re-test phone edit after copy fix; confirm whether that ISSUE still needs work on a clean edit-only path.
-- ✔️ Copy reorder applied in `Request.vala` (`line_numbers`, `complete_file`, `ast_path`) + `Stream.vala` no-fence text — re-test from phone pending.
-- 🚫 Duplicate-`write` guard — ruled out in gtktest1.
+- ✔️ Copy reorder applied in `Request.vala` (`line_numbers`, `complete_file`, `ast_path`) + `Stream.vala` no-fence text — **2026-11-23**; Android APK install attempt **2026-11-24** (see [install write-copy APK](25e5cf51-9f0a-4b98-b414-f78a36712623)).
+- ⏳ Phone re-test after APK still owed; **desktop re-test 2026-11-27 failed** — do not close on copy-only.
+- 💩 **Fixability (honest):** Harness stream/replace-`write` behaviour is **intentional** ([desktop write loop](done/2026-11-20-FIXED-desktop-write-file-edit-loop.md)). Failure is **`ornith-1.5:35b` treating `write` as “submit content”** (tool call) not “open stream editor” (fence in message) — think-only or empty follow-up turns, then repeat `write` or `bash`. That is **unlikely to reach ~100% reliability with instructions only**; same class of failure on Cursor-style agents is why [`EDIT-2.15-active-edit-tool`](../plans/EDIT-2.15-active-edit-tool.md) exists. Reasonable targets: (1) **second `write` while active → error** (revisit 🚫 guard as *error*, not silent replace), (2) **small-body in tool args** for complete_file / single hunk, (3) **model swap** for harness tests, (4) **active-edit** format without a parameterless tool call.
+- ℹ️ Downstream: edit-mode loops → overlay `bash` writes → stacked review pain ([stacked modified chunk loop](2026-11-24-ISSUE-stacked-modified-chunk-approval-loop.md)); fixing LLM edit path reduces that noise but is a separate ticket.
+- 🚫 Duplicate-`write` guard as **silent replace** — ruled out in gtktest1; **error-on-replace** not ruled out (user decision above).

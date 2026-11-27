@@ -1,0 +1,1 @@
+Create a new file sample-brace.txt in this project with about fifty lines of random-ish text (numbered lines are fine). Use always-on edit mode only.

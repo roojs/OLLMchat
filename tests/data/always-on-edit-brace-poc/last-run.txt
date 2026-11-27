@@ -1,0 +1,84 @@
+
+** (ollmchat-cli:1522242): WARNING **: 08:47:13.531: Connection.vala:341: Failed to get details for model defined-prefix-fool-bought.trycloudflare.com/lib/zzpl:ok: read GGUF metadata "/usr/share/ollama/.ollama/models/blobs/sha256-2378f1965e2425563c748c8290802621026987d74fed1f0d19473e179fd7a215": unsupported file type [72 69 76 76]
+
+** (ollmchat-cli:1522242): WARNING **: 08:47:14.130: Connection.vala:341: Failed to get details for model defined-prefix-fool-bought.trycloudflare.com/lib/zzpl:ok: read GGUF metadata "/usr/share/ollama/.ollama/models/blobs/sha256-2378f1965e2425563c748c8290802621026987d74fed1f0d19473e179fd7a215": unsupported file type [72 69 76 76]
+
+** (ollmchat-cli:1522242): WARNING **: 08:47:14.650: Connection.vala:341: Failed to get details for model defined-prefix-fool-bought.trycloudflare.com/lib/zzpl:ok: read GGUF metadata "/usr/share/ollama/.ollama/models/blobs/sha256-2378f1965e2425563c748c8290802621026987d74fed1f0d19473e179fd7a215": unsupported file type [72 69 76 76]
+System test model=ornith-1.5:35b
+
+--- system ---
+You are an expert coding assistant in OLLMchat (Agent Pi harness test).
+
+File editing is always on. You do not use a separate write tool. To create or change a file, output one or more blocks in this exact form:
+
+<write file="PATH" edit_mode="complete_file|line_numbers|ast_path" overwrite="true|false">
+file body or fenced edit content here
+</write>
+
+Rules:
+- PATH may be absolute or relative to the project root.
+- edit_mode=complete_file replaces the whole file; put the full new file text between the tags (plain text, not markdown fences).
+- edit_mode=line_numbers uses the same line-range fence rules as the legacy harness (`lang:start:end` on inner fences only when you use partial edits).
+- Do not call external tools for file content in your reply; put the edit in <write> tags.
+- After the last </write>, stop generating.
+
+Available for other tasks (when needed): read, bash, codebase_search, browser — but for this test, only use <write> to satisfy the user request.
+
+Current working directory: /home/alan/gitlive/gtktest1
+
+--- user ---
+Create a new file sample-brace.txt in this project with about fifty lines of random-ish text (numbered lines are fine). Use always-on edit mode only.
+
+--- Assistant (raw) ---
+<write file="sample-brace.txt" edit_mode="complete_file" overwrite="true">
+1
+2
+3 A lone sem wandered across the frozen meadow at dusk, its breath ragged
+4 in the cold air. The pines stood silent, their dark silhouettes pressing
+5 against a violet sky. Somewhere far off, a dog barked, the sound fading
+6 into the vast and empty wilderness that stretched beyond the tree line.
+7
+8 The trail had grown steep, the rocks slick with morning dew. She paused,
+9 adjusting the straps of her pack, and peered up at what remained of the
+10 road. It curled upward like a ribbon, half swallowed by years of weeds.
+11
+12 "Just a little further," she murmured to herself. The words felt foolish
+13 without an audience, but they helped. Every step reminded her why she had
+14 come here — not for glory, not for money, but simply to feel small again.
+15
+16 Far below, the town spread its little lights across the valley like a
+17 scattered collection of matches, each one burning down. She thought of
+18 all the people going about their ordinary evenings, unaware of how wide
+19 and indifferent the world became just past their back doors.
+20
+21 The wind shifted, carrying the scent of pine and something older, darker.
+22 She pulled her jacket tighter and climbed on. The last of the daylight
+23 slipped away on the ridge, and the first stars came out one by one,
+24 quick and bright, like something being quietly switched into existence.
+25
+26 When she finally reached the summit, she sat down on the cold stone and
+27 let out a long breath. The view stretched endlessly in every direction,
+28 a rolling ocean of hills gone grey in the dark. Somewhere a wolf called,
+29 and the answer came from two valleys over.
+30
+31 She smiled. Here, at the edge of everything, the noise inside her head
+32 finally went quiet — and for once, that was more than enough.
+33
+34 The map was folded in her pocket, creased and worn. Directions, markers,
+35 little arrows pointing toward nothing in particular. She never really
+36 needed them. The mountain showed you the way if you were willing to
+37 listen, if you stopped talking long enough to hear the silence.
+38
+39 Night settled completely now, dust settling like a fine snow.
+40 An owl called somewhere near the trees. Then the wind carried the smell
+41 of rain in from the west, though the sky above was clear and full of stars.
+42 The temperature dropped fast. She stood, brushed the cold from her coat,
+43 and turned to begin the long walk home beneath the pale and watching moon.
+44
+45
+46 Nothing she had wanted out of the trip had been cheap. Not the altitude,
+47 not the silence, not even the strange small peace she had found at last.
+48 But that was the trade, she figured. The good things were always the
+49 ones you could not simply decide to take. They had to be climbed for.
+50
+51 And that night, somewhere up here, she had climbed for something good.

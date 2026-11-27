@@ -20,6 +20,7 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 	private Gee.HashMap<string, string> bodies =
 		new Gee.HashMap<string, string>();
 	private int replies = 0;
+	private int file_read_calls = 0;
 	private string project_path = "/tmp/ollm-stacked-review-scenario";
 	private string file_path;
 	private bool head_chunk_closed;
@@ -106,6 +107,7 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 				break;
 
 			case "File.read":
+				this.file_read_calls++;
 				var read_path = request.args.get(0).get_string();
 				request.reply(new OLLMrpc.Response() {
 					retval = OLLMrpc.val("o", new OLLMfiles.File(this.manager) {
@@ -342,6 +344,10 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 		int step
 	) throws Error
 	{
+		this.print_disk_vs_editor(command_line, "before checks step %d".printf(step));
+		this.check(command_line, this.file_read_calls == 1,
+			"repaint must not re-read disk (File.read calls=%d want 1)"
+				.printf(this.file_read_calls));
 		this.check(command_line, this.accepted_part_count() == step,
 			"accepted hunk count after step %d".printf(step));
 		for (var i = 0; i < this.bar.parts.size; i++) {
@@ -359,6 +365,22 @@ public class StackedReviewScenarioTest : RpcTestAppBase, OLLMrpc.MockDispatch
 		}
 		this.print_highlight_audit(command_line,
 			"after accept step %d".printf(step));
+	}
+
+	private void print_disk_vs_editor(
+		ApplicationCommandLine command_line,
+		string when
+	)
+	{
+		var gtk_buf = this.editor.source_view.buffer as GtkSource.Buffer;
+		var disk = this.bodies.has_key(this.file_path)
+			? this.bodies.get(this.file_path) : "";
+		command_line.print(
+			"disk vs editor (%s): disk_%d_lines editor_%d_lines file_reads=%d\n",
+			when,
+			disk == "" ? 0 : disk.split("\n").length,
+			gtk_buf.get_line_count(),
+			this.file_read_calls);
 	}
 
 	private void check_buffer_unchanged_lines(

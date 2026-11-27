@@ -32,6 +32,8 @@ namespace OLLMapp
 		private static string? opt_project = null;
 		private static bool opt_create_project = false;
 		private static string? opt_image = null;
+		private static string? opt_system_file = null;
+		private static string? opt_user_file = null;
 		
 		public OLLMchat.Settings.Config2 config { get; set; }
 		public string data_dir { get; set; }
@@ -58,6 +60,12 @@ Examples:
   {ARG} --agent-tool=codebase-analyzer --project=/path/to/project "Explain how the database connection is established"
   echo "Find files that handle user login" | {ARG} --agent-tool=codebase-locator --project=/path/to/project
   {ARG} --model llama3.2-vision --image screenshot.png "What is shown in this image?"
+  {ARG} --system-file=tests/data/always-on-edit-brace-poc/system.md \\
+    --user-file=tests/data/always-on-edit-brace-poc/user.md -m ornith-1.5:35b
+
+Raw prompt mode (--system-file):
+  Sends exactly the system and user bodies from the files in one chat/completions
+  request. No just-ask agent, no tools registered — for LLM copy / format probes.
 
 Note: Use --image=PATH or --image PATH with PATH immediately after the option,
 so the next token is not consumed as the image path (e.g. avoid: --image --model ...).
@@ -75,6 +83,8 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			{ "project", 'p', 0, OptionArg.STRING, ref opt_project, "Project directory path (REQUIRED with --agent-tool)", "PATH" },
 			{ "create-project", 0, 0, OptionArg.NONE, ref opt_create_project, "Allow creating project if it doesn't exist (use with --project)", null },
 			{ "image", 'i', 0, OptionArg.STRING, ref opt_image, "Image file path to send with the query (vision models)", "PATH" },
+			{ "system-file", 0, 0, OptionArg.FILENAME, ref opt_system_file, "System message body from FILE (raw prompt mode; no tools)", "FILE" },
+			{ "user-file", 0, 0, OptionArg.FILENAME, ref opt_user_file, "User message body from FILE (with --system-file; else optional)", "FILE" },
 			{ null }
 		};
 		
@@ -126,6 +136,8 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			opt_project = null;
 			opt_create_project = false;
 			opt_image = null;
+			opt_system_file = null;
+			opt_user_file = null;
 			
 			string[] args = command_line.get_arguments();
 			
@@ -153,6 +165,8 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			opt_model = opt_model == null ? "" : opt_model;
 			opt_agent_tool = opt_agent_tool == null ? "" : opt_agent_tool;
 			opt_project = opt_project == null ? "" : opt_project;
+			opt_system_file = opt_system_file == null ? "" : opt_system_file;
+			opt_user_file = opt_user_file == null ? "" : opt_user_file;
 			
 			if (opt_debug) {
 				GLib.Log.set_default_handler((dom, lvl, msg) => {
@@ -183,7 +197,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			var query = args.length > 1 ? string.joinv(" ", args[1:args.length]).strip() : ""; 
 			
 			// If no query from args, try stdin or interactive mode
-			if (query.length == 0) {
+			if (query.length == 0 && (opt_system_file == "" || opt_user_file == "")) {
 				// No leftover arguments: smart stdin detection (non-blocking check using GLib.IOChannel)
 				try {
 					var stdin_channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
@@ -200,8 +214,16 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 					return 1;
 				}
 			}
-			if (query == "") {
+			if (query == "" && opt_system_file == "") {
 				command_line.printerr("Error: No query provided.\n");
+				return 1;
+			}
+			if (opt_system_file != "" && query == "" && opt_user_file == "") {
+				command_line.printerr("Error: --system-file requires --user-file or a query argument.\n");
+				return 1;
+			}
+			if (opt_agent_tool != "" && opt_system_file != "") {
+				command_line.printerr("Error: --system-file cannot be used with --agent-tool.\n");
 				return 1;
 			}
 			
@@ -238,6 +260,20 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 				return 0;
 			}
 			
+			if (opt_system_file != "") {
+				this.run_system_test.begin(query, command_line, (obj, res) => {
+					try {
+						this.run_system_test.end(res);
+					} catch (Error e) {
+						command_line.printerr("Error: %s\n", e.message);
+					} finally {
+						this.release();
+						this.quit();
+					}
+				});
+				return 0;
+			}
+
 			// Standard agent mode (existing behavior)
 			this.run_test.begin(query, command_line, (obj, res) => {
 				try {
@@ -458,6 +494,83 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			yield this.project_manager.activate_project(project);
 		}
 		
+		/**
+		 * One-shot chat/completions from --system-file / --user-file (no agent, no tools).
+		 */
+		private async void run_system_test(
+			string query,
+			ApplicationCommandLine command_line
+		) throws Error
+		{
+			var system_body = "";
+			GLib.FileUtils.get_contents(opt_system_file, out system_body);
+			var user_body = query;
+			if (opt_user_file != "") {
+				GLib.FileUtils.get_contents(opt_user_file, out user_body);
+			}
+			yield this.setup_manager();
+			var usage = this.manager.default_model_usage;
+			if (usage == null) {
+				throw new GLib.IOError.FAILED("No default model usage configured");
+			}
+			yield usage.verify_model(this.config);
+			if (!this.config.connections.has_key(usage.connection)) {
+				throw new GLib.IOError.FAILED(
+					"Connection not found: %s", usage.connection);
+			}
+			var conn = this.config.connections.get(usage.connection);
+			var call = new OLLMchat.Call.ChatCompletions(conn, usage.model);
+			call.stream = true;
+			if (usage.model_obj != null) {
+				call.think = usage.model_obj.is_thinking;
+			}
+			if (opt_ctx_num != -1) {
+				if (call.options == null) {
+					call.options = new OLLMchat.Call.Options();
+				}
+				call.options.num_ctx = opt_ctx_num;
+			}
+			var messages = new Gee.ArrayList<OLLMchat.Message>();
+			messages.add(new OLLMchat.Message("system", system_body));
+			messages.add(new OLLMchat.Message("user", user_body));
+			stdout.printf("System test model=%s\n\n", usage.model);
+			stdout.printf("--- system ---\n%s\n\n--- user ---\n%s\n\n",
+				system_body, user_body);
+			var assistant_header = false;
+			call.stream_chunk.connect((new_text, is_thinking, _response) => {
+				if (new_text.length == 0) {
+					return;
+				}
+				if (!assistant_header) {
+					assistant_header = true;
+					stdout.printf("--- Assistant (raw) ---\n");
+				}
+				stdout.write(new_text.data);
+				stdout.flush();
+			});
+			var response = yield call.send(messages, null);
+			if (!assistant_header) {
+				stdout.printf("--- Assistant (raw) ---\n");
+			}
+			stdout.printf("\n");
+			if (response.message.tool_calls.size == 0) {
+				if (opt_stats != null && opt_stats != "") {
+					this.write_stats(response, opt_stats);
+				}
+				return;
+			}
+			stdout.printf("\n--- tool_calls (%u) ---\n", response.message.tool_calls.size);
+			foreach (var tc in response.message.tool_calls) {
+				var gen = new Json.Generator();
+				gen.set_root(new Json.Node.alloc().init_object(tc.function.arguments));
+				stdout.printf("  %s %s\n", tc.function.name, gen.to_data(null));
+			}
+			if (opt_stats == null || opt_stats == "") {
+				return;
+			}
+			this.write_stats(response, opt_stats);
+		}
+
 		private async void run_test(string query, ApplicationCommandLine command_line) throws Error
 		{
 			// Phase 4: Use Manager's just-ask agent instead of creating Chat directly

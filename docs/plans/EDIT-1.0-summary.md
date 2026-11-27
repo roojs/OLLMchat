@@ -24,8 +24,9 @@
 
 | Plan | Status | Worth doing? |
 |------|--------|----------------|
+| [EDIT-2.16-edit-output-format-strategy.md](EDIT-2.16-edit-output-format-strategy.md) | ⏳ **STRATEGY** | **Decide first** — always-on `<write>` vs gated `write` + tags ([bug](../bugs/2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md)) |
 | [EDIT-2.1.8-ast-path-incremental-application.md](EDIT-2.1.8-ast-path-incremental-application.md) | 📋 planned, **not urgent** | Only if multiple AST-path edits in **one** message mis-resolve today; single edits work |
-| [EDIT-2.15-active-edit-tool.md](EDIT-2.15-active-edit-tool.md) | ⏳ **NOT STARTED** | Speculative (edits in prose, no tool call) — defer unless product wants it |
+| [EDIT-2.15-active-edit-tool.md](EDIT-2.15-active-edit-tool.md) | ⏳ **NOT STARTED** | Speculative (edits in prose, no tool call) — defer unless product wants it; may merge with 2.16 syntax |
 
 ---
 
