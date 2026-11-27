@@ -191,8 +191,8 @@ occoder_vapi_vapidirs = [
   '--vapidir', '/usr/share/vala/vapi',
 ]
 if is_android_cross
-  occoder_vapi_vapidirs += ['--vapidir', gee_vapi_dir]
-  occoder_vapi_gen_pkgs += ['--define', 'ANDROID']
+  occoder_vapi_vapidirs = ['--vapidir', gee_vapi_dir] + occoder_vapi_vapidirs
+  occoder_vapi_gen_pkgs += android_valac_pkg_config_args + ['--define', 'ANDROID']
 endif
 
 occoder_vapi_depends = [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ollamaweb_vapi, ocmarkdown_vapi, ocmarkdowngtk_vapi, ocrpc_vapi]

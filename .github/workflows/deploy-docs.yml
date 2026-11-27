@@ -21,6 +21,7 @@ on:
       - 'ollmapp/**/*.vala'
       - 'examples/**/*.vala'
       - 'docs/meson.build'
+      - 'docs/version_fake.vala'
       - 'docs/valadoc-wiki/**'
       - 'docs/run-valadoc.sh'
       - 'docs/fix-valadoc-index-links.sh'

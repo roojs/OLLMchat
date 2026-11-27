@@ -417,7 +417,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchatgtk/List/ModelUsageFactory.vala',
     '../libollmchatgtk/List/SortedList.vala',
     # ollmapp application sources
-    # Note: version_fake.vala must come first as it defines OLLMapp.APP_VERSION (internal, not documented)
+    # Note: version_fake.vala defines internal OLLMapp.APP_VERSION and OLLMchat.VERSION (not documented)
     'version_fake.vala',
     '../ollmapp/Application.vala',
     '../ollmapp/ClientCert.vala',

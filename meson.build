@@ -74,6 +74,7 @@ webview2gtk_prefix = get_option('webview2gtk_prefix')
 # PKG_CONFIG_PATH=<prefix>/lib/pkgconfig (see scripts/ci/windows-msys2-build.sh).
 
 gee_vapi_dir = meson.project_source_root() / 'subprojects/libgee-0.20.8/gee'
+android_valac_pkg_config_args = []
 
 if android_cross_build
   # GIO TLS for libsoup HTTPS: static gioopenssl, loaded with
@@ -89,9 +90,23 @@ if android_cross_build
   # VAPI is in the sysroot.
   gee_dep = dependency('gee-0.8')
   if gee_dep.type_name() == 'pkgconfig'
-    gee_vapi_dir = gee_dep.get_variable(pkgconfig: 'prefix') / 'share' / 'vala' / 'vapi'
+    pixie_prefix = gee_dep.get_variable(pkgconfig: 'prefix')
+    gee_vapi_dir = pixie_prefix / 'share' / 'vala' / 'vapi'
     add_project_arguments(['--vapidir', gee_vapi_dir], language: 'vala')
+    # Meson does not forward the cross pkg-config to valac, so valac's
+    # [Version (since = ...)] check queries host pkg-config (e.g. Ubuntu
+    # 24.04 libadwaita-1 1.5.0 vs pixie 1.10.0). Point valac at the pixie
+    # pkg-config wrapper when present, else disable host since-checks.
+    pixie_pkg_config = pixie_prefix / 'share' / 'pixiewood' / 'pkg-config-wrapper'
+    if fs.exists(pixie_pkg_config)
+      android_valac_pkg_config_args = ['--pkg-config=' + pixie_pkg_config]
+    else
+      android_valac_pkg_config_args = ['--disable-since-check']
+    endif
+  else
+    android_valac_pkg_config_args = ['--disable-since-check']
   endif
+  add_project_arguments(android_valac_pkg_config_args, language: 'vala')
 
   # GObject introspection is disabled on Android, so Meson does not attach
   # --pkg lines for C-library deps to library() targets. Bundled vapis under
