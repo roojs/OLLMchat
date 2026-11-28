@@ -8,7 +8,7 @@ None.
 
 ## User reported
 
-- 🔷 Split from [phone Agent Pi edit-file test](../2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md): fix the **GLib criticals** and broken review UX on desktop during that run, not the `write` tool copy.
+- 🔷 Split from [phone Agent Pi edit-file test](2026-11-23-CLOSED-phone-agent-pi-edit-file-test.md): fix the **GLib criticals** and broken review UX on desktop during that run, not the `write` tool copy.
 - 🔷 **2026-11-24** — close report for now: desktop critical pass; **only** hitting UTF-8 insert critical before **ollmfilesd** restart; clear after daemon reboot.
 
 ## Success scenario
@@ -20,7 +20,7 @@ None.
 ## Current behavior
 
 - Context
-  - **2026-11-22** phone → desktop `gtktest1`; overlay writes on `test-file.txt` ([phone report](../2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md)).
+  - **2026-11-22** phone → desktop `gtktest1`; overlay writes on `test-file.txt` ([phone report](2026-11-23-CLOSED-phone-agent-pi-edit-file-test.md)).
 - **2026-11-24** (user)
   - Same UTF-8 critical until **ollmfilesd** restarted (stale in-memory diff parts vs rebuilt reads).
   - After reboot: pending review opens without UTF-8 critical; only critical tracked here was that one.
@@ -80,5 +80,5 @@ None.
 ## LLM
 
 - ✔️ **2026-11-24** — archived to `done/`; user confirmed UTF-8 critical cleared after daemon restart.
-- ℹ️ Parent: [2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md](../2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md).
+- ℹ️ Parent: [2026-11-23-CLOSED-phone-agent-pi-edit-file-test.md](2026-11-23-CLOSED-phone-agent-pi-edit-file-test.md).
 - ⏳ Follow-up (optional): Phase 1 GValue decode if criticals recur; `File.read` `msg` cast in `ollmfilesd/File.vala` if client buffer loads bad bytes without local read path.

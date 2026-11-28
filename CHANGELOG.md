@@ -39,10 +39,6 @@ Work since **1.4.18** (2026-11-26).
 
 ### Changed
 
-#### Chat
-
-- Edit-mode write tool instructions use `<write>…</write>` tags instead of standalone markdown fences
-
 #### Android
 
 - Removed the `adw-spinner.vapi` shim from the Android POC build

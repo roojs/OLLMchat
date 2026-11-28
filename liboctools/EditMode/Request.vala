@@ -25,23 +25,67 @@ namespace OLLMtools.EditMode
 	{
 		// Message constants
 		private const string INSTRUCTIONS_WRITE_STREAMING = """
-On this agent, the write tool opens edit mode for a path. Put the actual file edit in <write>…</write> tags in the assistant message — not inside the write tool call and not as standalone markdown fences.
+On this agent, the write tool applies edits from markdown code blocks you output in the assistant message — not from content inside the write tool call. That lets the user see the edit as it streams instead of the chat waiting while changes are gathered.
 """;
 
 		private const string INSTRUCTIONS_COMPLETE_FILE = """
-edit_mode=complete_file: put the full new file text between the <write> tags (plain text, not markdown ``` fences).
+edit_mode=complete_file replaces the entire file. On the opening ``` fence, do not use a colon (no line ranges or symbol paths). A plain ``` opener is fine.
 """;
 
 		private const string INSTRUCTIONS_LINE_RANGE = """
-edit_mode=line_numbers: inside the <write> block you may use fenced hunks with type:startline:endline (inclusive start, exclusive end, 1-based), e.g.
+You may start writing by outputting a code block like this:
 
 ```javascript:10:15
 the output goes here
 ```
+
+The opening fence uses type:startline:endline. The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
 """;
 
 		private const string INSTRUCTIONS_AST = """
-edit_mode=ast_path: inside the <write> block use fence openers type:Namespace-Class-Method (and :before-comment, :after, :remove, :with-comment suffixes as before).
+AST path mode: fence openers use type:Namespace-Class-Method e.g.
+
+```vala:OLLMchat-Client-chat
+/**
+ * Send a chat message.
+ */
+public void chat() {
+	// new implementation
+}
+```
+
+AST path operations:
+- Default (no suffix) = replace target
+- `:before-comment` = insert before comment block (recommended)
+- `:after` = insert after target
+- `:remove` = remove target (includes comment block)
+- `:with-comment` = replace or delete this block including the preceding comment
+
+Example (before):
+```vala:OLLMchat-Client-chat:before
+// inserted before chat()
+```
+
+Example (after):
+```vala:OLLMchat-Client-chat:after
+// inserted after chat()
+```
+
+Example (remove):
+```vala:OLLMchat-Client-chat:remove
+```
+
+Example (replace with comments):
+```vala:OLLMchat-Client-chat:with-comment
+/**
+ * Updated docs
+ */
+public void chat() {
+	// new implementation
+}
+```
+
+Any other format will be ignored.
 """;
 
 		private const string OVERWRITE_MESSAGE = """
@@ -51,17 +95,23 @@ You set overwrite=true, so we will overwrite the existing file when you complete
 		private const string CODE_BLOCK_REQUIREMENT_COMPLETE_FILE = """
 Edit mode is on for this path. In this same assistant message only:
 
-1. Output one <write file="PATH" edit_mode="complete_file" overwrite="true|false">…</write> block with the full file body inside.
+1. Output the full file content inside one opening and one closing ``` fence.
 2. Do not call write again or any other tool for this file in this message.
-3. STOP after the closing </write> — the agent will send a confirmation when the file has been written.
+3. STOP generating when the closing fence is done — the agent will send a confirmation message that the file has been written, and you may continue then.
+
+Example:
+
+```
+content to write
+```
 """;
 
 		private const string CODE_BLOCK_REQUIREMENT_PARTIAL = """
 Edit mode is on for this path. In this same assistant message only:
 
-1. Output one <write file="PATH" edit_mode="…" overwrite="…">…</write> block (see format below).
+1. Output one or more fenced edits per the format below.
 2. Do not call write again or any other tool for this file in this message.
-3. STOP after the closing </write> — the agent will send a confirmation when edits are applied.
+3. STOP generating after the last fence — the agent will send a confirmation message that your edits have been applied, and you may continue then.
 """;
 
 		// Parameter properties
@@ -260,19 +310,12 @@ Edit mode is on for this path. In this same assistant message only:
 			llm_message += (this.edit_mode == "complete_file"
 				? CODE_BLOCK_REQUIREMENT_COMPLETE_FILE
 				: CODE_BLOCK_REQUIREMENT_PARTIAL);
-			llm_message += "\n\nExample:\n\n<write file=\"";
-			llm_message += this.normalized_path;
-			llm_message += "\" edit_mode=\"";
-			llm_message += this.edit_mode;
-			llm_message += "\" overwrite=\"";
-			llm_message += this.overwrite ? "true" : "false";
-			llm_message += "\">\n…\n</write>\n";
 			if (this.edit_mode == "line_numbers") {
-				llm_message += "\n" + INSTRUCTIONS_LINE_RANGE;
+				llm_message += "\n\n" + INSTRUCTIONS_LINE_RANGE;
 			} else if (this.edit_mode == "complete_file") {
-				llm_message += "\n" + INSTRUCTIONS_COMPLETE_FILE;
+				llm_message += "\n\n" + INSTRUCTIONS_COMPLETE_FILE;
 			} else {
-				llm_message += "\n" + INSTRUCTIONS_AST;
+				llm_message += "\n\n" + INSTRUCTIONS_AST;
 			}
 			if (this.overwrite && !this.creating_file) {
 				llm_message += "\n\n" + OVERWRITE_MESSAGE;

@@ -5,13 +5,13 @@
 ## User decisions required
 
 - 💩 Confirm tag names and attributes: `<write file="…" edit_mode="complete_file|line_numbers|ast_path" overwrite="true|false">` … `</write>` vs HTML/XML variant the harness will parse.
-- 💩 Product spec: [EDIT-2.17](../plans/EDIT-2.17-always-on-edit-capabilities-syntax-permissions.md) (syntax + permissions); [activation not viable](2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md).
+- 💩 Product spec: [activation not viable](2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md) — **Current behavior** + **Proposed fix** in that report.
 
 ## User reported
 
 - 🔷 Treat edit mode as **always on**; trigger an edit with angle-bracket tags carrying file path and options (not a separate `write` tool round-trip).
 - 🔷 Probe the LLM **out of the app** first — extend **`ollmchat-cli`** with file-based system/user templates, not the main chat harness.
-- 🔷 Related pain: [phone Agent Pi edit loop](2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md); plan sketch [EDIT-2.15-active-edit-tool](../plans/EDIT-2.15-active-edit-tool.md).
+- 🔷 Related pain: [phone Agent Pi edit loop](done/2026-11-23-CLOSED-phone-agent-pi-edit-file-test.md) (archived).
 
 ## Success scenario
 
@@ -21,7 +21,7 @@
 
 ## Current behavior
 
-- Edit apply path requires a `write` tool call → stream fence in a **later** turn → model often loops ([2026-11-23 issue](2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md)).
+- Edit apply path requires a `write` tool call → stream fence in a **later** turn → model often loops ([archived phone issue](done/2026-11-23-CLOSED-phone-agent-pi-edit-file-test.md)).
 - POC run **2026-11-27** (`ornith-1.5:35b`, streaming CLI, no tools): **met** one-turn `<write>…</write>` create-file ask — full capture in [`last-run.txt`](../../tests/data/always-on-edit-brace-poc/last-run.txt).
 
 ## Codebase observed behavior
@@ -44,5 +44,5 @@
 ## LLM
 
 - ℹ️ CLI probe landed 2026-11-27; harness parser not started.
-- ℹ️ Spec: [EDIT-2.17](../plans/EDIT-2.17-always-on-edit-capabilities-syntax-permissions.md).
-- ℹ️ Parent: [2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md](2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md).
+- ℹ️ Spec: [2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md](2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md).
+- ℹ️ Parent: [2026-11-23-CLOSED-phone-agent-pi-edit-file-test.md](done/2026-11-23-CLOSED-phone-agent-pi-edit-file-test.md).

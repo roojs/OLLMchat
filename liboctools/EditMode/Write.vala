@@ -32,19 +32,30 @@ namespace OLLMtools.EditMode
 		}
 		public override string description { get {
 			return """
-Write or edit a file using <write>…</write> tags in the assistant message.
+Write or edit a file using stream-captured code fences.
 
-Call write with file_path and edit_mode, then in the SAME assistant message output:
+Call this tool with the target path, then emit fenced code blocks. When the turn
+completes, captured blocks are applied to the file.
 
-<write file="PATH" edit_mode="complete_file|line_numbers|ast_path" overwrite="true|false">
-...content...
-</write>
+Supported formats:
+- ast_path (default, preferred): use type:Namespace-Class-Method
+- complete_file: replace or create a full file with a bare language tag
+- line_numbers (not recommended): edit an existing file with type:startline:endline
+An editing session cannot mix output formats.
 
-Do not put file body in the tool call. Do not call write again for this path in this message. STOP after </write>.
+Code block format depends on the mode:
+- ast_path: Code blocks must include AST path in format type:Namespace-Class-Method.
+- ast_path suffixes: `:before-comment`, `:after`, `:remove`, `:with-comment` (comments apply to replace/remove/before-comment).
+- line_numbers: Code blocks must include line range in format type:startline:endline (e.g., vala:10:15, vala:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
+- complete_file: Code blocks should only have the language tag (e.g., ```vala). The entire file content will be replaced. If the file doesn't exist, it will be created. If it exists and overwrite=true, it will be overwritten. If overwrite=false and the file exists, an error will be returned.
 
-edit_mode=complete_file — full file text inside the tag (plain text).
-edit_mode=line_numbers — partial edits via lang:start:end fences inside the tag.
-edit_mode=ast_path — AST path fences inside the tag (type:Namespace-Class-Method).""";
+When edit_mode=complete_file, do not include line numbers or ast-path in the code block.
+
+CRITICAL: You MUST include both opening and closing markdown code block tags. For example:
+```
+content to write
+```
+Don't forget to close the code block with the closing ``` tag. If you don't close it, the changes will not be captured and applied.""";
 		} }
 		public override string parameter_description { get {
 			return """

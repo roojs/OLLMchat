@@ -298,7 +298,7 @@ Goal: replay **disk file + backup cache + SQLite rows** and assert queue / `revi
 
 - ℹ️ Split from user chat **2026-11-24** (desktop approval UX); not the GLib criticals track in [gtktest1 review criticals](done/2026-11-24-FIXED-gtktest1-review-criticals-overlay-run.md) (**✅**).
 - ℹ️ Related closed: [review-queue multi-history](done/2026-11-15-FIXED-review-queue-multi-history-and-db-sync.md) (`since_id` poke + client stale queue), [stacked add diff baseline](done/2026-11-21-FIXED-test-file-stacked-add-diff-baseline.md) (`stack_added` bulk approve only).
-- ℹ️ Parent harness context: [phone Agent Pi edit-file test](2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md), [desktop write loop](done/2026-11-20-FIXED-desktop-write-file-edit-loop.md).
+- ℹ️ Parent harness context: [phone Agent Pi edit-file test](done/2026-11-23-CLOSED-phone-agent-pi-edit-file-test.md), [desktop write loop](done/2026-11-20-FIXED-desktop-write-file-edit-loop.md).
 - 💩 Hypothesis: nineteen pending `modified` rows force **per-chunk** hunk UI; accepting chunk `43180` does not call `FileHistory.approve`, so refresh shows chunk `43179` — matches “new set after third accept”.
 - ℹ️ **2026-11-24** — User asked for DB-backed automated repro; inventory + Tier A/B/C plan under **Proposed fix → Automated reproduction**.
 - ℹ️ **2026-11-24** — Product intent: server-side full approve for stacked edits; client keeps tab + review bar after refresh ([`ReviewBar.sync_pending`](../../liboccoder/Diff/ReviewBar.vala) already has a “Changes accepted” path when queue is empty but parts are decided — extend that story for stacked modified, avoid `show_pending_diff` loading the next chunk).

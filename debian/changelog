@@ -10,7 +10,6 @@ ollmchat (1.4.19-1) unstable; urgency=medium
   * `HttpReply` binary streaming (`application/octet-stream` chunked responses with 4-byte big-endian length-prefixed `Bin.Stream` frames) and `closed` signal on peer disconnect or `end()` (including over `HttpServer.take`)
   * `HttpClient.headers` map for attaching extra HTTP request headers (such as `Authorization` or `Cookie`) to outgoing calls
   * `ollmchat-cli` `--system-file` and `--user-file` raw prompt mode for one-shot `chat/completions` requests without an agent or tools
-  * Edit-mode write tool instructions use `<write>…</write>` tags instead of standalone markdown fences
   * Removed the `adw-spinner.vapi` shim from the Android POC build
 
  -- Alan Knowles <alan@roojs.com>  Fri, 27 Nov 2026 00:00:00 +0000

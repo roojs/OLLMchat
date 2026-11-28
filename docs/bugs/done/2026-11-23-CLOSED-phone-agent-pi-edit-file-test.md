@@ -1,11 +1,10 @@
 # Phone Agent Pi mid-file `write` re-activates edit mode instead of applying fences
 
-**Status:** ⏳ — copy-only fix **insufficient**; desktop re-test **2026-11-27** same failure class (ornith-1.5:35b).
+**Status:** ✅ — **Closed (won't fix this path).** Enable-then fence streaming is abandoned; evidence preserved here. Product direction: [activation not viable](../2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md).
 
 ## User decisions required
 
-- 💩 Blocked on always-on implementation: [`EDIT-2.17`](../plans/EDIT-2.17-always-on-edit-capabilities-syntax-permissions.md) — enable-then fence path abandoned ([viability issue](2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md)).
-- 💩 If staying on fence path temporarily: escape hatches still on table — [`EDIT-2.15-active-edit-tool`](../plans/EDIT-2.15-active-edit-tool.md), **body in `write` args**, or **error on repeat `write`** while active.
+- None.
 
 ## User reported
 
@@ -221,7 +220,6 @@ Shared assembly order in `execute_request()`:
   - **Review queue `files=1` → `3`** — stacked pending rows from overlay writes during fallback; related baseline [`done/2026-11-21-FIXED-test-file-stacked-add-diff-baseline.md`](done/2026-11-21-FIXED-test-file-stacked-add-diff-baseline.md).
 - ℹ️ Desktop criticals (GValue, UTF-8, review queue): [gtktest1 review criticals](done/2026-11-24-FIXED-gtktest1-review-criticals-overlay-run.md) (**✅** UTF-8 fixed + daemon restart).
 - ✔️ Copy reorder applied in `Request.vala` (`line_numbers`, `complete_file`, `ast_path`) + `Stream.vala` no-fence text — **2026-11-23**; Android APK install attempt **2026-11-24** (see [install write-copy APK](25e5cf51-9f0a-4b98-b414-f78a36712623)).
-- ⏳ Phone re-test after APK still owed; **desktop re-test 2026-11-27 failed** — do not close on copy-only.
-- 💩 **Fixability (honest):** Harness stream/replace-`write` behaviour is **intentional** ([desktop write loop](done/2026-11-20-FIXED-desktop-write-file-edit-loop.md)). Failure is **`ornith-1.5:35b` treating `write` as “submit content”** (tool call) not “open stream editor” (fence in message) — think-only or empty follow-up turns, then repeat `write` or `bash`. That is **unlikely to reach ~100% reliability with instructions only**; same class of failure on Cursor-style agents is why [`EDIT-2.15-active-edit-tool`](../plans/EDIT-2.15-active-edit-tool.md) exists. Reasonable targets: (1) **second `write` while active → error** (revisit 🚫 guard as *error*, not silent replace), (2) **small-body in tool args** for complete_file / single hunk, (3) **model swap** for harness tests, (4) **active-edit** format without a parameterless tool call.
-- ℹ️ Downstream: edit-mode loops → overlay `bash` writes → stacked review pain ([stacked modified chunk loop](2026-11-24-ISSUE-stacked-modified-chunk-approval-loop.md)); fixing LLM edit path reduces that noise but is a separate ticket.
-- 🚫 Duplicate-`write` guard as **silent replace** — ruled out in gtktest1; **error-on-replace** not ruled out (user decision above).
+- ℹ️ Archived **2026-11-28** — user concluded enable-then will **not** be made reliable for primary models; no further fence/copy work on this ticket.
+- ℹ️ **Fixability (final):** failure class documented above; superseded by always-on `<write>` spec in [2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md](../2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md).
+- ℹ️ Downstream: edit-mode loops → `bash` / review noise — [stacked modified chunk loop](../2026-11-24-ISSUE-stacked-modified-chunk-approval-loop.md) (separate).
