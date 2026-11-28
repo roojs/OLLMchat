@@ -4,8 +4,8 @@
 
 ## User decisions required
 
-- 💩 Pick product direction: **always-on** `<write>` parsing ([`EDIT-2.16` strategy plan](../plans/EDIT-2.16-edit-output-format-strategy.md) **Path A**) vs **keep `write` gate** but change tool/harness copy to the same tag syntax (**Path B**).
-- 💩 Approve follow-up **CLI/harness probe** for Path B: real `write` tool + agent loop, tool result instructs tag output (not fence-after-activate) — **no product code** until strategy is chosen.
+- 💩 Permission timing for always-on edits: see [EDIT-2.17](../plans/EDIT-2.17-always-on-edit-capabilities-syntax-permissions.md) **User decisions required** (during stream vs end-of-message vs preview).
+- 💩 Approve next implementation plan from EDIT-2.17 § suggested order (parser first).
 
 ## User reported
 
@@ -61,25 +61,15 @@
 
 ## Proposed fix
 
-**None in product code until strategy is chosen** — see [`EDIT-2.16-edit-output-format-strategy.md`](../plans/EDIT-2.16-edit-output-format-strategy.md).
+**Direction:** [EDIT-2.17](../plans/EDIT-2.17-always-on-edit-capabilities-syntax-permissions.md) — always-on `<write>` parser + permission hook; retire enable-then flow.
 
-**Investigation — B0 (observe output; apply may fail)**
+**Do not pursue**
 
-- Tag copy on [`Write`](../../liboctools/EditMode/Write.vala) + [`Request.execute_request`](../../liboctools/EditMode/Request.vala); fence apply unchanged.
-- Desktop Pi or `ollmchat-cli --project=…`; record tags, fences, think-only, repeat `write` in **Current behavior**.
-
-**Later**
-
-- **B1** — CLI script markers + stdin loop ([EDIT-2.16](../plans/EDIT-2.16-edit-output-format-strategy.md)).
-- **B2** — full gtktest1 harness with tag parser if B0 looks promising.
-
-**Deprioritize (unless user revives)**
-
-- Further prompt-only reordering of fence instructions in [`Request.vala`](../../liboctools/EditMode/Request.vala) as the **primary** fix for `ornith-1.5:35b` — evidence from phone/desktop loops + successful no-tool tag POC.
+- Prompt/harness fixes on fence-after-`write`.
+- Path B (`write` gate + tag body).
 
 ## LLM
 
 - ℹ️ Opened **2026-11-27** after always-on POC success; parent [FEATURE always-on brace POC](2026-11-27-FEATURE-always-on-edit-brace-syntax-poc.md).
 - ℹ️ Strategy: [EDIT-2.16](../plans/EDIT-2.16-edit-output-format-strategy.md). Related: [EDIT-2.15](../plans/EDIT-2.15-active-edit-tool.md), [2026-11-23 phone issue](2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md).
-- ℹ️ **B0** tag copy in tree 2026-11-27; paste manual results into **Current behavior**.
-- ⏳ CLI script markers (B1) documented in EDIT-2.16 only.
+- ℹ️ Strategy closed 2026-11-28 → [EDIT-2.17](../plans/EDIT-2.17-always-on-edit-capabilities-syntax-permissions.md).

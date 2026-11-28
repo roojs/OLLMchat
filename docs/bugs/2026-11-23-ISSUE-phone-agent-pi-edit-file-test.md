@@ -4,7 +4,7 @@
 
 ## User decisions required
 
-- 💩 Strategy first: [`EDIT-2.16`](../plans/EDIT-2.16-edit-output-format-strategy.md) (always-on `<write>` vs gated `write` + tags) — see [2026-11-27 activation plan not viable](2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md).
+- 💩 Blocked on always-on implementation: [`EDIT-2.17`](../plans/EDIT-2.17-always-on-edit-capabilities-syntax-permissions.md) — enable-then fence path abandoned ([viability issue](2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md)).
 - 💩 If staying on fence path temporarily: escape hatches still on table — [`EDIT-2.15-active-edit-tool`](../plans/EDIT-2.15-active-edit-tool.md), **body in `write` args**, or **error on repeat `write`** while active.
 
 ## User reported

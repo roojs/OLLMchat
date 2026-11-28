@@ -5,7 +5,7 @@
 ## User decisions required
 
 - 💩 Confirm tag names and attributes: `<write file="…" edit_mode="complete_file|line_numbers|ast_path" overwrite="true|false">` … `</write>` vs HTML/XML variant the harness will parse.
-- 💩 Product path: see [EDIT-2.16 strategy](../plans/EDIT-2.16-edit-output-format-strategy.md) and [activation plan not viable](2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md) — always-on (**Path A**) vs gated `write` + tags (**Path B**).
+- 💩 Product spec: [EDIT-2.17](../plans/EDIT-2.17-always-on-edit-capabilities-syntax-permissions.md) (syntax + permissions); [activation not viable](2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md).
 
 ## User reported
 
@@ -44,5 +44,5 @@
 ## LLM
 
 - ℹ️ CLI probe landed 2026-11-27; harness parser not started.
-- ℹ️ Strategy fork: [EDIT-2.16](../plans/EDIT-2.16-edit-output-format-strategy.md); viability: [2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md](2026-11-27-ISSUE-edit-mode-tool-activation-plan-not-viable.md).
+- ℹ️ Spec: [EDIT-2.17](../plans/EDIT-2.17-always-on-edit-capabilities-syntax-permissions.md).
 - ℹ️ Parent: [2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md](2026-11-23-ISSUE-phone-agent-pi-edit-file-test.md).
